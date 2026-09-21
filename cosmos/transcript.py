@@ -19,6 +19,7 @@ class Turn:
     timestamp: str = ""
     uuid: str = ""
     branch: str = ""              # git branch the agent was on (Claude Code records it per entry)
+    offset: int = 0                 # byte offset just after this entry in the transcript file
 
 
 _INJECTED = re.compile(r"<(system-reminder|local-command-caveat|command-name|command-message|command-args|local-command-stdout|task-notification|ci-monitor-event)[^>]*>.*?</\1>", re.S)
@@ -43,7 +44,7 @@ def _text_of(content) -> str:
     return ""
 
 
-def iter_turns(path: Path, offset: int = 0, sidechain: bool = False) -> Tuple[List[Turn], int]:
+def iter_turns(path: Path, offset: int = 0, sidechain: bool = False, until: Optional[int] = None) -> Tuple[List[Turn], int]:
     """Parse turns from byte `offset`; return (turns, new_offset). Never raises on bad lines.
     `sidechain=True` reads a subagent transcript (<session>/subagents/*.jsonl), whose entries are all side-chain."""
     turns: List[Turn] = []
@@ -52,6 +53,8 @@ def iter_turns(path: Path, offset: int = 0, sidechain: bool = False) -> Tuple[Li
     with path.open("rb") as fh:
         fh.seek(offset)
         while True:
+            if until is not None and fh.tell() >= until:
+                break
             line = fh.readline()
             if not line:
                 break
@@ -81,6 +84,7 @@ def iter_turns(path: Path, offset: int = 0, sidechain: bool = False) -> Tuple[Li
             # tool_result-only user messages carry no prose; keep them out
             if turn.role == "user" and isinstance(content, list) and not turn.text.strip():
                 continue
+            turn.offset = offset
             turns.append(turn)
     return turns, offset
 

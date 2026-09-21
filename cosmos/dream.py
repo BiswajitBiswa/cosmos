@@ -41,6 +41,11 @@ class DreamReport:
     recurated: int = 0
     recurated_dropped: int = 0
     journal_entries: int = 0
+    windows_read: int = 0
+    turns_read: int = 0
+    windows_waiting: int = 0
+    auto_memory_notes: int = 0
+    fallback_windows: int = 0
 
     def to_dict(self) -> Dict:
         return {"new": [{"id": m.id, "text": m.text, "category": m.category} for m in self.new],
@@ -48,7 +53,7 @@ class DreamReport:
                 "contradictions": [{"older": a, "newer": b} for a, b in self.contradictions],
                 "superseded": [{"old": a, "by": b} for a, b in self.superseded],
                 "stale": list(self.stale), "revived": list(self.revived), "llm_used": self.llm_used,
-                "observations_processed": self.observations_processed, "dropped": self.dropped, "recurated": self.recurated, "recurated_dropped": self.recurated_dropped, "journal_entries": self.journal_entries, "llm_available": self.llm_available, "summary": self.summary()}
+                "observations_processed": self.observations_processed, "dropped": self.dropped, "recurated": self.recurated, "recurated_dropped": self.recurated_dropped, "journal_entries": self.journal_entries, "windows_read": self.windows_read, "turns_read": self.turns_read, "windows_waiting": self.windows_waiting, "auto_memory_notes": self.auto_memory_notes, "fallback_windows": self.fallback_windows, "llm_available": self.llm_available, "summary": self.summary()}
 
     def summary(self) -> str:
         return (f"{self.observations_processed} observations → {len(self.new)} new, {len(self.merged)} merged, "
@@ -56,6 +61,10 @@ class DreamReport:
                 + (f" · LLM curated, {self.dropped} dropped as noise" if self.llm_used and self.observations_processed else "")
                 + (f" · re-curated {self.recurated} existing facts, {self.recurated_dropped} retired" if self.recurated else "")
                 + (f" · {self.journal_entries} journal entries written" if self.journal_entries else "")
+                + (f" · model read {self.turns_read} turns" if self.turns_read else "")
+                + (f" · {self.auto_memory_notes} auto memory notes offered" if self.auto_memory_notes else "")
+                + (f" · {self.windows_waiting} session ranges still waiting for a model" if self.windows_waiting else "")
+                + (f" · {self.fallback_windows} ranges read heuristically (no model for days)" if self.fallback_windows else "")
                 + ("" if self.llm_available else " · heuristics only — no LLM available (cosmos doctor)"))
 
 
@@ -124,17 +133,39 @@ def dream(cfg: Config, use_llm: Optional[bool] = None, verbose: bool = False) ->
     journals = [o for o in pending if o.get("kind") == "journal"]
     report.journal_entries = _journal.persist(cfg, journals, mems)
     pending = [o for o in pending if o.get("kind") != "journal"] + [dict(o, text="Work done: " + o["text"]) for o in journals if o.get("commits")]
-    report.observations_processed = len(pending)
     state.mark_dreamed(o["id"] for o in journals)
-    seen_ids = [o["id"] for o in pending]      # everything looked at this run is done, including what the model drops
 
     # ---- 1b. LLM curation: the model decides what is worth keeping, rewrites it, names category + lane.
     want_llm = cfg.get("dream.llm", "auto") if use_llm is None else use_llm
     prov = get_provider(cfg.get("llm", {}) or {}) if want_llm else None
     report.llm_available = prov is not None
+    from . import reader as _reader
+    if prov is not None:
+        try:   # the model reads the session ranges the hooks marked, and this developer's own Claude Code notes
+            rr = _reader.read_windows(cfg, prov, mems, state, obs_store, int(cfg.get("dream.read_budget", 30)), verbose)
+            report.windows_read, report.turns_read = rr.windows_read, rr.turns_read
+            pending += rr.new
+            am = _reader.auto_memory_candidates(cfg, state)
+            if am:
+                obs_store.append(am)
+                pending += am
+                report.auto_memory_notes = len(am)
+            report.llm_used = report.llm_used or bool(rr.chunks_read or am)
+        except Exception as e:
+            if verbose:
+                print(f"  reading skipped: {str(e)[:160]}")
+    else:
+        fb = _reader.fallback_windows(cfg, state, obs_store, int(cfg.get("capture.fallback_days", 3)))
+        report.fallback_windows = fb.fallback
+        pending += fb.new
+    report.windows_waiting = _reader.windows_waiting(state)
+    seen_ids = [o["id"] for o in pending]
+    report.observations_processed = len(pending)
     if prov is not None and pending:
         try:
-            pending, dropped = _llm_curate(prov, cfg, pending, mems, verbose)
+            todo = [o for o in pending if not o.get("curated")]
+            kept, dropped = _llm_curate(prov, cfg, todo, mems, verbose)
+            pending = [o for o in pending if o.get("curated") and o not in todo] + kept
             report.dropped = dropped
             report.llm_used = True
         except Exception as e:  # the deterministic path still runs

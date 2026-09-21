@@ -15,6 +15,7 @@ from .retrieve import format_for_agent, retrieve, top
 from .store import Ledger, Observations, State, now_iso
 from .transcript import iter_turns, relativize
 from . import journal as _journal
+from . import reader as _reader
 
 
 def _log(cfg: Config, msg: str) -> None:
@@ -46,7 +47,13 @@ def capture(cfg: Config, event: Dict[str, Any], agent: str = "claude") -> int:
     root = cfg.paths.root
     for t in turns:
         t.files = [r for r in (relativize(f, root) for f in t.files) if not r.startswith(("/", "external/"))]
-    obs = extract(turns, float(cfg.get("capture.min_score", 0.5)), int(cfg.get("capture.max_per_batch", 40)))
+    model_reads = capture_mode(cfg) == "model"
+    if model_reads:
+        # the model reads this range at dream time; here we keep only what must not wait: explicit rules and findings
+        _reader.register_window(state, Path(tp), sid, agent, state.offset(f"{agent}:{sid}" if agent != "claude" else sid), new_off, event.get("since_days"))
+        obs = [o for o in extract(turns, float(cfg.get("capture.min_score", 0.5)), 10_000) if o.source == "explicit"]
+    else:
+        obs = extract(turns, float(cfg.get("capture.min_score", 0.5)), int(cfg.get("capture.max_per_batch", 40)))
     author = git_author(root) if cfg.get("privacy.author", "git") == "git" else "anonymous"
     records: List[Dict[str, Any]] = []
     globs = cfg.ignore_globs
@@ -118,9 +125,24 @@ def backfill_journal(cfg: Config, path: Path, sid: str, agent: str = "claude") -
     return len(records)
 
 
+def capture_mode(cfg: Config) -> str:
+    """model: hooks mark transcript ranges and the model reads them at dream time (default whenever a provider is
+    configured). heuristic: the old regex extraction inside the hook."""
+    mode = str(cfg.get("capture.mode", "auto"))
+    if mode in ("model", "heuristic"):
+        return mode
+    import os
+    if os.environ.get("COSMOS_LLM_PROVIDER") == "none" or (cfg.get("llm.provider") == "none"):
+        return "heuristic"
+    if os.environ.get("ANTHROPIC_API_KEY") or (cfg.get("llm.provider") or "auto") not in ("auto", "claude-code"):
+        return "model"
+    import shutil
+    return "model" if shutil.which("claude") else "heuristic"
+
+
 def pending_count(cfg: Config) -> int:
     state = State(cfg.paths)
-    return sum(1 for o in Observations(cfg.paths).iter_all() if o.get("id") and not state.is_dreamed(o["id"]))
+    return sum(1 for o in Observations(cfg.paths).iter_all() if o.get("id") and not state.is_dreamed(o["id"])) + _reader.windows_waiting(state)
 
 
 def should_auto_dream(cfg: Config, pending: int, now: Optional[float] = None) -> bool:

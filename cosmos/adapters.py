@@ -205,9 +205,9 @@ def find_claude_sessions(root: Path) -> List[Tuple[Path, str]]:
     return out
 
 
-def read_session(path: Path, agent: str, offset: int = 0) -> Tuple[List[Turn], int]:
+def read_session(path: Path, agent: str, offset: int = 0, until: Optional[int] = None) -> Tuple[List[Turn], int]:
     if agent == "claude":
-        return iter_turns(path, offset, sidechain="subagents" in path.parts)
+        return iter_turns(path, offset, sidechain="subagents" in path.parts, until=until)
     if agent == "codex":
         return iter_codex_turns(path, offset)
     size = path.stat().st_size if path.exists() else 0

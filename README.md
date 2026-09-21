@@ -75,8 +75,8 @@ git clone <repo> && claude
 | | step | what happens |
 |---|---|---|
 | 1 | **Work** | Use your agent as usual. The Charter, top facts and Atlas status are already in context. |
-| 2 | **Capture** | Hooks read the session and keep only durable facts, plus one journal line per turn: what was asked, which files changed, which commits landed. Secrets are removed. Transcripts are never stored. |
-| 3 | **Dream** | Runs by itself when enough is waiting. The model curates every new observation (keep · rewrite · category · lane). Duplicates merge, contradictions are flagged, facts are filed by lane, the Atlas is drift-checked. A human settles what evidence cannot. |
+| 2 | **Capture** | Hooks mark the session range for the model, keep explicit `remember:` lines at once, and write one journal line per turn: what was asked, which files changed, which commits landed. Transcripts are read in place, never copied. |
+| 3 | **Dream** | Runs by itself when enough is waiting. The model reads the marked session ranges in context and this developer's own Claude Code auto memory notes, and writes down what the team should still know in six months (keep · rewrite · category · lane). Duplicates merge, contradictions are flagged, facts are filed by lane, the Atlas is drift-checked. A human settles what evidence cannot. |
 | 4 | **Ledger** | One markdown note per fact, with evidence. Committed. Opens as an Obsidian vault. |
 | 5 | **Gate & recall** | Each prompt gets the facts that matter for its files; each turn that edits code is held until it meets the checklist. |
 
@@ -263,7 +263,7 @@ Transcripts live in `~/.claude/projects/<repo path, slashes → dashes>/` (Claud
 
 | Why it is a good fit | Where it falls short today |
 |---|---|
-| Nothing to run. No database, no server, no account, and no API key: the model is your existing Claude Code login. | Capture inside hooks is heuristic on purpose (it must finish in milliseconds); the model cleans up at dream time. Without any model available, roughly a quarter of what is kept is noise, and the dream says so. |
+| Nothing to run. No database, no server, no account, and no API key: the model is your existing Claude Code login. | Hooks do not extract anything themselves: they mark the session range and write the journal, and the model reads the conversation at dream time. Reading costs model calls (about one per 9k characters of session), so a busy team's dream takes minutes, in the background. With no model available for three days, the old heuristics keep what they can, and the dream says so. |
 | Zero effort for developers after the first setup; the second person just clones. | The Atlas reads manifests and specs, not a code graph: no call chains, no dependency analysis inside the code. |
 | One place for rules, facts and structure, inspectable as plain files, diffs and Obsidian notes. | The Gate checks that tests *ran*, not that they were the right tests or that they passed. |
 | Wrong facts cannot hide: evidence and age on every one. Stale diagrams cannot hide: drift is reported. | Capture and Gate hooks exist for Claude Code only; Codex and Gemini are read from their logs; other agents write through MCP. |

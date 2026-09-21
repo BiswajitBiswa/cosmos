@@ -910,3 +910,128 @@ class TestJournal(unittest.TestCase):
             self.assertGreaterEqual(rep.dropped, 1)
             rep2 = dream(r.cfg, use_llm=False)
             self.assertEqual((rep2.observations_processed, len(rep2.new)), (0, 0), "dropped observations never resurface as raw facts")
+
+
+class FakeReader:
+    """A model that answers the reading prompt with one fact per USER/AGENT excerpt and drops nothing at curation."""
+    def __init__(self):
+        self.read_calls = 0; self.curate_calls = 0
+    def complete(self, system, user, schema):
+        import json as j
+        p = j.loads(user)
+        if "excerpt" in p:
+            self.read_calls += 1
+            return {"items": [{"text": "Redis locks use a 30 second TTL; see src/redis-lock.ts.", "category": "constraint", "kind": "correction",
+                               "lane": "locking", "files": ["src/redis-lock.ts", "made/up.py"], "importance": 0.9}]}
+        self.curate_calls += 1
+        return {"items": [{"id": c["id"], "keep": True} for c in p["candidates"]]}
+
+
+class TestModelReads(unittest.TestCase):
+    def _model_repo(self):
+        r = Repo().__enter__()
+        r.cfg.data.setdefault("capture", {})["mode"] = "model"
+        r.cfg.save()
+        return r
+
+    def test_hook_marks_the_range_and_keeps_only_explicit_lines(self):
+        from cosmos.reader import windows_waiting
+        from cosmos.store import State
+        r = self._model_repo()
+        try:
+            p = r.transcript("s.jsonl", [_user("remember: never edit prod schemas by hand"), _asst("Redis is used for locks in `src/redis-lock.ts` with a 30 second TTL.", files=[str(r.root / "src" / "redis-lock.ts")])])
+            r.capture(p, "s1")
+            obs = [o for o in Observations(r.cfg.paths).iter_all() if o.get("kind") != "journal"]
+            self.assertEqual([o["source"] for o in obs], ["explicit"], "no heuristic guesses in model mode")
+            st = State(r.cfg.paths)
+            self.assertEqual(windows_waiting(st), 1)
+            w = st.data["windows"][0]
+            self.assertEqual((w["from"], w["to"] > 0, w["sid"]), (0, True, "s1"))
+            r.capture(p, "s1")
+            self.assertEqual(windows_waiting(State(r.cfg.paths)), 1, "nothing new: no second window")
+        finally:
+            r.__exit__()
+
+    def test_dream_lets_the_model_read_the_range(self):
+        from cosmos import dream as dm
+        from cosmos.store import State
+        r = self._model_repo()
+        try:
+            p = r.transcript("s.jsonl", [_user("how do locks work"), _asst("Redis is used for locks in `src/redis-lock.ts` with a 30 second TTL.", files=[str(r.root / "src" / "redis-lock.ts")])])
+            r.capture(p, "s1")
+            fake = FakeReader(); old = dm.get_provider; dm.get_provider = lambda *_a, **_k: fake
+            try:
+                rep = dream(r.cfg, use_llm=True)
+            finally:
+                dm.get_provider = old
+            self.assertEqual((rep.windows_read, rep.turns_read, fake.read_calls), (1, 2, 1))
+            self.assertEqual(fake.curate_calls, 0, "what the model read is already curated; it is not sent back for curation")
+            mems = Ledger(r.cfg.paths).load()
+            m = next(m for m in mems.values() if "30 second TTL" in m.text)
+            self.assertEqual((m.category, m.lane, m.files), ("constraint", "locking", ["src/redis-lock.ts"]), "made-up file paths are dropped")
+            self.assertEqual(State(r.cfg.paths).data.get("windows"), [])
+            self.assertEqual(dream(r.cfg, use_llm=False).observations_processed, 0, "read once")
+        finally:
+            r.__exit__()
+
+    def test_budget_leaves_the_rest_for_the_next_dream(self):
+        from cosmos import reader
+        from cosmos.store import State
+        r = self._model_repo()
+        try:
+            rows = []
+            for i in range(6):
+                rows += [_user(f"question {i} " + "lorem ipsum dolor " * 180), _asst(f"answer {i} " + "sit amet consectetur " * 150)]
+            p = r.transcript("s.jsonl", rows)
+            r.capture(p, "s1")
+            st = State(r.cfg.paths); store = Observations(r.cfg.paths)
+            fake = FakeReader()
+            rep = reader.read_windows(r.cfg, fake, {}, st, store, budget=2)
+            self.assertEqual(rep.chunks_read, 2)
+            self.assertEqual(len(st.data["windows"]), 1, "remainder re-queued")
+            self.assertGreater(st.data["windows"][0]["from"], 0)
+            rep2 = reader.read_windows(r.cfg, fake, {}, st, store, budget=50)
+            self.assertGreater(rep2.chunks_read, 0)
+            self.assertEqual(st.data["windows"], [])
+        finally:
+            r.__exit__()
+
+    def test_auto_memory_notes_become_candidates_once(self):
+        from cosmos import reader
+        from cosmos.store import State
+        r = self._model_repo()
+        try:
+            with tempfile.TemporaryDirectory() as home:
+                d = Path(home) / ".claude" / "projects" / str(r.root.resolve()).replace("/", "-") / "memory"
+                d.mkdir(parents=True)
+                (d / "MEMORY.md").write_text("- [x](x.md)\n")
+                (d / "who.md").write_text("---\nname: who\ntype: user\n---\nThe user is a backend engineer.\n")
+                (d / "redis.md").write_text("---\nname: redis\ntype: project\n---\nAPI tests need a local Redis on 6379; the CI job starts one.\n")
+                old = os.environ.get("HOME"); os.environ["HOME"] = home
+                try:
+                    st = State(r.cfg.paths)
+                    c = reader.auto_memory_candidates(r.cfg, st)
+                    self.assertEqual([x["note"] for x in c], ["redis.md"], "personal notes (type: user) stay personal")
+                    self.assertEqual(c[0]["category"], "decision")
+                    self.assertEqual(reader.auto_memory_candidates(r.cfg, st), [], "unchanged notes are not offered twice")
+                    (d / "redis.md").write_text("---\nname: redis\ntype: project\n---\nAPI tests need a local Redis on 6380 since 2026-09-01.\n")
+                    self.assertEqual(len(reader.auto_memory_candidates(r.cfg, st)), 1, "a changed note is offered again")
+                finally:
+                    os.environ["HOME"] = old
+        finally:
+            r.__exit__()
+
+    def test_without_a_model_the_range_waits_then_falls_back(self):
+        from cosmos.store import State
+        r = self._model_repo()
+        try:
+            p = r.transcript("s.jsonl", [_user("q"), _asst("Redis is used for locks in `src/redis-lock.ts` with a 30 second TTL.", files=[str(r.root / "src" / "redis-lock.ts")])])
+            r.capture(p, "s1")
+            rep = dream(r.cfg, use_llm=False)
+            self.assertEqual((rep.windows_waiting, rep.fallback_windows), (1, 0), "recent range waits for a model")
+            st = State(r.cfg.paths); st.data["windows"][0]["ts"] = "2026-01-01T00:00:00Z"; st.save()
+            rep = dream(r.cfg, use_llm=False)
+            self.assertEqual((rep.windows_waiting, rep.fallback_windows), (0, 1))
+            self.assertTrue(any("30 second" in m.text for m in Ledger(r.cfg.paths).load().values()), "heuristics kept it rather than lose it")
+        finally:
+            r.__exit__()

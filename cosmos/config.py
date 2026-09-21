@@ -13,10 +13,10 @@ CONFIG_FILE = "config.json"
 
 DEFAULT_CONFIG: Dict[str, Any] = {
     "version": 1,
-    "capture": {"enabled": True, "min_score": 0.5, "max_per_batch": 40, "explicit_prefixes": ["remember:", "cosmos:"]},
+    "capture": {"enabled": True, "mode": "auto", "fallback_days": 3, "min_score": 0.5, "max_per_batch": 40, "explicit_prefixes": ["remember:", "cosmos:"]},  # mode: auto = the model reads sessions at dream time when one is available, else heuristics in the hook
     "privacy": {"redact_secrets": True, "author": "git"},  # author: git | anonymous
     "retrieval": {"session_start_max": 10, "prompt_max": 6},
-    "dream": {"llm": "auto", "staleness_days": {"dependency": 45, "workflow": 120, "architecture": 240, "default": 180}},
+    "dream": {"llm": "auto", "auto_memory": True, "read_budget": 30, "staleness_days": {"dependency": 45, "workflow": 120, "architecture": 240, "default": 180}},
     "llm": {"provider": "auto"},   # auto: Anthropic API key if present, else your Claude Code login (claude -p), else heuristics
     "render": {"claude_md": True, "agents_md": True},
     "ignore": [".env*", "secrets/**", "**/*.pem", "**/*.key", "node_modules/**"],

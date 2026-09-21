@@ -140,14 +140,26 @@ def cmd_capture(a) -> int:
                 print(f"  [{agent}] {p.name}: {n} journal entr{'y' if n == 1 else 'ies'}")
         print(col("✓", "g"), f"journal rebuilt: {total} entr{'y' if total == 1 else 'ies'} from {len(jobs)} session(s) — cosmos dream writes them to .cosmos/ledger/journal/")
         return 0
+    if getattr(a, "reread", False):
+        from .store import State
+        st = State(cfg.paths)
+        for p, agent, sid in jobs:
+            st.set_offset(f"{agent}:{sid}" if agent != "claude" else sid, 0)
+        st.save()
     for p, agent, sid in jobs:
-        n = capture(cfg, {"transcript_path": str(p), "session_id": sid, "hook_event_name": "manual", "cwd": str(cfg.paths.root)}, agent)
+        n = capture(cfg, {"transcript_path": str(p), "session_id": sid, "hook_event_name": "manual", "cwd": str(cfg.paths.root), "since_days": a.days}, agent)
         total += n; per[agent] = per.get(agent, 0) + n
         if a.verbose:
             print(f"  [{agent}] {p.name}: {n}")
     print(col("✓", "g"), f"captured {total} observation(s) from {len(jobs)} session(s) — " + ", ".join(f"{k} {v}" for k, v in per.items()))
-    from .hooks import pending_count
-    print(col("  next", "d"), f"{pending_count(cfg)} waiting for a dream → cosmos dream")
+    from .hooks import capture_mode, pending_count
+    from .reader import windows_waiting
+    from .store import State
+    w = windows_waiting(State(cfg.paths))
+    if capture_mode(cfg) == "model":
+        print(col("  next", "d"), f"{w} session range(s) marked for the model, {pending_count(cfg) - w} explicit items → cosmos dream reads them")
+    else:
+        print(col("  next", "d"), f"{pending_count(cfg)} waiting for a dream → cosmos dream")
     return 0
 
 
@@ -709,7 +721,7 @@ def build_parser() -> argparse.ArgumentParser:
     s = sp.add_parser("init", help="set up .cosmos/, hooks, CLAUDE.md/AGENTS.md block, Obsidian vault"); s.add_argument("path", nargs="?"); s.add_argument("--command", help="hook command override"); s.add_argument("--no-vendor", action="store_true", help="don't vendor cosmos into .cosmos/vendor (teammates must pip install)"); s.set_defaults(fn=cmd_init)
     s = sp.add_parser("status", help="quick status"); s.add_argument("--json", action="store_true"); s.set_defaults(fn=cmd_status)
     s = sp.add_parser("hook", help="(internal) Claude Code hook entrypoint, reads event JSON on stdin"); s.set_defaults(fn=cmd_hook)
-    s = sp.add_parser("capture", help="capture from session logs: Claude Code, Codex, Gemini/Antigravity"); s.add_argument("--transcript"); s.add_argument("--agent", default="all", choices=["all", "claude", "codex", "gemini"]); s.add_argument("-v", "--verbose", action="store_true"); s.add_argument("--rebuild-journal", action="store_true", help="re-read whole transcripts and write the journal for work done before cosmos was installed"); s.set_defaults(fn=cmd_capture)
+    s = sp.add_parser("capture", help="capture from session logs: Claude Code, Codex, Gemini/Antigravity"); s.add_argument("--transcript"); s.add_argument("--agent", default="all", choices=["all", "claude", "codex", "gemini"]); s.add_argument("-v", "--verbose", action="store_true"); s.add_argument("--rebuild-journal", action="store_true", help="re-read whole transcripts and write the journal for work done before cosmos was installed"); s.add_argument("--days", type=int, default=14, help="when reading whole transcripts, only turns from the last N days are read by the model (default 14)"); s.add_argument("--reread", action="store_true", help="start again from the beginning of every transcript (with --days, the model reads only recent turns)"); s.set_defaults(fn=cmd_capture)
     s = sp.add_parser("mcp", help="run the MCP server (stdio) — one point of contact for every agent"); s.set_defaults(fn=cmd_mcp)
     s = sp.add_parser("connect", help="wire agents to cosmos: instruction files + MCP configs"); s.add_argument("agents", nargs="*", default=["all"], choices=["all", "claude", "codex", "gemini", "cursor", "copilot", "cline", "windsurf"]); s.add_argument("--write-user", action="store_true", help="also write ~/.codex/config.toml"); s.set_defaults(fn=cmd_connect)
     s = sp.add_parser("dream", help="consolidate observations into the ledger"); s.add_argument("--llm", action="store_true", help="force LLM refinement"); s.add_argument("--no-llm", action="store_true"); s.add_argument("--auto", action="store_true", help=argparse.SUPPRESS); s.set_defaults(fn=cmd_dream)

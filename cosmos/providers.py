@@ -62,6 +62,30 @@ CURATE_SYSTEM = (
     "universe-import, payments). Prefer the existing lanes given; propose a new one only when nothing fits. Never invent facts. Candidates starting with 'Work done:' are journal lines (what was asked, files edited, commit messages): keep one only when a commit message or the ask states a durable decision or constraint, rewritten as that fact; otherwise drop it."
 )
 
+READ_SCHEMA: Dict[str, Any] = {
+    "type": "object",
+    "properties": {"items": {"type": "array", "items": {"type": "object", "properties": {
+        "text": {"type": "string", "description": "one durable fact, third person, absolute dates, specific"},
+        "category": {"type": "string", "enum": ["architecture", "decision", "convention", "constraint", "bug", "dependency", "workflow", "domain", "rejected"]},
+        "kind": {"type": "string", "enum": ["fact", "correction", "decision", "rejected"]},
+        "lane": {"type": "string", "description": "feature / module a product manager would recognise, kebab-case; reuse an existing lane when one fits"},
+        "files": {"type": "array", "items": {"type": "string"}, "description": "repo-relative paths that appear in the excerpt and prove the fact"},
+        "importance": {"type": "number"}},
+        "required": ["text", "category", "importance"], "additionalProperties": False}}},
+    "required": ["items"], "additionalProperties": False}
+
+READ_SYSTEM = (
+    "You read an excerpt of an AI coding session (USER and AGENT turns, with the files edited and notable commands) for the "
+    "software team that owns this repository, and write down what the team should still know six months from now. Keep only "
+    "durable, specific knowledge: architecture, decisions and their reasons, conventions, constraints, bug root causes, dependency "
+    "limits, workflows, domain rules, and things that were explicitly rejected. The most valuable items are corrections the user "
+    "made to the agent ('no, we use X', 'never do Y') - mark those kind=correction. Skip task narration, progress reports, "
+    "speculation, questions, generic advice, anything about the AI tool itself, and rules already listed under "
+    "team_rules_already_known. Write each item in crisp third person with absolute dates (today is {today}); cite files only when "
+    "they appear in the excerpt. Assign a LANE (feature or module a product manager would recognise), preferring existing_lanes. "
+    "Zero to eight items is normal; an empty list is a fine answer. Never invent facts."
+)
+
 SYSTEM = (
     "You consolidate engineering memory for a software team. Input: candidate observations (id, text, category, files) "
     "and existing memories. Output only durable, specific, non-obvious facts a new developer would need: architecture, "

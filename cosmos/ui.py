@@ -64,7 +64,7 @@ def snapshot(cfg: Config) -> Dict[str, Any]:
         "version": __version__, "repo": cfg.paths.root.name, "root": str(cfg.paths.root), "head": git_head(cfg.paths.root), "author": git_author(cfg.paths.root),
         "memories": [_mem(m) for m in mems.values()],
         "observations": sorted(obs, key=lambda o: o.get("ts", ""), reverse=True)[:300],
-        "pending_observations": len(pending), "dreams": runs, "hooklog": log, "hooks": hooks,
+        "pending_observations": len(pending), "windows_waiting": len(state.data.get("windows", [])), "dreams": runs, "hooklog": log, "hooks": hooks,
         "sessions": len(state.data.get("sessions", {})), "agents": sorted({o.get("agent", "claude") for o in obs}),
         "health": {"total": len(mems), "active": len(active), "with_evidence": int(100 * sum(1 for m in active if m.files) / max(1, len(active))),
                    "fresh90": int(100 * fresh / max(1, len(active))), "contradicted": sum(1 for m in mems.values() if m.status == "contradicted"),
@@ -815,12 +815,13 @@ function activity(){
   ${stat(J.length,'journal entries','what was done, per turn',J.length?'':'')}
   ${stat(commits,'commits recorded','from the journal')}
   ${stat(F.length,'observations','candidate facts from sessions')}
+  ${stat(S.windows_waiting||0,'session ranges for the model','read at the next dream',S.windows_waiting?'warn':'')}
   ${stat(S.pending_observations,'waiting for a dream',S.pending_observations?'press Run dream':'all consolidated',S.pending_observations?'warn':'')}
   ${stat(S.sessions,'sessions','read so far')}
   ${stat(Object.keys(byAgent).length,'agents',Object.entries(byAgent).map(([a,n])=>`${a} ${n}`).join(' · ')||'—')}
   ${stat(S.hooks.length,'hooks armed',S.hooks.length===5?'all five':'run cosmos init')}
  </div>
- ${stepper([{icon:'session',title:'Session',desc:'someone works with their agent',value:S.sessions,unit:'sessions',lit:S.sessions},{icon:'hook',title:'Hooks fire',desc:'Stop · PreCompact · SessionEnd',value:S.hooks.length,unit:'armed',lit:S.hooks.length},{icon:'gather',title:'Observations + journal',desc:'durable sentences and one work line per turn; secrets redacted, no transcripts',value:F.length,unit:'captured',lit:F.length},{icon:'curate',title:'Next dream',desc:'runs by itself when enough is waiting; the model turns them into facts',value:S.pending_observations,unit:'waiting',lit:S.pending_observations,llm:true}],{compact:true,title:'How activity becomes memory'})}
+ ${stepper([{icon:'session',title:'Session',desc:'someone works with their agent',value:S.sessions,unit:'sessions',lit:S.sessions},{icon:'hook',title:'Hooks fire',desc:'Stop · PreCompact · SessionEnd',value:S.hooks.length,unit:'armed',lit:S.hooks.length},{icon:'gather',title:'Marked for reading',desc:'hooks mark the session range and write the journal; explicit rules are kept at once',value:F.length,unit:'captured',lit:F.length},{icon:'curate',title:'Next dream',desc:'the model reads the marked ranges and your Claude Code notes, keeps what the team should know',value:S.pending_observations,unit:'waiting',lit:S.pending_observations,llm:true}],{compact:true,title:'How activity becomes memory'})}
  <div class="grid g2" style="margin-top:26px;align-items:start">
   <div>
    <h3 class="sec">Journal</h3>
