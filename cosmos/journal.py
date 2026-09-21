@@ -51,7 +51,7 @@ def git_branch(root: Path) -> str:
 def _ask(turns: List[Turn]) -> str:
     for t in turns:
         if t.role == "user":
-            text = " ".join(t.text.split())
+            text = " ".join(re.sub(r"\[Image: source: [^\]]*\]", " ", t.text).split())   # pasted screenshots are not the ask
             if len(text) >= 4 and not text.startswith(("/", "<")):
                 return text[:240]
     return ""
