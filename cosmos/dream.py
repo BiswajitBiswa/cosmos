@@ -433,16 +433,27 @@ def _link_related(mems: Dict[str, Memory]) -> None:
         m.related = rel[:5]
 
 
-def _llm_refine(prov, mems: Dict[str, Memory], report: DreamReport, t: str) -> None:
+def _llm_refine(prov, mems: Dict[str, Memory], report: DreamReport, t: str, batch: int = 30) -> None:
+    """Merge / contradiction pass over this run's new facts, in batches small enough for one model call each;
+    each batch sees only the existing facts from its own lanes (most important first)."""
     new_ids = {m.id for m in report.new}
-    payload = {
-        "candidates": [{"id": m.id, "text": m.text, "category": m.category, "files": m.files} for m in report.new],
-        "existing": [{"id": m.id, "text": m.text, "category": m.category, "status": m.status} for m in mems.values() if m.id not in new_ids][:200],
-        "contradictions": [{"older": a, "newer": b, "older_text": mems[a].text, "newer_text": mems[b].text} for a, b in report.contradictions],
-    }
-    out = prov.consolidate(payload, t)
-    if not out:
-        return
+    contra = [{"older": a, "newer": b, "older_text": mems[a].text, "newer_text": mems[b].text} for a, b in report.contradictions if a in mems and b in mems]
+    for i in range(0, max(len(report.new), 1), batch):
+        chunk = report.new[i:i + batch]
+        lanes = {m.lane for m in chunk if m.lane}
+        existing = sorted((m for m in mems.values() if m.id not in new_ids and m.status == "active" and (not lanes or m.lane in lanes)),
+                          key=lambda m: -m.importance)[:80]
+        payload = {"candidates": [{"id": m.id, "text": m.text, "category": m.category, "files": m.files} for m in chunk],
+                   "existing": [{"id": m.id, "text": m.text, "category": m.category, "status": m.status} for m in existing],
+                   "contradictions": contra if i == 0 else []}
+        if not payload["candidates"] and not payload["contradictions"]:
+            return
+        out = prov.consolidate(payload, t)
+        if out:
+            _apply_refinement(out, mems, t)
+
+
+def _apply_refinement(out: Dict, mems: Dict[str, Memory], t: str) -> None:
     # validated merge: only touch ids we know; only shorten/clarify texts; never invent evidence
     for item in out.get("memories", []):
         ids = [i for i in item.get("merge_of", []) if i in mems]
