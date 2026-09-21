@@ -1,0 +1,24 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Obsidian · cosmos</title><link rel="icon" href="favicon.svg" type="image/svg+xml"><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@300;400&family=DM+Sans:wght@300;400;500&family=IBM+Plex+Mono:wght@400&display=swap"><style>
+:root{--bg:#050506;--panel:#0d0d10;--panel2:#121216;--line:#1f2024;--fg:#ECEAE4;--fg2:#B9B7B0;--mut:#8A8984;--warm:#E8CFA0;--warm2:#F4E4C4;color-scheme:dark}
+*{box-sizing:border-box}html{background:var(--bg)}body{margin:0;background:var(--bg);color:var(--fg);font:16px/1.7 "DM Sans","Inter",-apple-system,sans-serif;font-weight:300}
+.mast{border-bottom:1px solid var(--line)}.mast .wrap{display:flex;justify-content:space-between;align-items:center;padding:22px 28px;gap:16px;flex-wrap:wrap}
+.brand{font-family:"Cormorant Garamond",serif;font-size:26px;letter-spacing:.42em;color:var(--fg);text-decoration:none;display:inline-flex;align-items:center}
+.md-hero img,.md-wide img{width:100%;height:auto;display:block}.md-center{text-align:center}.md-center img{display:inline-block}table img{vertical-align:middle}h2 img,h3 img{vertical-align:middle;margin-right:.4em}.brand img{width:22px;height:34px;margin:0 .1em 0 .12em}
+nav{display:flex;gap:28px;font-size:11px;letter-spacing:.26em;text-transform:uppercase}nav a{color:var(--fg2);text-decoration:none}nav a:hover{color:var(--fg)}
+.wrap{max-width:860px;margin:0 auto;padding:0 28px}main{padding:56px 0 96px}
+h1,h2,h3{font-family:"Cormorant Garamond",serif;font-weight:400;color:var(--fg);margin:2.2em 0 .5em;line-height:1.15}h1{font-size:52px;margin-top:0}h2{font-size:34px;padding-top:.4em}h3{font-size:24px}
+p,li{color:var(--fg2)}a{color:var(--warm2)}strong{color:var(--fg);font-weight:500}
+code{font-family:"IBM Plex Mono",ui-monospace,monospace;font-size:.86em;background:var(--panel2);padding:1px 6px;border-radius:3px;color:var(--warm2)}
+pre{background:var(--panel);border-radius:4px;padding:18px 20px;overflow-x:auto;font-size:13.5px;line-height:1.6}pre code{background:transparent;padding:0;color:var(--fg2)}
+table{border-collapse:collapse;width:100%;margin:1.2em 0;font-size:15px}th{text-align:left;font-size:10.5px;letter-spacing:.26em;text-transform:uppercase;color:var(--mut);font-weight:400;padding:12px 14px;border-bottom:1px solid var(--line)}td{padding:12px 14px;border-bottom:1px solid var(--line);vertical-align:top;color:var(--fg2)}td:first-child{color:var(--fg)}
+blockquote{border-left:1px solid var(--warm);margin:1.2em 0;padding:4px 20px;color:var(--fg2)}
+ul,ol{padding-left:22px}li{margin:4px 0}hr{border:0;border-top:1px solid var(--line);margin:3em 0}
+.toc{display:flex;gap:18px;flex-wrap:wrap;font-size:12px;letter-spacing:.14em;text-transform:uppercase;margin-bottom:40px}.toc a{color:var(--mut);text-decoration:none}.toc a:hover{color:var(--fg)}
+footer{border-top:1px solid var(--line);padding:26px 0;font-size:11px;letter-spacing:.2em;text-transform:uppercase;color:var(--mut)}
+</style></head><body>
+<div class="mast"><div class="wrap"><a class="brand" href="index.html">cosm<img src="favicon.svg" alt="">s</a><nav><a href="index.html">Home</a><a href="readme.html">README</a><a href="guides.html">Guides</a><a href="https://github.com/BiswajitBiswa/cosmos">GitHub</a></nav></div></div>
+<main><div class="wrap"><h1 id="obsidian">Obsidian</h1>
+<p>The ledger <em>is</em> a vault: markdown notes, YAML frontmatter, <code>[[wikilinks]]</code>, <code>#tags</code>. <code>cosmos init</code> adds <code>.obsidian/app.json</code> and a <code>graph.json</code> with colour groups per category, so the graph view shows architecture/decision/convention/… in distinct colours and superseded facts faded.</p>
+<ul><li><code>cosmos obsidian --open</code> — opens <code>.cosmos/ledger</code> in Obsidian (via <code>obsidian://</code> URI).</li><li><code>cosmos obsidian --vault ~/Obsidian/Team</code> — symlinks the ledger into an existing vault as <code>cosmos/&lt;repo&gt;/</code>, so several repos' ledgers sit side by side in one vault.</li><li><code>_index.md</code> is the map of content; every note links its evidence, related facts, contradictions and supersession chain.</li><li>Edits you make in Obsidian are real: change the title line to reword a fact, or the <code>status</code> field to retire it, then <code>cosmos render</code>.</li></ul>
+<p><code>workspace*.json</code> is gitignored; <code>app.json</code> and <code>graph.json</code> are committed so the team shares the same view.</p></div></main>
+<footer><div class="wrap">cosmos · MIT · <a href="https://github.com/BiswajitBiswa/cosmos">github.com/BiswajitBiswa/cosmos</a></div></footer></body></html>

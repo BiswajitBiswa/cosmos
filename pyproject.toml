@@ -1,0 +1,25 @@
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "cosmos-dev"
+version = "0.1.0"
+description = "Git-native shared engineering memory for AI coding agents. Capture -> Dream -> Ledger -> Retrieve."
+readme = "README.md"
+license = { text = "MIT" }
+requires-python = ">=3.9"
+dependencies = []
+keywords = ["claude-code", "memory", "obsidian", "ai-agents", "git"]
+
+[project.optional-dependencies]
+anthropic = ["anthropic>=1.0"]
+
+[project.scripts]
+cosmos = "cosmos.cli:main"
+
+[tool.setuptools]
+packages = ["cosmos"]
+
+[tool.setuptools.package-data]
+cosmos = ["assets/*"]

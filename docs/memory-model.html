@@ -1,0 +1,33 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Memory model · cosmos</title><link rel="icon" href="favicon.svg" type="image/svg+xml"><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@300;400&family=DM+Sans:wght@300;400;500&family=IBM+Plex+Mono:wght@400&display=swap"><style>
+:root{--bg:#050506;--panel:#0d0d10;--panel2:#121216;--line:#1f2024;--fg:#ECEAE4;--fg2:#B9B7B0;--mut:#8A8984;--warm:#E8CFA0;--warm2:#F4E4C4;color-scheme:dark}
+*{box-sizing:border-box}html{background:var(--bg)}body{margin:0;background:var(--bg);color:var(--fg);font:16px/1.7 "DM Sans","Inter",-apple-system,sans-serif;font-weight:300}
+.mast{border-bottom:1px solid var(--line)}.mast .wrap{display:flex;justify-content:space-between;align-items:center;padding:22px 28px;gap:16px;flex-wrap:wrap}
+.brand{font-family:"Cormorant Garamond",serif;font-size:26px;letter-spacing:.42em;color:var(--fg);text-decoration:none;display:inline-flex;align-items:center}
+.md-hero img,.md-wide img{width:100%;height:auto;display:block}.md-center{text-align:center}.md-center img{display:inline-block}table img{vertical-align:middle}h2 img,h3 img{vertical-align:middle;margin-right:.4em}.brand img{width:22px;height:34px;margin:0 .1em 0 .12em}
+nav{display:flex;gap:28px;font-size:11px;letter-spacing:.26em;text-transform:uppercase}nav a{color:var(--fg2);text-decoration:none}nav a:hover{color:var(--fg)}
+.wrap{max-width:860px;margin:0 auto;padding:0 28px}main{padding:56px 0 96px}
+h1,h2,h3{font-family:"Cormorant Garamond",serif;font-weight:400;color:var(--fg);margin:2.2em 0 .5em;line-height:1.15}h1{font-size:52px;margin-top:0}h2{font-size:34px;padding-top:.4em}h3{font-size:24px}
+p,li{color:var(--fg2)}a{color:var(--warm2)}strong{color:var(--fg);font-weight:500}
+code{font-family:"IBM Plex Mono",ui-monospace,monospace;font-size:.86em;background:var(--panel2);padding:1px 6px;border-radius:3px;color:var(--warm2)}
+pre{background:var(--panel);border-radius:4px;padding:18px 20px;overflow-x:auto;font-size:13.5px;line-height:1.6}pre code{background:transparent;padding:0;color:var(--fg2)}
+table{border-collapse:collapse;width:100%;margin:1.2em 0;font-size:15px}th{text-align:left;font-size:10.5px;letter-spacing:.26em;text-transform:uppercase;color:var(--mut);font-weight:400;padding:12px 14px;border-bottom:1px solid var(--line)}td{padding:12px 14px;border-bottom:1px solid var(--line);vertical-align:top;color:var(--fg2)}td:first-child{color:var(--fg)}
+blockquote{border-left:1px solid var(--warm);margin:1.2em 0;padding:4px 20px;color:var(--fg2)}
+ul,ol{padding-left:22px}li{margin:4px 0}hr{border:0;border-top:1px solid var(--line);margin:3em 0}
+.toc{display:flex;gap:18px;flex-wrap:wrap;font-size:12px;letter-spacing:.14em;text-transform:uppercase;margin-bottom:40px}.toc a{color:var(--mut);text-decoration:none}.toc a:hover{color:var(--fg)}
+footer{border-top:1px solid var(--line);padding:26px 0;font-size:11px;letter-spacing:.2em;text-transform:uppercase;color:var(--mut)}
+</style></head><body>
+<div class="mast"><div class="wrap"><a class="brand" href="index.html">cosm<img src="favicon.svg" alt="">s</a><nav><a href="index.html">Home</a><a href="readme.html">README</a><a href="guides.html">Guides</a><a href="https://github.com/BiswajitBiswa/cosmos">GitHub</a></nav></div></div>
+<main><div class="wrap"><h1 id="memory-model">Memory model</h1>
+<h2 id="observation-memory">Observation → Memory</h2>
+<p>An <strong>observation</strong> is one sentence-level candidate extracted from a session, with <code>category</code>, <code>score</code>, <code>files</code>, <code>source</code> (observed | explicit), author, hashed session id and commit. Observations are sanitized before they are written and are append-only JSONL under <code>.cosmos/observations/</code>.</p>
+<p>A <strong>memory</strong> is a consolidated fact in <code>.cosmos/ledger/&lt;category&gt;/&lt;id&gt;-&lt;slug&gt;.md</code>. The id is <code>mem_</code> + sha1(text)[:8].</p>
+<h2 id="statuses">Statuses</h2>
+<table><tr><th>status</th><th>meaning</th><th>who changes it</th></tr><tr><td>active</td><td>believed true</td><td>dream (new / merged / revived), <code>verify</code></td></tr><tr><td>contradicted</td><td>conflicts with another active fact; needs a human</td><td>dream</td></tr><tr><td>stale-candidate</td><td>evidence files missing or not re-observed within the category limit</td><td>dream</td></tr><tr><td>superseded</td><td>replaced by a newer fact; kept as history with <code>superseded_by</code></td><td>dream (evidence-based), <code>verify --resolve</code></td></tr><tr><td>forgotten</td><td>retired by a developer</td><td><code>forget</code></td></tr></table>
+<p>Retrieval and CLAUDE.md never surface <code>superseded</code> or <code>forgotten</code>.</p>
+<h2 id="hierarchy">Hierarchy</h2>
+<p>explicit developer rule (<code>remember:</code> / <code>cosmos remember</code>) &gt; consolidated memory &gt; observed &gt; inferred by LLM. An explicit rule supersedes a conflicting inferred fact automatically; the reverse never happens.</p>
+<h2 id="time">Time</h2>
+<p>All dates are absolute ISO dates. <code>created</code>, <code>updated</code>, <code>last_verified</code>. Staleness limits (days) per category live in <code>config.json → dream.staleness_days</code>.</p>
+<h2 id="confidence">Confidence</h2>
+<p>Starts at 0.45 + 0.4·score for observed facts (0.9 explicit); +0.05 per re-observation, +0.1 on <code>verify</code>; capped at 0.98/0.99.</p></div></main>
+<footer><div class="wrap">cosmos · MIT · <a href="https://github.com/BiswajitBiswa/cosmos">github.com/BiswajitBiswa/cosmos</a></div></footer></body></html>

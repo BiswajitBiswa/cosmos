@@ -1,0 +1,51 @@
+{
+  "version": 1,
+  "capture": {
+    "enabled": true,
+    "min_score": 0.5,
+    "max_per_batch": 40,
+    "explicit_prefixes": [
+      "remember:",
+      "cosmos:"
+    ]
+  },
+  "privacy": {
+    "redact_secrets": true,
+    "author": "git"
+  },
+  "retrieval": {
+    "session_start_max": 10,
+    "prompt_max": 6
+  },
+  "dream": {
+    "llm": false,
+    "staleness_days": {
+      "dependency": 45,
+      "workflow": 120,
+      "architecture": 240,
+      "default": 180
+    }
+  },
+  "llm": {
+    "provider": "anthropic",
+    "model": "claude-opus-5"
+  },
+  "render": {
+    "claude_md": true,
+    "agents_md": true,
+    "targets": [
+      ".clinerules",
+      ".cursor/rules/cosmos.mdc",
+      ".github/copilot-instructions.md",
+      ".windsurfrules",
+      "GEMINI.md"
+    ]
+  },
+  "ignore": [
+    ".env*",
+    "secrets/**",
+    "**/*.pem",
+    "**/*.key",
+    "node_modules/**"
+  ]
+}

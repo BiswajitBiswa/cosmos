@@ -1,0 +1,87 @@
+{
+  "collapse-color-groups": false,
+  "colorGroups": [
+    {
+      "query": "path:architecture",
+      "color": {
+        "a": 1,
+        "rgb": 7252222
+      }
+    },
+    {
+      "query": "path:decision",
+      "color": {
+        "a": 1,
+        "rgb": 12616956
+      }
+    },
+    {
+      "query": "path:convention",
+      "color": {
+        "a": 1,
+        "rgb": 3462041
+      }
+    },
+    {
+      "query": "path:constraint",
+      "color": {
+        "a": 1,
+        "rgb": 16281969
+      }
+    },
+    {
+      "query": "path:bug",
+      "color": {
+        "a": 1,
+        "rgb": 16486972
+      }
+    },
+    {
+      "query": "path:dependency",
+      "color": {
+        "a": 1,
+        "rgb": 16436245
+      }
+    },
+    {
+      "query": "path:workflow",
+      "color": {
+        "a": 1,
+        "rgb": 2282478
+      }
+    },
+    {
+      "query": "path:domain",
+      "color": {
+        "a": 1,
+        "rgb": 10741301
+      }
+    },
+    {
+      "query": "path:rejected",
+      "color": {
+        "a": 1,
+        "rgb": 10265519
+      }
+    },
+    {
+      "query": "path:finding",
+      "color": {
+        "a": 1,
+        "rgb": 15680580
+      }
+    },
+    {
+      "query": "[status:superseded]",
+      "color": {
+        "a": 0.4,
+        "rgb": 7895160
+      }
+    }
+  ],
+  "showTags": false,
+  "showAttachments": false,
+  "showOrphans": true,
+  "nodeSizeMultiplier": 1.2,
+  "lineSizeMultiplier": 1
+}

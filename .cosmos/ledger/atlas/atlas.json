@@ -1,0 +1,33 @@
+{
+ "repo": "cosmos",
+ "commit": "",
+ "generated": "2026-09-21",
+ "sources": [
+  {
+   "file": "pyproject.toml",
+   "sha": "2523bff94dd3"
+  },
+  {
+   "file": "README.md",
+   "sha": "67b84a59aef8"
+  }
+ ],
+ "apps": [
+  {
+   "path": "pyproject.toml",
+   "dir": ".",
+   "kind": "pyproject.toml",
+   "name": "cosmos-dev",
+   "deps": 0,
+   "scripts": [],
+   "language": "python"
+  }
+ ],
+ "services": [],
+ "stores": [],
+ "k8s": [],
+ "terraform": {},
+ "api": [],
+ "env_keys": [],
+ "readme_title": "cosmos"
+}

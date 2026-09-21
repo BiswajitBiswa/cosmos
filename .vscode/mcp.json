@@ -1,0 +1,12 @@
+{
+  "servers": {
+    "cosmos": {
+      "command": "python3",
+      "args": [
+        ".cosmos/cosmosw",
+        "mcp"
+      ],
+      "type": "stdio"
+    }
+  }
+}

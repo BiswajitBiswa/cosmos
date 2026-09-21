@@ -1,0 +1,36 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Hooks · cosmos</title><link rel="icon" href="favicon.svg" type="image/svg+xml"><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@300;400&family=DM+Sans:wght@300;400;500&family=IBM+Plex+Mono:wght@400&display=swap"><style>
+:root{--bg:#050506;--panel:#0d0d10;--panel2:#121216;--line:#1f2024;--fg:#ECEAE4;--fg2:#B9B7B0;--mut:#8A8984;--warm:#E8CFA0;--warm2:#F4E4C4;color-scheme:dark}
+*{box-sizing:border-box}html{background:var(--bg)}body{margin:0;background:var(--bg);color:var(--fg);font:16px/1.7 "DM Sans","Inter",-apple-system,sans-serif;font-weight:300}
+.mast{border-bottom:1px solid var(--line)}.mast .wrap{display:flex;justify-content:space-between;align-items:center;padding:22px 28px;gap:16px;flex-wrap:wrap}
+.brand{font-family:"Cormorant Garamond",serif;font-size:26px;letter-spacing:.42em;color:var(--fg);text-decoration:none;display:inline-flex;align-items:center}
+.md-hero img,.md-wide img{width:100%;height:auto;display:block}.md-center{text-align:center}.md-center img{display:inline-block}table img{vertical-align:middle}h2 img,h3 img{vertical-align:middle;margin-right:.4em}.brand img{width:22px;height:34px;margin:0 .1em 0 .12em}
+nav{display:flex;gap:28px;font-size:11px;letter-spacing:.26em;text-transform:uppercase}nav a{color:var(--fg2);text-decoration:none}nav a:hover{color:var(--fg)}
+.wrap{max-width:860px;margin:0 auto;padding:0 28px}main{padding:56px 0 96px}
+h1,h2,h3{font-family:"Cormorant Garamond",serif;font-weight:400;color:var(--fg);margin:2.2em 0 .5em;line-height:1.15}h1{font-size:52px;margin-top:0}h2{font-size:34px;padding-top:.4em}h3{font-size:24px}
+p,li{color:var(--fg2)}a{color:var(--warm2)}strong{color:var(--fg);font-weight:500}
+code{font-family:"IBM Plex Mono",ui-monospace,monospace;font-size:.86em;background:var(--panel2);padding:1px 6px;border-radius:3px;color:var(--warm2)}
+pre{background:var(--panel);border-radius:4px;padding:18px 20px;overflow-x:auto;font-size:13.5px;line-height:1.6}pre code{background:transparent;padding:0;color:var(--fg2)}
+table{border-collapse:collapse;width:100%;margin:1.2em 0;font-size:15px}th{text-align:left;font-size:10.5px;letter-spacing:.26em;text-transform:uppercase;color:var(--mut);font-weight:400;padding:12px 14px;border-bottom:1px solid var(--line)}td{padding:12px 14px;border-bottom:1px solid var(--line);vertical-align:top;color:var(--fg2)}td:first-child{color:var(--fg)}
+blockquote{border-left:1px solid var(--warm);margin:1.2em 0;padding:4px 20px;color:var(--fg2)}
+ul,ol{padding-left:22px}li{margin:4px 0}hr{border:0;border-top:1px solid var(--line);margin:3em 0}
+.toc{display:flex;gap:18px;flex-wrap:wrap;font-size:12px;letter-spacing:.14em;text-transform:uppercase;margin-bottom:40px}.toc a{color:var(--mut);text-decoration:none}.toc a:hover{color:var(--fg)}
+footer{border-top:1px solid var(--line);padding:26px 0;font-size:11px;letter-spacing:.2em;text-transform:uppercase;color:var(--mut)}
+</style></head><body>
+<div class="mast"><div class="wrap"><a class="brand" href="index.html">cosm<img src="favicon.svg" alt="">s</a><nav><a href="index.html">Home</a><a href="readme.html">README</a><a href="guides.html">Guides</a><a href="https://github.com/BiswajitBiswa/cosmos">GitHub</a></nav></div></div>
+<main><div class="wrap"><h1 id="hooks">Hooks</h1>
+<p><code>cosmos init</code> merges these entries into <code>.claude/settings.json</code> (other hooks untouched):</p>
+<pre><code>{ &quot;hooks&quot;: {
+  &quot;SessionStart&quot;:     [{ &quot;hooks&quot;: [{ &quot;type&quot;: &quot;command&quot;, &quot;command&quot;: &quot;&lt;hook&gt;&quot;, &quot;timeout&quot;: 10 }] }],
+  &quot;UserPromptSubmit&quot;: [{ &quot;hooks&quot;: [{ &quot;type&quot;: &quot;command&quot;, &quot;command&quot;: &quot;&lt;hook&gt;&quot;, &quot;timeout&quot;: 10 }] }],
+  &quot;Stop&quot;:             [{ &quot;hooks&quot;: [{ &quot;type&quot;: &quot;command&quot;, &quot;command&quot;: &quot;&lt;hook&gt;&quot;, &quot;timeout&quot;: 20 }] }],
+  &quot;PreCompact&quot;:       [{ &quot;hooks&quot;: [{ &quot;type&quot;: &quot;command&quot;, &quot;command&quot;: &quot;&lt;hook&gt;&quot;, &quot;timeout&quot;: 20 }] }],
+  &quot;SessionEnd&quot;:       [{ &quot;hooks&quot;: [{ &quot;type&quot;: &quot;command&quot;, &quot;command&quot;: &quot;&lt;hook&gt;&quot;, &quot;timeout&quot;: 20 }] }]
+}}</code></pre>
+<p>where <code>&lt;hook&gt;</code> is</p>
+<pre><code>d=&quot;${CLAUDE_PROJECT_DIR:-.}&quot;; [ -f &quot;$d/.cosmos/cosmosw&quot; ] &amp;&amp; exec python3 &quot;$d/.cosmos/cosmosw&quot; hook; exit 0</code></pre>
+<p>It is anchored to the project directory Claude Code passes to hooks, so a session that <code>cd</code>s into a sibling repository still reaches this repository's wrapper; in a repository without <code>.cosmos/</code> it exits 0 silently; <code>exec</code> keeps the Gate's exit code 2. Re-running <code>cosmos init</code> migrates an older command in place.</p>
+<p>One entrypoint, dispatched on <code>hook_event_name</code> from the stdin JSON:</p>
+<ul><li><strong>SessionStart</strong> → stdout = orientation block (top N active facts). Claude Code injects stdout as context.</li><li><strong>UserPromptSubmit</strong> → stdout = facts ranked against the prompt (token + path overlap × confidence × importance × recency).</li><li><strong>Stop / PreCompact / SessionEnd</strong> → read <code>transcript_path</code> from the last saved byte offset (per session, in <code>.cosmos/state/</code>), extract observations, redact, append. Runs in ~50 ms for a typical turn.</li></ul>
+<p>Guarantees: always exit 0; all errors go to <code>.cosmos/state/hook.log</code>; nothing is sent anywhere.</p>
+<p>If <code>cosmos</code> is not on PATH when you run <code>init</code>, the command is written as <code>&lt;python&gt; -m cosmos hook</code>. Override with <code>cosmos init --command "..."</code>.</p></div></main>
+<footer><div class="wrap">cosmos · MIT · <a href="https://github.com/BiswajitBiswa/cosmos">github.com/BiswajitBiswa/cosmos</a></div></footer></body></html>
