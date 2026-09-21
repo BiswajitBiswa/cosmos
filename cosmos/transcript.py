@@ -77,7 +77,7 @@ def iter_turns(path: Path, offset: int = 0, sidechain: bool = False) -> Tuple[Li
                     if name in EDIT_TOOLS and isinstance(inp, dict) and inp.get("file_path"):
                         turn.files.append(str(inp["file_path"]))
                     elif name == "Bash" and isinstance(inp, dict) and inp.get("command"):
-                        turn.commands.append(str(inp["command"])[:200])
+                        turn.commands.append(str(inp["command"])[:4000])
             # tool_result-only user messages carry no prose; keep them out
             if turn.role == "user" and isinstance(content, list) and not turn.text.strip():
                 continue

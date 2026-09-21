@@ -13,7 +13,12 @@ from typing import Dict, List, Optional
 
 from .transcript import Turn
 
-_COMMIT_MSG = re.compile(r"""git\s+commit\b[^\n]*?-m\s+(?:"?\$\(cat\s+<<['"]?EOF['"]?\n([^\n]+)|"((?:[^"\\]|\\.)*)"|'([^']*)')""", re.S)
+_COMMIT_MSG = re.compile(
+    r"""git\s+commit\b[^\n]*?(?:"""
+    r"""-F\s+-\s*<<-?\s*['"]?(\w+)['"]?\s*\n([^\n]+)"""          # git commit -F - <<'MSG' ⏎ first line
+    r"""|(?:-m|--message)[=\s]+"?\$\(cat\s+<<-?\s*['"]?\w+['"]?\s*\n([^\n]+)"""   # -m "$(cat <<'EOF' ⏎ first line
+    r"""|(?:-[a-zA-Z]*m|--message)[=\s]+(?:"((?:[^"\\]|\\.)*)"|'([^']*)'|([^\n]+))"""      # -m "…" · -am '…' · --message=… · unterminated
+    r""")""", re.S)
 _TEST_CMD = re.compile(r"\b(pytest|vitest|jest|mocha|go test|cargo test|mvn test|gradle(w)? test|npm test|pnpm test|yarn test|rspec|phpunit|dotnet test|unittest|tox)\b")
 _PUSH = re.compile(r"\bgit\s+push\b")
 _PR = re.compile(r"\bgh\s+pr\s+create\b")
@@ -24,9 +29,14 @@ def commits_in(commands: List[str]) -> List[str]:
     out: List[str] = []
     for c in commands:
         for m in _COMMIT_MSG.finditer(c):
-            msg = next((g for g in m.groups() if g), "").strip().splitlines()
-            if msg and msg[0].strip() and msg[0].strip() not in out:
-                out.append(msg[0].strip()[:120])
+            groups = [g for g in m.groups() if g]
+            if m.group(1):                      # -F - heredoc: group 1 is the delimiter, group 2 the first line
+                groups = [m.group(2)] if m.group(2) else []
+            msg = (groups[0] if groups else "").strip().splitlines()
+            first = msg[0].strip() if msg else ""
+            first = re.split(r"\s+(?:&&|\|\||;)\s+", first)[0].strip().strip("\"'").strip()   # unterminated quote: stop at the next shell operator
+            if first and first not in out:
+                out.append(first[:120])
     return out
 
 
@@ -86,6 +96,15 @@ def build(turns: List[Turn], root: Path) -> Optional[Dict]:
             "turn_uuid": next((t.uuid for t in turns if t.uuid), ""), "signals": ["journal"]}
 
 
+def _local_hhmm(ts: str) -> str:
+    """UTC ISO timestamp → local HH:MM (the journal is read by people, in their own day)."""
+    try:
+        from datetime import datetime, timezone
+        return datetime.strptime(ts[:19], "%Y-%m-%dT%H:%M:%S").replace(tzinfo=timezone.utc).astimezone().strftime("%H:%M")
+    except Exception:
+        return ts[11:16]
+
+
 def persist(cfg, entries: List[Dict], mems: Optional[Dict] = None) -> int:
     """Append journal records to ledger/journal/<date>.md (one file per day, committed, Obsidian-readable).
     Idempotent: an entry already present (by observation id) is not written twice. Returns entries written."""
@@ -110,7 +129,7 @@ def persist(cfg, entries: List[Dict], mems: Optional[Dict] = None) -> int:
             if oid and f"<!-- {oid} -->" in existing:
                 continue
             lane = infer_lane(e.get("files") or [], lane_globs) if e.get("files") else "general"
-            when = (e.get("ts") or "")[11:16]
+            when = _local_hhmm(e.get("ts") or "")
             who = e.get("author") or "someone"
             branch = f" · `{e['branch']}`" if e.get("branch") else ""
             files = e.get("files") or []

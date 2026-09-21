@@ -126,6 +126,7 @@ def dream(cfg: Config, use_llm: Optional[bool] = None, verbose: bool = False) ->
     pending = [o for o in pending if o.get("kind") != "journal"] + [dict(o, text="Work done: " + o["text"]) for o in journals if o.get("commits")]
     report.observations_processed = len(pending)
     state.mark_dreamed(o["id"] for o in journals)
+    seen_ids = [o["id"] for o in pending]      # everything looked at this run is done, including what the model drops
 
     # ---- 1b. LLM curation: the model decides what is worth keeping, rewrites it, names category + lane.
     want_llm = cfg.get("dream.llm", "auto") if use_llm is None else use_llm
@@ -271,7 +272,7 @@ def dream(cfg: Config, use_llm: Optional[bool] = None, verbose: bool = False) ->
     assign_lanes(mems, cfg, only_missing=bool(report.llm_used))
     _link_related(mems)
     ledger.save_all(mems.values())
-    state.mark_dreamed(o["id"] for o in pending)
+    state.mark_dreamed(seen_ids)
     state.save()
     _persist_run(cfg, report, started)
     return report

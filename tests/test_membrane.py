@@ -892,3 +892,21 @@ class TestJournal(unittest.TestCase):
             self.assertEqual(sorted(c for o in J for c in o["commits"]), ["chore: release", "feat: retries"])
             self.assertTrue(all(o["ts"].startswith("2026-09-") for o in J), "dated from the transcript, not from now")
             self.assertIn("feat/retries", [o["branch"] for o in J], "branch comes from the transcript entry, not from HEAD today")
+
+    def test_observations_the_model_drops_do_not_come_back(self):
+        from cosmos import dream as dm
+        with Repo() as r:
+            p = r.transcript("s.jsonl", [_user("q"), _asst("Redis is used for locks in `src/redis-lock.ts` with a 30 second TTL.", files=[str(r.root / "src" / "redis-lock.ts")])])
+            r.capture(p, "s1")
+            class Drop:  # a model that drops everything
+                def complete(self, system, user, schema):
+                    import json as j
+                    return {"items": [{"id": c["id"], "keep": False} for c in j.loads(user)["candidates"]]}
+            old = dm.get_provider; dm.get_provider = lambda *_a, **_k: Drop()
+            try:
+                rep = dream(r.cfg, use_llm=True)
+            finally:
+                dm.get_provider = old
+            self.assertGreaterEqual(rep.dropped, 1)
+            rep2 = dream(r.cfg, use_llm=False)
+            self.assertEqual((rep2.observations_processed, len(rep2.new)), (0, 0), "dropped observations never resurface as raw facts")
