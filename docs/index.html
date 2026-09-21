@@ -276,9 +276,9 @@ git add .cosmos .claude/settings.json .claude/commands .mcp.json CLAUDE.md AGENT
 <div class="step"><div class="num">1</div><div><b>Initialise in the repository</b>
 <pre>cd &lt;your-repo&gt; &amp;&amp; cosmos init &amp;&amp; cosmos connect all</pre></div></div>
 <div class="step"><div class="num">2</div><div><b>Link past sessions</b>
-<pre>cosmos capture --agent claude --transcript &lt;path-to-session&gt;.jsonl -v   # one session
-cosmos capture --agent codex  --transcript &lt;path-to-rollout&gt;.jsonl -v   # a Codex session
-cosmos capture --agent all -v                                        # every session on this repo</pre></div></div>
+<pre>cosmos capture --agent all -v                    # every session on this repo, subagents included
+cosmos capture --agent claude --rebuild-journal  # the work log (asks, files, commits) from before cosmos existed
+cosmos capture --agent claude --transcript &lt;path-to-session&gt;.jsonl -v   # one file</pre></div></div>
 <div class="step"><div class="num">3</div><div><b>Bring in an existing audit</b>
 <pre>cosmos flares import &lt;findings.json&gt; --prefix &lt;ID-PREFIX&gt; --source &lt;report-name&gt;
 cosmos flares slack --seed-state &lt;legacy .slack-posted.json&gt; --prefix &lt;ID-PREFIX&gt; --status</pre></div></div>

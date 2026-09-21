@@ -11,7 +11,8 @@ cd <your-repo> && cosmos init && cosmos connect all
 ```bash
 cosmos capture --agent claude --transcript <path-to-session>.jsonl -v   # one session
 cosmos capture --agent codex  --transcript <path-to-rollout>.jsonl -v   # a Codex session
-cosmos capture --agent all -v                                        # every session on this repo
+cosmos capture --agent all -v                    # every session, subagents included
+cosmos capture --agent claude --rebuild-journal  # work log from before cosmos: asks, files, commits, per day
 ```
 
 ## 3. Bring in an existing audit

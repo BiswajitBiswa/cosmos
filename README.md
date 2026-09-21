@@ -235,7 +235,7 @@ git add .cosmos .claude/settings.json .claude/commands .mcp.json CLAUDE.md AGENT
 | | step | command |
 |---|---|---|
 | 1 | Initialise in the repository | `cd <your-repo> && cosmos init && cosmos connect all` |
-| 2 | Link past sessions | `cosmos capture --agent claude --transcript <path-to-session>.jsonl -v` · `cosmos capture --agent codex --transcript <path-to-rollout>.jsonl -v` · `cosmos capture --agent all -v` |
+| 2 | Link past sessions | `cosmos capture --agent all -v` reads every session, subagents included · `cosmos capture --agent claude --rebuild-journal` recovers the work log (commits, files, asks) from before cosmos was installed · one file: `cosmos capture --agent claude --transcript <path-to-session>.jsonl -v` |
 | 3 | Bring in an existing audit | `cosmos flares import <findings.json> --prefix <ID-PREFIX> --source <report-name>` · `cosmos flares slack --seed-state <legacy .slack-posted.json> --prefix <ID-PREFIX> --status` |
 | 4 | Consolidate and look | `cosmos dream && cosmos review && cosmos lanes && cosmos ui` |
 | 5 | Architecture | `cosmos atlas` for the deterministic pass; `/atlas` in Claude Code, or paste `.claude/commands/atlas.md` into any agent, for the deep pass |
