@@ -78,6 +78,46 @@ def capture(cfg: Config, event: Dict[str, Any], agent: str = "claude") -> int:
     return len(records)
 
 
+def backfill_journal(cfg: Config, path: Path, sid: str, agent: str = "claude") -> int:
+    """Re-read a whole transcript and write one journal record per agent turn (a window from one user message to the
+    next). Facts are not re-extracted. Idempotent: records carry deterministic ids and existing ones are skipped."""
+    from .adapters import read_session
+    turns, _ = read_session(path, agent, 0)
+    if not turns:
+        return 0
+    root = cfg.paths.root
+    for t in turns:
+        t.files = [r for r in (relativize(f, root) for f in t.files) if not r.startswith(("/", "external/"))]
+    windows: List[List] = []
+    for t in turns:
+        if t.role == "user" or not windows:
+            windows.append([t])
+        else:
+            windows[-1].append(t)
+    store = Observations(cfg.paths)
+    have = {o.get("id") for o in store.iter_all()}
+    author = git_author(root) if cfg.get("privacy.author", "git") == "git" else "anonymous"
+    globs = cfg.ignore_globs
+    records: List[Dict[str, Any]] = []
+    for w in windows:
+        j = _journal.build(w, root)
+        if not j or not (j["commits"] or j["files"]):
+            continue                      # backfill keeps work, not every question ever asked
+        j["files"] = [f for f in j["files"] if not path_ignored(f, globs)]
+        text, _ = redact(j["text"])
+        ts = next((t.timestamp for t in reversed(w) if t.timestamp), "") or now_iso()
+        oid = "obs_" + hashlib.sha1((text + sid + j["turn_uuid"] + (w[0].timestamp or "")).encode()).hexdigest()[:10]
+        if oid in have:
+            continue
+        have.add(oid)
+        j.update({"id": oid, "text": text, "ts": ts[:19] + "Z" if len(ts) >= 19 else ts, "author": author, "agent": agent,
+                  "session": _session_tag(sid), "commit": "", "event": "backfill"})
+        records.append(j)
+    if records:
+        store.append(records)
+    return len(records)
+
+
 def pending_count(cfg: Config) -> int:
     state = State(cfg.paths)
     return sum(1 for o in Observations(cfg.paths).iter_all() if o.get("id") and not state.is_dreamed(o["id"]))

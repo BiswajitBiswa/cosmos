@@ -123,7 +123,7 @@ def dream(cfg: Config, use_llm: Optional[bool] = None, verbose: bool = False) ->
     from . import journal as _journal
     journals = [o for o in pending if o.get("kind") == "journal"]
     report.journal_entries = _journal.persist(cfg, journals, mems)
-    pending = [o for o in pending if o.get("kind") != "journal"] + [dict(o, text="Work done: " + o["text"]) for o in journals if o.get("commits") or o.get("files")]
+    pending = [o for o in pending if o.get("kind") != "journal"] + [dict(o, text="Work done: " + o["text"]) for o in journals if o.get("commits")]
     report.observations_processed = len(pending)
     state.mark_dreamed(o["id"] for o in journals)
 

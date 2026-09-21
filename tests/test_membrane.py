@@ -878,3 +878,16 @@ class TestJournal(unittest.TestCase):
             self.assertFalse(should_auto_dream(r.cfg, 3), "a dream just ran")
             r.cfg.data.setdefault("dream", {})["auto"] = False
             self.assertFalse(should_auto_dream(r.cfg, 100))
+
+    def test_journal_backfill_is_idempotent_and_dated(self):
+        from cosmos.hooks import backfill_journal
+        with Repo() as r:
+            rows = [_user("add retries"), _asst("ok", files=[str(r.root / "src" / "redis-lock.ts")]), self._bash('git commit -m "feat: retries"'),
+                    _user("what time is it"), _asst("noon"),
+                    _user("now ship it"), self._bash('git commit -m "chore: release"')]
+            p = r.transcript("old.jsonl", rows)
+            self.assertEqual(backfill_journal(r.cfg, p, "old"), 2, "two windows did work; the question did not")
+            self.assertEqual(backfill_journal(r.cfg, p, "old"), 0)
+            J = [o for o in Observations(r.cfg.paths).iter_all() if o.get("kind") == "journal"]
+            self.assertEqual(sorted(c for o in J for c in o["commits"]), ["chore: release", "feat: retries"])
+            self.assertTrue(all(o["ts"].startswith("2026-09-") for o in J), "dated from the transcript, not from now")
