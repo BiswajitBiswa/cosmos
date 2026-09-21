@@ -115,30 +115,31 @@ def cmd_hook(a) -> int:
 
 def cmd_capture(a) -> int:
     """Capture from session logs of any agent: Claude Code (default), Codex, Gemini/Antigravity, or a file."""
-    from .adapters import find_codex_sessions, find_gemini_sessions
+    from .adapters import find_claude_sessions, find_codex_sessions, find_gemini_sessions
     from .hooks import capture
     cfg = load_config(); _require(cfg)
     jobs: List[tuple] = []
     if a.transcript:
-        jobs = [(Path(a.transcript), a.agent if a.agent != "all" else "claude")]
+        jobs = [(Path(a.transcript), a.agent if a.agent != "all" else "claude", Path(a.transcript).stem)]
     else:
         agents = ["claude", "codex", "gemini"] if a.agent == "all" else [a.agent]
         if "claude" in agents:
-            d = Path.home() / ".claude" / "projects" / str(cfg.paths.root.resolve()).replace("/", "-")
-            jobs += [(p, "claude") for p in (sorted(d.glob("*.jsonl")) if d.exists() else [])]
+            jobs += [(p, "claude", sid) for p, sid in find_claude_sessions(cfg.paths.root)]   # main sessions + subagents
         if "codex" in agents:
-            jobs += [(p, "codex") for p in find_codex_sessions(cfg.paths.root)]
+            jobs += [(p, "codex", p.stem) for p in find_codex_sessions(cfg.paths.root)]
         if "gemini" in agents:
-            jobs += [(p, "gemini") for p in find_gemini_sessions(cfg.paths.root)]
+            jobs += [(p, "gemini", p.stem) for p in find_gemini_sessions(cfg.paths.root)]
         if not jobs:
             print(col(f"no {a.agent} sessions found for {cfg.paths.root}", "y")); return 1
     total = 0; per: Dict[str, int] = {}
-    for p, agent in jobs:
-        n = capture(cfg, {"transcript_path": str(p), "session_id": p.stem, "hook_event_name": "manual", "cwd": str(cfg.paths.root)}, agent)
+    for p, agent, sid in jobs:
+        n = capture(cfg, {"transcript_path": str(p), "session_id": sid, "hook_event_name": "manual", "cwd": str(cfg.paths.root)}, agent)
         total += n; per[agent] = per.get(agent, 0) + n
         if a.verbose:
             print(f"  [{agent}] {p.name}: {n}")
     print(col("✓", "g"), f"captured {total} observation(s) from {len(jobs)} session(s) — " + ", ".join(f"{k} {v}" for k, v in per.items()))
+    from .hooks import pending_count
+    print(col("  next", "d"), f"{pending_count(cfg)} waiting for a dream → cosmos dream")
     return 0
 
 
@@ -179,6 +180,19 @@ def cmd_dream(a) -> int:
     from .dream import dream
     from .render import render_all
     cfg = load_config(); _require(cfg)
+    if getattr(a, "auto", False):   # started by a hook in the background: quiet, one at a time, logged
+        from .store import now_iso
+        lock = cfg.paths.state / "dream.lock"
+        try:
+            rep = dream(cfg, verbose=False)
+            render_all(cfg, Ledger(cfg.paths).load())
+            print(f"{now_iso()} auto-dream: {rep.summary()}", flush=True)
+        finally:
+            try:
+                lock.unlink()
+            except Exception:
+                pass
+        return 0
     rep = dream(cfg, use_llm=(True if a.llm else (False if a.no_llm else None)), verbose=True)
     render_all(cfg, Ledger(cfg.paths).load())
     print(col("💤 dream complete:", "B"), rep.summary())
@@ -690,7 +704,7 @@ def build_parser() -> argparse.ArgumentParser:
     s = sp.add_parser("capture", help="capture from session logs: Claude Code, Codex, Gemini/Antigravity"); s.add_argument("--transcript"); s.add_argument("--agent", default="all", choices=["all", "claude", "codex", "gemini"]); s.add_argument("-v", "--verbose", action="store_true"); s.set_defaults(fn=cmd_capture)
     s = sp.add_parser("mcp", help="run the MCP server (stdio) — one point of contact for every agent"); s.set_defaults(fn=cmd_mcp)
     s = sp.add_parser("connect", help="wire agents to cosmos: instruction files + MCP configs"); s.add_argument("agents", nargs="*", default=["all"], choices=["all", "claude", "codex", "gemini", "cursor", "copilot", "cline", "windsurf"]); s.add_argument("--write-user", action="store_true", help="also write ~/.codex/config.toml"); s.set_defaults(fn=cmd_connect)
-    s = sp.add_parser("dream", help="consolidate observations into the ledger"); s.add_argument("--llm", action="store_true", help="force LLM refinement"); s.add_argument("--no-llm", action="store_true"); s.set_defaults(fn=cmd_dream)
+    s = sp.add_parser("dream", help="consolidate observations into the ledger"); s.add_argument("--llm", action="store_true", help="force LLM refinement"); s.add_argument("--no-llm", action="store_true"); s.add_argument("--auto", action="store_true", help=argparse.SUPPRESS); s.set_defaults(fn=cmd_dream)
     for name in ("ui", "ledger"):
         s = sp.add_parser(name, help="open the control room (overview · ledger · flares · dreams · verdicts · activity)"); s.add_argument("--port", type=int, default=7331, help="first port to try (default 7331; the next free one is used if busy)"); s.add_argument("--strict-port", action="store_true", help="fail instead of moving to the next free port"); s.add_argument("--static", action="store_true", help="write a read-only snapshot HTML instead of serving"); s.add_argument("--obsidian", action="store_true"); s.add_argument("--no-open", action="store_true"); s.set_defaults(fn=cmd_ledger)
     s = sp.add_parser("obsidian", help="prepare/open the ledger as an Obsidian vault"); s.add_argument("--open", action="store_true"); s.add_argument("--vault", help="link ledger into an existing vault"); s.set_defaults(fn=cmd_obsidian)

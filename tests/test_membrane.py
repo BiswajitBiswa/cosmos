@@ -803,3 +803,78 @@ class TestExtractionHardening(unittest.TestCase):
         self.assertEqual(extract.extract([Turn("user", "<tool>Do not use it in new pages: declare capabilities and obtain the namespace properly.</tool>")]), [])
         short = extract.extract([Turn("user", "Never modify production schemas by hand, always go through a migration.")])
         self.assertEqual(len(short), 1)
+
+
+class TestJournal(unittest.TestCase):
+    """The journal records what was done even when no fact was learned; subagents are read; dreams start themselves."""
+
+    def _bash(self, cmd):
+        return {"type": "assistant", "uuid": "b" + str(abs(hash(cmd)) % 10**6), "timestamp": "2026-09-21T10:00:02Z",
+                "message": {"role": "assistant", "content": [{"type": "tool_use", "id": "t", "name": "Bash", "input": {"command": cmd}}]}}
+
+    def test_commit_messages_are_parsed(self):
+        from cosmos.journal import commits_in
+        cmds = ['git add -A && git commit -m "fix(aura): cap Tavily hits at n" && git push',
+                "git commit -m 'chore: trim comments'",
+                'git commit -m "$(cat <<\'EOF\'\nfeat(chat): restrict attachments to PDF\n\nBody here\nEOF\n)"',
+                "pytest -q tests"]
+        self.assertEqual(commits_in(cmds), ["fix(aura): cap Tavily hits at n", "chore: trim comments", "feat(chat): restrict attachments to PDF"])
+
+    def test_capture_writes_a_journal_line_even_without_facts(self):
+        with Repo() as r:
+            p = r.transcript("s.jsonl", [_user("please make the chat attachment upload reject docx"),
+                                         _asst("Done.", files=[str(r.root / "src" / "redis-lock.ts")]),
+                                         self._bash('cd . && git commit -m "fix(chat): reject docx attachments"'), self._bash("pytest -q")])
+            n = r.capture(p, "sess-1")
+            obs = list(Observations(r.cfg.paths).iter_all())
+            J = [o for o in obs if o.get("kind") == "journal"]
+            self.assertEqual(len(J), 1, obs)
+            j = J[0]
+            self.assertEqual(j["commits"], ["fix(chat): reject docx attachments"])
+            self.assertEqual(j["files"], ["src/redis-lock.ts"])
+            self.assertTrue(j["tests"])
+            self.assertIn("chat attachment", j["ask"])
+            self.assertGreaterEqual(n, 1)
+            # the dream writes it to ledger/journal/<day>.md, once, and does not turn the raw line into a fact
+            rep = dream(r.cfg, use_llm=False)
+            self.assertEqual(rep.journal_entries, 1)
+            day = (r.cfg.paths.ledger / "journal" / (j["ts"][:10] + ".md")).read_text()
+            self.assertIn("fix(chat): reject docx attachments", day)
+            self.assertIn(j["id"], day)
+            self.assertFalse(any("Work done" in m.text for m in Ledger(r.cfg.paths).load().values()))
+            rep2 = dream(r.cfg, use_llm=False)
+            self.assertEqual(rep2.journal_entries, 0, "already written")
+            self.assertEqual(day, (r.cfg.paths.ledger / "journal" / (j["ts"][:10] + ".md")).read_text())
+
+    def test_subagent_transcripts_are_found_and_read(self):
+        from cosmos.adapters import find_claude_sessions, read_session
+        with Repo() as r, tempfile.TemporaryDirectory() as home:
+            proj = Path(home) / ".claude" / "projects" / str(r.root.resolve()).replace("/", "-")
+            (proj / "abc" / "subagents").mkdir(parents=True)
+            (proj / "abc.jsonl").write_text(json.dumps(_user("main")) + "\n")
+            sub = proj / "abc" / "subagents" / "agent-1.jsonl"
+            rows = [dict(_user("explore the repo for the retry policy"), isSidechain=True),
+                    dict(_asst("Retries are capped at 3 in `src/redis-lock.ts`; the lock TTL is 30 seconds.", files=[str(r.root / "src" / "redis-lock.ts")]), isSidechain=True)]
+            sub.write_text("\n".join(json.dumps(x) for x in rows) + "\n")
+            old = os.environ.get("HOME"); os.environ["HOME"] = home
+            try:
+                found = find_claude_sessions(r.root)
+            finally:
+                os.environ["HOME"] = old
+            self.assertEqual([sid for _, sid in found], ["abc", "abc/agent-1"])
+            turns, _ = read_session(sub, "claude", 0)
+            self.assertEqual(len(turns), 2, "sidechain entries are read when the file is a subagent transcript")
+            turns_main, _ = read_session(proj / "abc.jsonl", "claude", 0)
+            self.assertEqual(len(turns_main), 1)
+
+    def test_auto_dream_decision(self):
+        from cosmos.hooks import should_auto_dream
+        with Repo() as r:
+            self.assertFalse(should_auto_dream(r.cfg, 0))
+            self.assertTrue(should_auto_dream(r.cfg, 25), "enough waiting")
+            self.assertTrue(should_auto_dream(r.cfg, 3), "something waiting and no dream ever ran")
+            d = r.cfg.paths.state / "dreams"; d.mkdir(parents=True)
+            (d / "x.json").write_text("{}")
+            self.assertFalse(should_auto_dream(r.cfg, 3), "a dream just ran")
+            r.cfg.data.setdefault("dream", {})["auto"] = False
+            self.assertFalse(should_auto_dream(r.cfg, 100))

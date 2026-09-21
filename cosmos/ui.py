@@ -110,10 +110,9 @@ def act(cfg: Config, req: Dict[str, Any]) -> Dict[str, Any]:
         brain.save_all(mems.values()); render_all(cfg, mems)
         return {"ok": True}
     if t == "capture":
+        from .adapters import find_claude_sessions
         from .hooks import capture
-        slug = str(cfg.paths.root.resolve()).replace("/", "-")
-        d = Path.home() / ".claude" / "projects" / slug
-        n = sum(capture(cfg, {"transcript_path": str(p), "session_id": p.stem, "hook_event_name": "manual", "cwd": str(cfg.paths.root)}) for p in (sorted(d.glob("*.jsonl")) if d.exists() else []))
+        n = sum(capture(cfg, {"transcript_path": str(p), "session_id": sid, "hook_event_name": "manual", "cwd": str(cfg.paths.root)}) for p, sid in find_claude_sessions(cfg.paths.root))
         return {"ok": True, "captured": n}
     if t == "remember":
         from .privacy import redact
@@ -797,26 +796,37 @@ function verdicts(){
 }
 /* ---------- activity */
 function obsRow(o){return `<div class="ev"><span><span class="badge cat" style="--c:${cc(o.category)}">${esc(o.category)}</span>${o.source==='explicit'?' <span class="badge" style="color:var(--acc2)">explicit</span>':''}</span><span>${md(o.text)}<div class="small dim">${esc(o.author||'')}${o.files&&o.files[0]?' · <code>'+esc(o.files[0])+'</code>':''}</div></span></div>`}
+function jRow(o){const files=o.files||[];return `<div class="ev"><span class="small dim">${esc((o.ts||'').slice(11,16))}<br>${esc(o.author||'')}</span><span>${o.ask?`<div>${esc(o.ask)}</div>`:''}<div class="small" style="margin-top:3px">${(o.commits||[]).map(c=>'<code>'+esc(c)+'</code>').join(' ')}${files.length?` <span class="dim">· ${files.length} file${files.length===1?'':'s'}${files[0]?' · <code>'+esc(files[0])+'</code>':''}</span>`:''}${o.tests?' <span class="badge" style="color:var(--ok)">tests ran</span>':''}${o.branch?` <span class="dim">· ${esc(o.branch)}</span>`:''}</div></span></div>`}
 function activity(){
- const obs=S.observations.filter(o=>!q||(o.text||'').toLowerCase().includes(q));
+ const J=S.observations.filter(o=>o.kind==='journal'), F=S.observations.filter(o=>o.kind!=='journal');
+ const obs=F.filter(o=>!q||(o.text||'').toLowerCase().includes(q));
+ const jq=J.filter(o=>!q||((o.ask||'')+' '+(o.commits||[]).join(' ')).toLowerCase().includes(q));
+ const commits=J.reduce((n,o)=>n+((o.commits||[]).length),0);
+ const jDay={}; for(const o of J){const d=(o.ts||'').slice(0,10)||'unknown';(jDay[d]=jDay[d]||[]).push(o)}
+ const jDays=Object.keys(jDay).sort().reverse();
  $('#subtitle').textContent='';
  const byAgent={}, byCat={}, byDay={};
- for(const o of S.observations){byAgent[o.agent||'claude']=(byAgent[o.agent||'claude']||0)+1;byCat[o.category]=(byCat[o.category]||0)+1;const d=(o.ts||'').slice(0,10)||'unknown';(byDay[d]=byDay[d]||[]).push(o)}
+ for(const o of F){byAgent[o.agent||'claude']=(byAgent[o.agent||'claude']||0)+1;byCat[o.category]=(byCat[o.category]||0)+1;const d=(o.ts||'').slice(0,10)||'unknown';(byDay[d]=byDay[d]||[]).push(o)}
  const days=Object.keys(byDay).sort().reverse();
  const stat=(v,l,sub,tone)=>`<div class="stat2 ${tone||''}"><div class="v">${v}</div><div class="l">${l}</div>${sub?`<div class="s">${sub}</div>`:''}</div>`;
  const HOOKS=[['SessionStart','charter · facts · atlas status injected'],['UserPromptSubmit','facts + findings for the files you name'],['Stop','capture observations · run the Gate'],['PreCompact','capture before context is compressed'],['SessionEnd','final capture']];
  $('#page').innerHTML=`
  <div class="stats2">
-  ${stat(S.observations.length,'observations','captured from sessions')}
+  ${stat(J.length,'journal entries','what was done, per turn',J.length?'':'')}
+  ${stat(commits,'commits recorded','from the journal')}
+  ${stat(F.length,'observations','candidate facts from sessions')}
   ${stat(S.pending_observations,'waiting for a dream',S.pending_observations?'press Run dream':'all consolidated',S.pending_observations?'warn':'')}
   ${stat(S.sessions,'sessions','read so far')}
   ${stat(Object.keys(byAgent).length,'agents',Object.entries(byAgent).map(([a,n])=>`${a} ${n}`).join(' · ')||'—')}
   ${stat(S.hooks.length,'hooks armed',S.hooks.length===5?'all five':'run cosmos init')}
  </div>
- ${stepper([{icon:'session',title:'Session',desc:'someone works with their agent',value:S.sessions,unit:'sessions',lit:S.sessions},{icon:'hook',title:'Hooks fire',desc:'Stop · PreCompact · SessionEnd',value:S.hooks.length,unit:'armed',lit:S.hooks.length},{icon:'gather',title:'Observations',desc:'durable sentences, secrets redacted, no transcripts',value:S.observations.length,unit:'captured',lit:S.observations.length},{icon:'curate',title:'Next dream',desc:'the model turns them into facts',value:S.pending_observations,unit:'waiting',lit:S.pending_observations,llm:true}],{compact:true,title:'How activity becomes memory'})}
+ ${stepper([{icon:'session',title:'Session',desc:'someone works with their agent',value:S.sessions,unit:'sessions',lit:S.sessions},{icon:'hook',title:'Hooks fire',desc:'Stop · PreCompact · SessionEnd',value:S.hooks.length,unit:'armed',lit:S.hooks.length},{icon:'gather',title:'Observations + journal',desc:'durable sentences and one work line per turn; secrets redacted, no transcripts',value:F.length,unit:'captured',lit:F.length},{icon:'curate',title:'Next dream',desc:'runs by itself when enough is waiting; the model turns them into facts',value:S.pending_observations,unit:'waiting',lit:S.pending_observations,llm:true}],{compact:true,title:'How activity becomes memory'})}
  <div class="grid g2" style="margin-top:26px;align-items:start">
   <div>
-   <h3 class="sec">What was captured</h3>
+   <h3 class="sec">Journal</h3>
+   <div class="small dim" style="margin:-6px 0 14px">One line per agent turn: what was asked, what was edited, which commits landed. Kept in <code>.cosmos/ledger/journal/</code> after each dream.</div>
+   ${jDays.length?jDays.slice(0,14).map(d=>`<div class="day"><div class="dayhead"><span>${d}</span><span class="dim">${jDay[d].length}</span></div>${jDay[d].filter(o=>jq.includes(o)).map(jRow).join('')}</div>`).join(''):'<div class="empty">No journal yet — it starts with the next agent turn.</div>'}
+   <h3 class="sec" style="margin-top:28px">What was captured</h3>
    <div class="small dim" style="margin:-6px 0 14px">Durable facts pulled from sessions, newest first. Each becomes a ledger fact on the next dream.</div>
    ${days.length?days.slice(0,30).map(d=>`<div class="day"><div class="dayhead"><span>${d}</span><span class="dim">${byDay[d].length}</span></div>${byDay[d].filter(o=>obs.includes(o)).map(obsRow).join('')}</div>`).join(''):'<div class="empty">Nothing captured yet — work in your agent; the Stop hook does the rest.</div>'}
   </div>

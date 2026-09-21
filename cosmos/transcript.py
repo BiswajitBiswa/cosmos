@@ -42,8 +42,9 @@ def _text_of(content) -> str:
     return ""
 
 
-def iter_turns(path: Path, offset: int = 0) -> Tuple[List[Turn], int]:
-    """Parse turns from byte `offset`; return (turns, new_offset). Never raises on bad lines."""
+def iter_turns(path: Path, offset: int = 0, sidechain: bool = False) -> Tuple[List[Turn], int]:
+    """Parse turns from byte `offset`; return (turns, new_offset). Never raises on bad lines.
+    `sidechain=True` reads a subagent transcript (<session>/subagents/*.jsonl), whose entries are all side-chain."""
     turns: List[Turn] = []
     if not path.exists():
         return turns, offset
@@ -61,7 +62,7 @@ def iter_turns(path: Path, offset: int = 0) -> Tuple[List[Turn], int]:
             t = o.get("type")
             if t not in ("user", "assistant"):
                 continue
-            if o.get("isSidechain"):
+            if o.get("isSidechain") and not sidechain:
                 continue
             msg = o.get("message") or {}
             content = msg.get("content")

@@ -40,6 +40,7 @@ class DreamReport:
     dropped: int = 0
     recurated: int = 0
     recurated_dropped: int = 0
+    journal_entries: int = 0
 
     def to_dict(self) -> Dict:
         return {"new": [{"id": m.id, "text": m.text, "category": m.category} for m in self.new],
@@ -47,13 +48,14 @@ class DreamReport:
                 "contradictions": [{"older": a, "newer": b} for a, b in self.contradictions],
                 "superseded": [{"old": a, "by": b} for a, b in self.superseded],
                 "stale": list(self.stale), "revived": list(self.revived), "llm_used": self.llm_used,
-                "observations_processed": self.observations_processed, "dropped": self.dropped, "recurated": self.recurated, "recurated_dropped": self.recurated_dropped, "llm_available": self.llm_available, "summary": self.summary()}
+                "observations_processed": self.observations_processed, "dropped": self.dropped, "recurated": self.recurated, "recurated_dropped": self.recurated_dropped, "journal_entries": self.journal_entries, "llm_available": self.llm_available, "summary": self.summary()}
 
     def summary(self) -> str:
         return (f"{self.observations_processed} observations → {len(self.new)} new, {len(self.merged)} merged, "
                 f"{len(self.contradictions)} contradictions, {len(self.superseded)} superseded, {len(self.stale)} stale"
                 + (f" · LLM curated, {self.dropped} dropped as noise" if self.llm_used and self.observations_processed else "")
                 + (f" · re-curated {self.recurated} existing facts, {self.recurated_dropped} retired" if self.recurated else "")
+                + (f" · {self.journal_entries} journal entries written" if self.journal_entries else "")
                 + ("" if self.llm_available else " · heuristics only — no LLM available (cosmos doctor)"))
 
 
@@ -116,7 +118,14 @@ def dream(cfg: Config, use_llm: Optional[bool] = None, verbose: bool = False) ->
 
     # ---- 1. gather un-dreamed observations
     pending = [o for o in obs_store.iter_all() if o.get("id") and not state.is_dreamed(o["id"])]
+    # ---- 1a. the journal (what was done) is written down first, always; entries with commits or edits are also
+    #          offered to the model - a commit message often carries a decision worth keeping as a fact
+    from . import journal as _journal
+    journals = [o for o in pending if o.get("kind") == "journal"]
+    report.journal_entries = _journal.persist(cfg, journals, mems)
+    pending = [o for o in pending if o.get("kind") != "journal"] + [dict(o, text="Work done: " + o["text"]) for o in journals if o.get("commits") or o.get("files")]
     report.observations_processed = len(pending)
+    state.mark_dreamed(o["id"] for o in journals)
 
     # ---- 1b. LLM curation: the model decides what is worth keeping, rewrites it, names category + lane.
     want_llm = cfg.get("dream.llm", "auto") if use_llm is None else use_llm
@@ -146,6 +155,8 @@ def dream(cfg: Config, use_llm: Optional[bool] = None, verbose: bool = False) ->
     # ---- 2. normalize + dedupe into memories (deterministic)
     index: List[Tuple[Set[str], Memory]] = [(tokens(m.text), m) for m in mems.values()]
     for o in pending:
+        if o.get("kind") == "journal" and not o.get("curated"):
+            continue   # raw work log without a model's rewrite is not a fact
         text = " ".join(str(o.get("text", "")).split())
         if len(text) < 12:
             continue

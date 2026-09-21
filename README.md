@@ -75,8 +75,8 @@ git clone <repo> && claude
 | | step | what happens |
 |---|---|---|
 | 1 | **Work** | Use your agent as usual. The Charter, top facts and Atlas status are already in context. |
-| 2 | **Capture** | Hooks read the session and keep only durable facts. Secrets are removed. Transcripts are never stored. |
-| 3 | **Dream** | The model curates every new observation (keep · rewrite · category · lane). Duplicates merge, contradictions are flagged, facts are filed by lane, the Atlas is drift-checked. A human settles what evidence cannot. |
+| 2 | **Capture** | Hooks read the session and keep only durable facts, plus one journal line per turn: what was asked, which files changed, which commits landed. Secrets are removed. Transcripts are never stored. |
+| 3 | **Dream** | Runs by itself when enough is waiting. The model curates every new observation (keep · rewrite · category · lane). Duplicates merge, contradictions are flagged, facts are filed by lane, the Atlas is drift-checked. A human settles what evidence cannot. |
 | 4 | **Ledger** | One markdown note per fact, with evidence. Committed. Opens as an Obsidian vault. |
 | 5 | **Gate & recall** | Each prompt gets the facts that matter for its files; each turn that edits code is held until it meets the checklist. |
 
@@ -162,6 +162,7 @@ git clone <repo> && claude
 
 | | |
 |---|---|
+| **Journal** | What the team did, not only what it learned: one line per agent turn with the ask, the files, the commits and the branch, filed by lane and person under `ledger/journal/`. A session that ships five commits and teaches no new fact is still on record. |
 | **Control room** | `cosmos ui`: overview, ledger, lanes, atlas, charter, horizon, flares, dreams, verdicts, activity, docs. Localhost only; picks a free port. |
 | **The model** | Uses your existing Claude Code login by default (`claude -p`), or `ANTHROPIC_API_KEY`, or any OpenAI-compatible endpoint. `COSMOS_LLM_PROVIDER=none` runs heuristics only, and says so. |
 | **Privacy first** | API keys, tokens, passwords, private keys and credentials in URLs are redacted before anything is written. Sensitive folders can be excluded. Transcripts are read, never stored. |

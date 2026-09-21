@@ -6,7 +6,7 @@ import json
 import sys
 import traceback
 from pathlib import Path
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional
 
 from .config import Config, git_author, git_head, load_config
 from .extract import extract
@@ -14,6 +14,7 @@ from .privacy import path_ignored, redact
 from .retrieve import format_for_agent, retrieve, top
 from .store import Ledger, Observations, State, now_iso
 from .transcript import iter_turns, relativize
+from . import journal as _journal
 
 
 def _log(cfg: Config, msg: str) -> None:
@@ -61,11 +62,60 @@ def capture(cfg: Config, event: Dict[str, Any], agent: str = "claude") -> int:
                     "text": text, "files": files, "ts": now_iso(), "author": author, "agent": agent,
                     "session": _session_tag(sid), "commit": git_head(root), "event": event.get("hook_event_name", "")})
         records.append(rec)
+    if cfg.get("capture.journal", True):
+        j = _journal.build(turns, root)
+        if j:
+            j["files"] = [f for f in j["files"] if not path_ignored(f, globs)]
+            text, _ = redact(j["text"])
+            j.update({"id": "obs_" + hashlib.sha1((text + sid + j["turn_uuid"] + (turns[0].timestamp or "")).encode()).hexdigest()[:10],
+                      "text": text, "ts": now_iso(), "author": author, "agent": agent, "session": _session_tag(sid),
+                      "commit": git_head(root), "event": event.get("hook_event_name", "")})
+            records.append(j)
     if records:
         Observations(cfg.paths).append(records)
     state.set_offset(f"{agent}:{sid}" if agent != "claude" else sid, new_off)
     state.save()
     return len(records)
+
+
+def pending_count(cfg: Config) -> int:
+    state = State(cfg.paths)
+    return sum(1 for o in Observations(cfg.paths).iter_all() if o.get("id") and not state.is_dreamed(o["id"]))
+
+
+def should_auto_dream(cfg: Config, pending: int, now: Optional[float] = None) -> bool:
+    """Dream by itself when enough is waiting, or when something is waiting and the last dream is old."""
+    import time
+    if not cfg.get("dream.auto", True) or pending <= 0:
+        return False
+    if pending >= int(cfg.get("dream.auto_after", 25)):
+        return True
+    d = cfg.paths.state / "dreams"
+    last = max((p.stat().st_mtime for p in d.glob("*.json")), default=0.0) if d.exists() else 0.0
+    return ((now or time.time()) - last) >= float(cfg.get("dream.auto_hours", 6)) * 3600
+
+
+def auto_dream(cfg: Config) -> bool:
+    """Start `cosmos dream --auto` detached so the hook returns in milliseconds. One at a time (lock file)."""
+    import os, subprocess, time
+    lock = cfg.paths.state / "dream.lock"
+    try:
+        if lock.exists() and time.time() - lock.stat().st_mtime < 1800:
+            return False
+        cfg.paths.state.mkdir(parents=True, exist_ok=True)
+        lock.write_text(str(os.getpid()))
+        wrapper = cfg.paths.cosmos / "cosmosw"
+        cmd = [sys.executable, str(wrapper), "dream", "--auto"] if wrapper.exists() else [sys.executable, "-m", "cosmos", "dream", "--auto"]
+        log = (cfg.paths.state / "dream.log").open("a")
+        subprocess.Popen(cmd, cwd=str(cfg.paths.root), stdin=subprocess.DEVNULL, stdout=log, stderr=subprocess.STDOUT,
+                         start_new_session=True, env={**os.environ, "COSMOS_AUTO_DREAM": "1"})
+        return True
+    except Exception:
+        try:
+            lock.unlink()
+        except Exception:
+            pass
+        return False
 
 
 def session_start(cfg: Config) -> str:
@@ -123,6 +173,10 @@ def handle(stdin_text: str) -> int:
             n = capture(cfg, event)
             if n:
                 _log(cfg, f"{name}: captured {n} observation(s)")
+            if name in ("Stop", "SessionEnd") and event.get("hook_event_name") != "manual":
+                pend = pending_count(cfg)
+                if should_auto_dream(cfg, pend) and auto_dream(cfg):
+                    _log(cfg, f"auto-dream started ({pend} observations waiting)")
             if name == "Stop":
                 from .gate import evaluate, message
                 res = evaluate(cfg, event)

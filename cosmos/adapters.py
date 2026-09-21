@@ -195,9 +195,19 @@ AGENTS = {
 }
 
 
+def find_claude_sessions(root: Path) -> List[Tuple[Path, str]]:
+    """Every Claude Code transcript for this repo: main sessions and their subagents. Returns (path, session_id)."""
+    d = Path.home() / ".claude" / "projects" / str(root.resolve()).replace("/", "-")
+    if not d.exists():
+        return []
+    out = [(p, p.stem) for p in sorted(d.glob("*.jsonl"))]
+    out += [(p, f"{p.parent.parent.name}/{p.stem}") for p in sorted(d.glob("*/subagents/*.jsonl"))]
+    return out
+
+
 def read_session(path: Path, agent: str, offset: int = 0) -> Tuple[List[Turn], int]:
     if agent == "claude":
-        return iter_turns(path, offset)
+        return iter_turns(path, offset, sidechain="subagents" in path.parts)
     if agent == "codex":
         return iter_codex_turns(path, offset)
     size = path.stat().st_size if path.exists() else 0

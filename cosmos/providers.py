@@ -59,7 +59,7 @@ CURATE_SYSTEM = (
     "session, one-off task status, speculation, questions, generic advice, anything about the AI tool itself, and anything that "
     "reads like pasted documentation or prompt text. For kept items: rewrite crisply (third person, absolute dates - today is {today}), "
     "assign the category, and assign a LANE = the feature or module a product manager would recognise (e.g. billing, auth, "
-    "universe-import, payments). Prefer the existing lanes given; propose a new one only when nothing fits. Never invent facts."
+    "universe-import, payments). Prefer the existing lanes given; propose a new one only when nothing fits. Never invent facts. Candidates starting with 'Work done:' are journal lines (what was asked, files edited, commit messages): keep one only when a commit message or the ask states a durable decision or constraint, rewritten as that fact; otherwise drop it."
 )
 
 SYSTEM = (

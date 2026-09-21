@@ -198,8 +198,8 @@ a{color:var(--warm2)}
   <div class="head"><div class="eyebrow">how it works</div><h2>Five steps. The developer does only the first.</h2><p>Green steps run by themselves. The gold one is where a person decides.</p></div>
   <div class="flow">
     <div class="fs"><div class="n">1</div><span class="tag">you</span><b>Work</b><span>Use Claude Code as usual. The Charter, top facts and Atlas status are already in context.</span></div>
-    <div class="fs"><div class="n">2</div><span class="tag">automatic</span><b>Capture</b><span>Hooks read the session and keep only durable facts. Secrets are removed. Transcripts are never stored.</span></div>
-    <div class="fs human"><div class="n">3</div><span class="tag">review</span><b>Dream</b><span>Duplicates merge, contradictions are flagged, facts are filed by lane, the Atlas is drift-checked. A human settles what evidence cannot.</span></div>
+    <div class="fs"><div class="n">2</div><span class="tag">automatic</span><b>Capture</b><span>Hooks read the session and keep durable facts plus one journal line per turn: the ask, the files, the commits. Secrets are removed. Transcripts are never stored.</span></div>
+    <div class="fs human"><div class="n">3</div><span class="tag">review</span><b>Dream</b><span>Runs by itself when enough is waiting. Duplicates merge, contradictions are flagged, facts are filed by lane, the Atlas is drift-checked. A human settles what evidence cannot.</span></div>
     <div class="fs"><div class="n">4</div><span class="tag">git</span><b>Ledger</b><span>One markdown note per fact, with evidence. Committed. Opens as an Obsidian vault.</span></div>
     <div class="fs"><div class="n">5</div><span class="tag">automatic</span><b>Gate &amp; recall</b><span>Each prompt gets the facts that matter for its files; each turn that edits code is held until it meets the checklist.</span></div>
   </div>
@@ -228,6 +228,7 @@ a{color:var(--warm2)}
     <div><b>Gate</b><p>Tests run, <code>file:line</code> cited, findings addressed, self-review done — or the turn is not over. Held at most once, never loops, never gates docs.</p></div>
     <div><b>Flares</b><p>QA findings with a lifecycle — open, claimed, PR open, fixed, needs a human, won't fix, withdrawn, regressed. Board, Slack cards, no double posting.</p></div>
     <div><b>Dream</b><p>The model curates every new observation — keep or drop, rewrite, category, lane — then dedupe, contradictions, staleness, evidence-based supersession. Uses your Claude Code login by default; no key to paste.</p></div>
+    <div><b>Journal</b><p>What the team did, not only what it learned: one line per agent turn — ask, files, commits, branch — filed by lane and person. Five commits and no new fact is still on record.</p></div>
     <div><b>Control room</b><p><code>cosmos ui</code>: overview, ledger, lanes, atlas, charter, horizon, flares, dreams, verdicts, activity, docs. Localhost only.</p></div>
     <div><b>Other agents</b><p>The same block is written to <code>AGENTS.md</code>, so Codex, Cursor, Gemini CLI and Copilot read the Charter and the facts too.</p></div>
     <div><b>Privacy first</b><p>API keys, tokens, passwords, private keys and credentials in URLs are redacted before anything is written. Sensitive folders can be excluded.</p></div>
