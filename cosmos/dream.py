@@ -116,7 +116,7 @@ def _files_exist(root, files: List[str]) -> Optional[bool]:
     return any((root / f).exists() for f in files)
 
 
-def dream(cfg: Config, use_llm: Optional[bool] = None, verbose: bool = False) -> DreamReport:
+def dream(cfg: Config, use_llm: Optional[bool] = None, verbose: bool = False, recurate_all: bool = False) -> DreamReport:
     import time
     started = time.time()
     root = cfg.paths.root
@@ -175,7 +175,7 @@ def dream(cfg: Config, use_llm: Optional[bool] = None, verbose: bool = False) ->
     # ---- 1c. facts built before a model was available get the same treatment, once
     if prov is not None:
         stale_facts = [m for m in mems.values() if m.category != "finding" and m.status in ("active", "stale-candidate", "contradicted")
-                       and m.source != "explicit" and not m.meta.get("curated")]
+                       and m.source != "explicit" and (recurate_all or not m.meta.get("curated"))]
         if stale_facts:
             try:
                 n, d = _llm_recurate(prov, cfg, stale_facts, mems, verbose)

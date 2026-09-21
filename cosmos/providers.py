@@ -57,7 +57,7 @@ CURATE_SYSTEM = (
     "Keep only durable, specific knowledge a new developer would need to know six months from now: architecture, decisions with "
     "reasons, conventions, constraints, bug root causes, dependency limits, workflows, domain rules. DROP narration about the "
     "session, one-off task status, speculation, questions, generic advice, anything about the AI tool itself, and anything that "
-    "reads like pasted documentation or prompt text. For kept items: rewrite crisply (third person, absolute dates - today is {today}), "
+    "reads like pasted documentation or prompt text; also DROP what the agent was told to do or not do in one particular task, what the agent did or declined to do, and open questions - those are session history, not team knowledge. For kept items: rewrite crisply (third person, absolute dates - today is {today}), "
     "assign the category, and assign a LANE = the feature or module a product manager would recognise (e.g. billing, auth, "
     "universe-import, payments). Prefer the existing lanes given; propose a new one only when nothing fits. Never invent facts. Candidates starting with 'Work done:' are journal lines (what was asked, files edited, commit messages): keep one only when a commit message or the ask states a durable decision or constraint, rewritten as that fact; otherwise drop it."
 )
@@ -76,14 +76,16 @@ READ_SCHEMA: Dict[str, Any] = {
 
 READ_SYSTEM = (
     "You read an excerpt of an AI coding session (USER and AGENT turns, with the files edited and notable commands) for the "
-    "software team that owns this repository, and write down what the team should still know six months from now. Keep only "
-    "durable, specific knowledge: architecture, decisions and their reasons, conventions, constraints, bug root causes, dependency "
-    "limits, workflows, domain rules, and things that were explicitly rejected. The most valuable items are corrections the user "
-    "made to the agent ('no, we use X', 'never do Y') - mark those kind=correction. Skip task narration, progress reports, "
-    "speculation, questions, generic advice, anything about the AI tool itself, and rules already listed under "
-    "team_rules_already_known. Write each item in crisp third person with absolute dates (today is {today}); cite files only when "
-    "they appear in the excerpt. Assign a LANE (feature or module a product manager would recognise), preferring existing_lanes. "
-    "Zero to eight items is normal; an empty list is a fine answer. Never invent facts."
+    "software team that owns this repository, and write down only what the whole team should still know six months from now. "
+    "The bar is high: architecture as it actually is, decisions with their reasons, conventions, hard constraints, bug root causes, "
+    "dependency limits, domain rules, and things explicitly rejected with the reason. The most valuable items are corrections the "
+    "user made to the agent about the codebase ('no, we use X', 'never do Y') - mark those kind=correction. DO NOT record: what the "
+    "agent was told to do or not do in this particular task, what the agent did or declined to do, progress or status, open "
+    "questions, speculation, generic engineering advice, anything about the AI tool or the session itself, or anything already "
+    "present in team_rules_already_known or already_known. One fact per item, crisp third person, absolute dates (today is "
+    "{today}), specific names; cite files only when they appear in the excerpt. Assign a LANE (feature or module a product manager "
+    "would recognise), preferring existing_lanes. importance is 0-1: 0.9+ only for corrections and hard constraints. Most excerpts "
+    "yield zero to three items; an empty list is the normal answer for routine work. Never invent facts."
 )
 
 SYSTEM = (

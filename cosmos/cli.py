@@ -213,7 +213,7 @@ def cmd_dream(a) -> int:
             except Exception:
                 pass
         return 0
-    rep = dream(cfg, use_llm=(True if a.llm else (False if a.no_llm else None)), verbose=True)
+    rep = dream(cfg, use_llm=(True if a.llm else (False if a.no_llm else None)), verbose=True, recurate_all=bool(getattr(a, "recurate", False)))
     render_all(cfg, Ledger(cfg.paths).load())
     print(col("💤 dream complete:", "B"), rep.summary())
     for m in rep.new[:15]:
@@ -724,7 +724,7 @@ def build_parser() -> argparse.ArgumentParser:
     s = sp.add_parser("capture", help="capture from session logs: Claude Code, Codex, Gemini/Antigravity"); s.add_argument("--transcript"); s.add_argument("--agent", default="all", choices=["all", "claude", "codex", "gemini"]); s.add_argument("-v", "--verbose", action="store_true"); s.add_argument("--rebuild-journal", action="store_true", help="re-read whole transcripts and write the journal for work done before cosmos was installed"); s.add_argument("--days", type=int, default=14, help="when reading whole transcripts, only turns from the last N days are read by the model (default 14)"); s.add_argument("--reread", action="store_true", help="start again from the beginning of every transcript (with --days, the model reads only recent turns)"); s.set_defaults(fn=cmd_capture)
     s = sp.add_parser("mcp", help="run the MCP server (stdio) — one point of contact for every agent"); s.set_defaults(fn=cmd_mcp)
     s = sp.add_parser("connect", help="wire agents to cosmos: instruction files + MCP configs"); s.add_argument("agents", nargs="*", default=["all"], choices=["all", "claude", "codex", "gemini", "cursor", "copilot", "cline", "windsurf"]); s.add_argument("--write-user", action="store_true", help="also write ~/.codex/config.toml"); s.set_defaults(fn=cmd_connect)
-    s = sp.add_parser("dream", help="consolidate observations into the ledger"); s.add_argument("--llm", action="store_true", help="force LLM refinement"); s.add_argument("--no-llm", action="store_true"); s.add_argument("--auto", action="store_true", help=argparse.SUPPRESS); s.set_defaults(fn=cmd_dream)
+    s = sp.add_parser("dream", help="consolidate observations into the ledger"); s.add_argument("--llm", action="store_true", help="force LLM refinement"); s.add_argument("--no-llm", action="store_true"); s.add_argument("--auto", action="store_true", help=argparse.SUPPRESS); s.add_argument("--recurate", action="store_true", help="ask the model to re-judge every existing fact against the current bar (keep · rewrite · retire)"); s.set_defaults(fn=cmd_dream)
     for name in ("ui", "ledger"):
         s = sp.add_parser(name, help="open the control room (overview · ledger · flares · dreams · verdicts · activity)"); s.add_argument("--port", type=int, default=7331, help="first port to try (default 7331; the next free one is used if busy)"); s.add_argument("--strict-port", action="store_true", help="fail instead of moving to the next free port"); s.add_argument("--static", action="store_true", help="write a read-only snapshot HTML instead of serving"); s.add_argument("--obsidian", action="store_true"); s.add_argument("--no-open", action="store_true"); s.set_defaults(fn=cmd_ledger)
     s = sp.add_parser("obsidian", help="prepare/open the ledger as an Obsidian vault"); s.add_argument("--open", action="store_true"); s.add_argument("--vault", help="link ledger into an existing vault"); s.set_defaults(fn=cmd_obsidian)

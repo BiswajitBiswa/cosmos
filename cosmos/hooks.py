@@ -154,7 +154,10 @@ def should_auto_dream(cfg: Config, pending: int, now: Optional[float] = None) ->
         return True
     d = cfg.paths.state / "dreams"
     last = max((p.stat().st_mtime for p in d.glob("*.json")), default=0.0) if d.exists() else 0.0
-    return ((now or time.time()) - last) >= float(cfg.get("dream.auto_hours", 6)) * 3600
+    age = (now or time.time()) - last
+    if _reader.windows_waiting(State(cfg.paths)) and age >= float(cfg.get("dream.backlog_hours", 1)) * 3600:
+        return True      # the model still has session ranges to read: keep draining, one run an hour
+    return age >= float(cfg.get("dream.auto_hours", 6)) * 3600
 
 
 def auto_dream(cfg: Config) -> bool:

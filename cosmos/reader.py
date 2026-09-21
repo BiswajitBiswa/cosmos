@@ -120,7 +120,9 @@ def _context(cfg: Config, mems: Dict) -> Dict[str, Any]:
         rules = [m.text[:160] for m in charter_rules(mems)][:30]
     except Exception:
         rules = []
-    return {"repo": cfg.paths.root.name, "existing_lanes": lanes, "repo_apps": apps, "team_rules_already_known": rules}
+    known = sorted((m for m in mems.values() if m.status == "active" and m.source != "explicit"), key=lambda m: -m.importance)[:80]
+    return {"repo": cfg.paths.root.name, "existing_lanes": lanes, "repo_apps": apps, "team_rules_already_known": rules,
+            "already_known": [m.text[:140] for m in known]}
 
 
 def _items_to_observations(items: List[Dict], turns: List[Turn], w: Dict, cfg: Config, author: str, excerpt: str) -> List[Dict]:
@@ -133,7 +135,7 @@ def _items_to_observations(items: List[Dict], turns: List[Turn], w: Dict, cfg: C
             if not r.startswith(("/", "external/")):
                 seen_files.add(r)
     ts = next((t.timestamp for t in reversed(turns) if t.timestamp), "") or now_iso()
-    for it in items:
+    for it in items[:6]:
         if not isinstance(it, dict):
             continue
         text = " ".join(str(it.get("text", "")).split())
@@ -153,6 +155,8 @@ def _items_to_observations(items: List[Dict], turns: List[Turn], w: Dict, cfg: C
         lane = re.sub(r"[^a-z0-9/._\-]+", "-", str(it.get("lane") or "").lower()).strip("-")[:40]
         imp = it.get("importance")
         score = min(1.0, max(0.3, float(imp))) if isinstance(imp, (int, float)) else 0.7
+        if score < float(cfg.get("dream.read_min_importance", 0.5)) and it.get("kind") != "correction":
+            continue
         oid = "obs_" + hashlib.sha1((text + w.get("sid", "") + ts).encode()).hexdigest()[:10]
         rec = {"id": oid, "text": text, "category": cat, "score": score, "source": "observed", "files": files[:6],
                "signals": ["model", str(it.get("kind") or "fact")], "turn_uuid": next((t.uuid for t in turns if t.uuid), ""),
