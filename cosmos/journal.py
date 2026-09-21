@@ -81,7 +81,8 @@ def build(turns: List[Turn], root: Path) -> Optional[Dict]:
         parts.append("PR opened")
     return {"kind": "journal", "category": "workflow", "source": "journal", "score": 1.0,
             "text": " · ".join(parts), "ask": ask, "files": files, "commits": commits, "tests": tests,
-            "pushes": pushes, "prs": prs, "turns": len(turns), "branch": git_branch(root),
+            "pushes": pushes, "prs": prs, "turns": len(turns),
+            "branch": next((t.branch for t in reversed(turns) if t.branch), "") or git_branch(root),
             "turn_uuid": next((t.uuid for t in turns if t.uuid), ""), "signals": ["journal"]}
 
 

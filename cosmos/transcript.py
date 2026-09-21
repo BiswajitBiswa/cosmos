@@ -18,6 +18,7 @@ class Turn:
     commands: List[str] = field(default_factory=list)
     timestamp: str = ""
     uuid: str = ""
+    branch: str = ""              # git branch the agent was on (Claude Code records it per entry)
 
 
 _INJECTED = re.compile(r"<(system-reminder|local-command-caveat|command-name|command-message|command-args|local-command-stdout|task-notification|ci-monitor-event)[^>]*>.*?</\1>", re.S)
@@ -66,7 +67,7 @@ def iter_turns(path: Path, offset: int = 0, sidechain: bool = False) -> Tuple[Li
                 continue
             msg = o.get("message") or {}
             content = msg.get("content")
-            turn = Turn(role=t, text=_text_of(content), timestamp=o.get("timestamp", ""), uuid=o.get("uuid", ""))
+            turn = Turn(role=t, text=_text_of(content), timestamp=o.get("timestamp", ""), uuid=o.get("uuid", ""), branch=str(o.get("gitBranch") or ""))
             if isinstance(content, list):
                 for b in content:
                     if not isinstance(b, dict) or b.get("type") != "tool_use":

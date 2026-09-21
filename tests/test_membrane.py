@@ -882,7 +882,7 @@ class TestJournal(unittest.TestCase):
     def test_journal_backfill_is_idempotent_and_dated(self):
         from cosmos.hooks import backfill_journal
         with Repo() as r:
-            rows = [_user("add retries"), _asst("ok", files=[str(r.root / "src" / "redis-lock.ts")]), self._bash('git commit -m "feat: retries"'),
+            rows = [dict(_user("add retries"), gitBranch="feat/retries"), _asst("ok", files=[str(r.root / "src" / "redis-lock.ts")]), self._bash('git commit -m "feat: retries"'),
                     _user("what time is it"), _asst("noon"),
                     _user("now ship it"), self._bash('git commit -m "chore: release"')]
             p = r.transcript("old.jsonl", rows)
@@ -891,3 +891,4 @@ class TestJournal(unittest.TestCase):
             J = [o for o in Observations(r.cfg.paths).iter_all() if o.get("kind") == "journal"]
             self.assertEqual(sorted(c for o in J for c in o["commits"]), ["chore: release", "feat: retries"])
             self.assertTrue(all(o["ts"].startswith("2026-09-") for o in J), "dated from the transcript, not from now")
+            self.assertEqual(sorted(o["branch"] for o in J)[0], "feat/retries", "branch comes from the transcript entry, not from HEAD today")
