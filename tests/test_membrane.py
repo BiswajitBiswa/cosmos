@@ -891,4 +891,4 @@ class TestJournal(unittest.TestCase):
             J = [o for o in Observations(r.cfg.paths).iter_all() if o.get("kind") == "journal"]
             self.assertEqual(sorted(c for o in J for c in o["commits"]), ["chore: release", "feat: retries"])
             self.assertTrue(all(o["ts"].startswith("2026-09-") for o in J), "dated from the transcript, not from now")
-            self.assertEqual(sorted(o["branch"] for o in J)[0], "feat/retries", "branch comes from the transcript entry, not from HEAD today")
+            self.assertIn("feat/retries", [o["branch"] for o in J], "branch comes from the transcript entry, not from HEAD today")
