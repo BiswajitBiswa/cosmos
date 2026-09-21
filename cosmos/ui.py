@@ -1,6 +1,6 @@
 """`cosmos ui`: the local control room. One HTML app + a tiny stdlib JSON server on localhost.
 
-Pages: Overview (live pipeline), Ledger (memory explorer), Findings (kanban by lifecycle), Dreams (execution history,
+Pages: Overview (live pipeline), Ledger (memory explorer), Flares (kanban by lifecycle), Dreams (execution history,
 run a dream), Verdicts (contradictions / stale candidates / findings that need a human), Activity (observations, hook log).
 Every action goes through POST /api/action and calls the same functions the CLI uses.
 """
@@ -88,7 +88,7 @@ def act(cfg: Config, req: Dict[str, Any]) -> Dict[str, Any]:
         from .atlas import build
         inv = build(cfg)
         return {"ok": True, "apps": len(inv["apps"]), "services": len(inv["services"]), "stores": len(inv["stores"])}
-    if t == "intake":
+    if t in ("horizon", "intake"):
         from .intake import analyse, save
         text = " ".join(str(req.get("text", "")).split())
         if len(text) < 6:
@@ -453,8 +453,8 @@ const ICONS={
  lanes:'<path d="M4 4v16M12 4v16M20 4v16"/><path d="M4 9h8M12 15h8"/>',
  atlas:'<circle cx="12" cy="12" r="9"/><path d="M15.5 8.5l-2 5-5 2 2-5z"/>',
  charter:'<path d="M7 3h10a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2z"/><path d="M9 8h6M9 12h6M9 16h3"/>',
- intake:'<path d="M3 13l2.5-8h13L21 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><path d="M3 13h5l1.5 2h5L16 13h5"/>',
- findings:'<path d="M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z"/><path d="M12 8v5M12 16v.5"/>',
+ horizon:'<path d="M3 13l2.5-8h13L21 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><path d="M3 13h5l1.5 2h5L16 13h5"/>',
+ flares:'<path d="M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z"/><path d="M12 8v5M12 16v.5"/>',
  dreams:'<path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5z"/>',
  verdicts:'<path d="M9 12l2 2 4-5"/><rect x="3" y="4" width="18" height="16" rx="2"/>',
  activity:'<path d="M3 12h4l3-8 4 16 3-8h4"/>',
@@ -465,8 +465,8 @@ const ICONS={
  <button data-p="lanes"><span class="lb"><i data-ic="lanes"></i>Lanes</span><span class="n" id="n-lanes">–</span></button>
  <button data-p="atlas"><span class="lb"><i data-ic="atlas"></i>Atlas</span><span class="n" id="n-atlas">–</span></button>
  <button data-p="charter"><span class="lb"><i data-ic="charter"></i>Charter</span><span class="n" id="n-charter">–</span></button>
- <button data-p="intake"><span class="lb"><i data-ic="intake"></i>Intake</span><span class="n" id="n-intake">–</span></button>
- <button data-p="findings"><span class="lb"><i data-ic="findings"></i>Findings</span><span class="n" id="n-find">–</span></button>
+ <button data-p="horizon"><span class="lb"><i data-ic="horizon"></i>Horizon</span><span class="n" id="n-horizon">–</span></button>
+ <button data-p="flares"><span class="lb"><i data-ic="flares"></i>Flares</span><span class="n" id="n-find">–</span></button>
  <button data-p="dreams"><span class="lb"><i data-ic="dreams"></i>Dreams</span><span class="n" id="n-dreams">–</span></button>
  <button data-p="verdicts"><span class="lb"><i data-ic="verdicts"></i>Verdicts</span><span class="n" id="n-appr">–</span></button>
  <button data-p="activity"><span class="lb"><i data-ic="activity"></i>Activity</span><span class="n" id="n-act">–</span></button>
@@ -511,11 +511,11 @@ function render(){
  $('#n-dreams').textContent=S.dreams.length; const na=openIssues().length+needsHuman().length; const e=$('#n-appr'); e.textContent=na; e.className='n'+(na?' bad':'');
  const np=$('#n-act'); np.textContent=S.pending_observations; np.className='n'+(S.pending_observations?' warn':'');
  document.querySelectorAll('nav button').forEach(b=>b.classList.toggle('on',b.dataset.p===page));
- $('#title').textContent={overview:'Overview',ledger:'Ledger',lanes:'Lanes',atlas:'Atlas',charter:'Charter',intake:'Intake',findings:'Findings',dreams:'Dreams',verdicts:'Verdicts',activity:'Activity',docs:'Docs'}[page];
+ $('#title').textContent={overview:'Overview',ledger:'Ledger',lanes:'Lanes',atlas:'Atlas',charter:'Charter',horizon:'Horizon',flares:'Flares',dreams:'Dreams',verdicts:'Verdicts',activity:'Activity',docs:'Docs'}[page];
  $('#n-lanes').textContent=S.lanes.length; const ov=S.lanes.filter(l=>l.overlap).length; $('#n-lanes').className='n'+(ov?' warn':'');
  const ac=S.atlas.check; $('#n-atlas').textContent=ac.exists?((ac.drift.length+ac.missing.length)?'drift':'ok'):'–'; $('#n-atlas').className='n'+(ac.exists&&(ac.drift.length+ac.missing.length)?' warn':'');
- $('#n-charter').textContent=S.charter.rules.length; $('#n-intake').textContent=S.intakes.length;
- ({overview,ledger,lanes,atlas,charterPage,intake,findingsPage,dreams,verdicts,activity,docs})[page==='findings'?'findingsPage':page==='charter'?'charterPage':page]();
+ $('#n-charter').textContent=S.charter.rules.length; $('#n-horizon').textContent=S.intakes.length;
+ ({overview,ledger,lanes,atlas,charterPage,horizon,flaresPage,dreams,verdicts,activity,docs})[page==='flares'?'flaresPage':page==='charter'?'charterPage':page]();
 }
 /* ---------- overview */
 function ago(ts){if(!ts)return '';const d=(Date.now()-Date.parse(ts.replace(/^(\d{4})(\d{2})(\d{2})T(\d{2})(\d{2})(\d{2})Z$/,'$1-$2-$3T$4:$5:$6Z')))/6e4;return d<2?'just now':d<60?Math.round(d)+' min ago':d<1440?Math.round(d/60)+' h ago':Math.round(d/1440)+' d ago'}
@@ -682,15 +682,15 @@ function charterPage(){
  bindMem();
 }
 /* ---------- intake */
-let selIntake=null, pickPath='', picked=new Set(), attached=[];
+let selHorizon=null, pickPath='', picked=new Set(), attached=[];
 async function tree(rel){try{return await (await fetch('/api/tree?path='+encodeURIComponent(rel))).json()}catch(e){return []}}
-function intake(){
- const I=S.intakes; const cur=selIntake&&I.find(x=>x.file===selIntake);
+function horizon(){
+ const I=S.intakes; const cur=selHorizon&&I.find(x=>x.file===selHorizon);
  $('#subtitle').textContent='';
  const laneHits={}; I.forEach(x=>{try{JSON.parse(x.lanes.replace(/'/g,'"')).forEach(l=>laneHits[l]=(laneHits[l]||0)+1)}catch(e){}});
  const topLane=Object.entries(laneHits).sort((a,b)=>b[1]-a[1])[0];
  $('#page').innerHTML=`${statsRow([[I.length,'features mapped','before a line was written'],[topLane?topLane[0]:'—','most-touched lane',topLane?`${topLane[1]} intake${topLane[1]===1?'':'s'}`:''],[findings().filter(m=>['open','claimed','pr_open','needs_human','regressed'].includes(fstatus(m))).length,'open findings','that intakes check against'],[S.atlas.check.exists?'yes':'no','atlas available','for structural context']])}
-  ${stepper([{icon:'describe',title:'Describe',desc:'one sentence, a brief, documents'},{icon:'manifest',title:'Point at code',desc:'folders and files it will touch',lit:true},{icon:'evidence',title:'Retrieve',desc:'facts, decisions and constraints that collide',lit:true},{icon:'board',title:'Findings',desc:'open findings in the way',value:findings().filter(m=>['open','claimed','pr_open','needs_human','regressed'].includes(fstatus(m))).length,unit:'open',lit:true},{icon:'assess',title:'Model assesses',desc:'impact, risks, decide-first questions',llm:true,lit:true},{icon:'note',title:'Saved',desc:'a note beside the code, travels with the PR',value:I.length,unit:'intakes',lit:I.length}],{compact:true,title:'How intake works'})}
+  ${stepper([{icon:'describe',title:'Describe',desc:'one sentence, a brief, documents'},{icon:'manifest',title:'Point at code',desc:'folders and files it will touch',lit:true},{icon:'evidence',title:'Retrieve',desc:'facts, decisions and constraints that collide',lit:true},{icon:'board',title:'Flares',desc:'open findings in the way',value:findings().filter(m=>['open','claimed','pr_open','needs_human','regressed'].includes(fstatus(m))).length,unit:'open',lit:true},{icon:'assess',title:'Model assesses',desc:'impact, risks, decide-first questions',llm:true,lit:true},{icon:'note',title:'Saved',desc:'a note beside the code, travels with the PR',value:I.length,unit:'intakes',lit:I.length}],{compact:true,title:'How intake works'})}
   <div class="intakeform">
    <div class="ifcol">
     <div class="tl" style="margin-bottom:8px">the feature</div>
@@ -727,12 +727,12 @@ function intake(){
  $('#pickfiles').onclick=e=>{e.preventDefault();$('#infile').click()};$('#infile').onchange=e=>readFiles(e.target.files);
  const dz=$('#drop');dz.ondragover=e=>{e.preventDefault();dz.classList.add('over')};dz.ondragleave=()=>dz.classList.remove('over');dz.ondrop=e=>{e.preventDefault();dz.classList.remove('over');readFiles(e.dataTransfer.files)};
  $('#mapit').onclick=async()=>{const t=$('#int').value.trim();if(!t){toast('describe the feature first');return}$('#mapit').disabled=true;$('#mapnote').textContent='mapping… the model is reading the brief, the code you pointed at, the ledger and the findings';
-  const r=await act({type:'intake',text:t,files:[...picked],brief:$('#inb').value,attachments:attached});$('#mapit').disabled=false;
-  if(r.ok){selIntake=r.file;picked=new Set();attached=[];toast('mapped');render()}};
- document.querySelectorAll('[data-intake]').forEach(el=>el.onclick=()=>{selIntake=el.dataset.intake;render()});const c=document.querySelector('[data-close]');if(c)c.onclick=()=>{selIntake=null;render()};
+  const r=await act({type:'horizon',text:t,files:[...picked],brief:$('#inb').value,attachments:attached});$('#mapit').disabled=false;
+  if(r.ok){selHorizon=r.file;picked=new Set();attached=[];toast('mapped');render()}};
+ document.querySelectorAll('[data-intake]').forEach(el=>el.onclick=()=>{selHorizon=el.dataset.intake;render()});const c=document.querySelector('[data-close]');if(c)c.onclick=()=>{selHorizon=null;render()};
 }
 /* ---------- findings board */
-function findingsPage(){
+function flaresPage(){
  const fs=findings().filter(m=>!q||(m.text+' '+JSON.stringify(m.meta)).toLowerCase().includes(q));
  $('#subtitle').textContent='';
  const openL=fs.filter(m=>['open','claimed','pr_open','needs_human','regressed'].includes(fstatus(m)));
@@ -740,8 +740,8 @@ function findingsPage(){
  const m=sel&&byId()[sel];
  const sevOrder={critical:0,high:1,medium:2,low:3,note:4,info:5};
  const cols=FSTAT.filter(s=>fs.some(f=>fstatus(f)===s)||['open','claimed','pr_open','needs_human','fixed'].includes(s));
- $('#page').innerHTML=`${fs.length?statsRow([[openL.length,'open findings',`${fs.length} total`],[sev('critical'),'critical','',sev('critical')?'bad':''],[sev('high'),'high','',sev('high')?'warn':''],[sev('medium')+sev('low'),'medium & low',''],[fs.filter(m=>fstatus(m)==='needs_human').length,'need a human','could not reproduce / unclear',fs.filter(m=>fstatus(m)==='needs_human').length?'warn':''],[fs.filter(m=>fstatus(m)==='fixed').length,'fixed','']])+'<div style="height:18px"></div>':'<div class="empty">No findings yet. <code>cosmos audit import &lt;findings.json&gt; --prefix &lt;ID-PREFIX&gt;</code></div>'}
-  ${fs.length?stepper([{icon:'imp',title:'Import or file',desc:'audit JSON, or finding: in a session',value:fs.length,unit:'findings',lit:true},{icon:'board',title:'Triage',desc:'kanban by lifecycle',value:openL.length,unit:'open',lit:openL.length},{icon:'human',title:'Claim / needs human',desc:'a person or the fix loop takes it',value:fs.filter(m=>['claimed','pr_open','needs_human'].includes(fstatus(m))).length,unit:'in progress',lit:fs.some(m=>['claimed','pr_open','needs_human'].includes(fstatus(m)))},{icon:'fix',title:'Fix',desc:'commit recorded',value:fs.filter(m=>fstatus(m)==='fixed').length,unit:'fixed',lit:fs.some(m=>fstatus(m)==='fixed')},{icon:'regress',title:'Regression watch',desc:'a fixed bug reported again is flagged',value:fs.filter(m=>fstatus(m)==='regressed').length,unit:'regressed',lit:fs.some(m=>fstatus(m)==='regressed')},{icon:'slack',title:'Slack',desc:'one card per finding, never twice'}],{compact:true,title:'The finding lifecycle'})+'<div style="height:14px"></div>':''}
+ $('#page').innerHTML=`${fs.length?statsRow([[openL.length,'open findings',`${fs.length} total`],[sev('critical'),'critical','',sev('critical')?'bad':''],[sev('high'),'high','',sev('high')?'warn':''],[sev('medium')+sev('low'),'medium & low',''],[fs.filter(m=>fstatus(m)==='needs_human').length,'need a human','could not reproduce / unclear',fs.filter(m=>fstatus(m)==='needs_human').length?'warn':''],[fs.filter(m=>fstatus(m)==='fixed').length,'fixed','']])+'<div style="height:18px"></div>':'<div class="empty">No findings yet. <code>cosmos flares import &lt;findings.json&gt; --prefix &lt;ID-PREFIX&gt;</code></div>'}
+  ${fs.length?stepper([{icon:'imp',title:'Import or file',desc:'audit JSON, or flare: in a session',value:fs.length,unit:'flares',lit:true},{icon:'board',title:'Triage',desc:'kanban by lifecycle',value:openL.length,unit:'open',lit:openL.length},{icon:'human',title:'Claim / needs human',desc:'a person or the fix loop takes it',value:fs.filter(m=>['claimed','pr_open','needs_human'].includes(fstatus(m))).length,unit:'in progress',lit:fs.some(m=>['claimed','pr_open','needs_human'].includes(fstatus(m)))},{icon:'fix',title:'Fix',desc:'commit recorded',value:fs.filter(m=>fstatus(m)==='fixed').length,unit:'fixed',lit:fs.some(m=>fstatus(m)==='fixed')},{icon:'regress',title:'Regression watch',desc:'a fixed bug reported again is flagged',value:fs.filter(m=>fstatus(m)==='regressed').length,unit:'regressed',lit:fs.some(m=>fstatus(m)==='regressed')},{icon:'slack',title:'Slack',desc:'one card per finding, never twice'}],{compact:true,title:'The finding lifecycle'})+'<div style="height:14px"></div>':''}
   <div class="${m?'split':''}"><div class="board">${cols.map(s=>{const L=fs.filter(f=>fstatus(f)===s).sort((a,b)=>sevOrder[a.meta.severity]-sevOrder[b.meta.severity]);
    return `<div class="col"><h4><span>${s.replace('_',' ')}</span><span>${L.length}</span></h4>${L.map(f=>`<div class="fcard" data-id="${f.id}" style="--c:${cc(f.meta.severity)}"><div class="id">${esc(f.meta.audit_id)}${f.meta.area?' · '+esc(f.meta.area):''}</div><div class="t">${md(f.text)}</div>${f.files[0]?`<code>${esc(f.files[0])}</code>`:''}</div>`).join('')}</div>`}).join('')}</div>
   ${m?`<div class="sticky">${detail(m)}</div>`:''}</div>`;
@@ -788,7 +788,7 @@ function verdicts(){
   ${stepper([{icon:'contra',title:'Conflict or doubt',desc:'two facts disagree · evidence vanished · finding unclear',value:pairs.length+stale.length+nh.length,unit:'items',lit:pairs.length+stale.length+nh.length},{icon:'evidence',title:'Evidence',desc:'files, dates, who saw it — shown side by side',lit:true},{icon:'human',title:'A person decides',desc:'keep · both valid · still true · forget'},{icon:'record',title:'Recorded',desc:'who, when, why — the decision becomes memory',value:S.memories.filter(m=>/Kept over|Reviewed|Verified|Forgotten/.test(m.reason||'')).length,unit:'decisions',lit:true}],{compact:true,title:'How verdicts work',foot:'Nothing here is decided by the machine.'})}
   ${pairs.length?`<h3 class="sec">Contradictions</h3>`+pairs.map(([a,b])=>`<div class="pair">${side(a,b,'older')}<div class="vs">VS<br><button class="btn sm" data-both="${a.id}" data-other="${b.id}" title="both statements are true">both</button></div>${side(b,a,'newer')}</div>`).join(''):''}
   ${stale.length?`<h3 class="sec" style="margin-top:28px">Possibly out of date</h3>`+stale.map(m=>`<div class="mem quiet" style="--c:${cc(m.category)};cursor:default"><div class="row" style="justify-content:space-between;align-items:start"><div><div class="t">${md(m.text)}</div><div class="m"><span class="badge cat" style="--c:${cc(m.category)}">${m.category}</span><span class="small dim">${esc(m.reason)}</span></div></div><div class="actions" style="margin:0;flex:none"><button class="btn sm ok" data-act2="verify" data-id="${m.id}">Still true</button><button class="btn sm bad" data-act2="forget" data-id="${m.id}">Forget</button></div></div></div>`).join(''):''}
-  ${nh.length?`<h3 class="sec" style="margin-top:28px">Findings that need a human</h3>`+nh.map(m=>`<div class="card" style="margin-bottom:8px"><div class="row" style="justify-content:space-between"><div><span class="badge sev" style="--c:${cc(m.meta.severity)}">${SEVI[m.meta.severity]||''} ${esc(m.meta.audit_id)}</span> <b>${md(m.text)}</b><div class="small muted" style="margin-top:4px">${esc(m.meta.status_note||m.reason||'')}</div></div><div class="actions" style="margin:0"><button class="btn sm" data-fs2="claimed" data-id="${m.id}">Claim</button><button class="btn sm ok" data-fs2="fixed" data-id="${m.id}">Fixed</button><button class="btn sm warn" data-fs2="wontfix" data-id="${m.id}">Won't fix</button><button class="btn sm bad" data-fs2="withdrawn" data-id="${m.id}">Withdraw</button></div></div></div>`).join(''):''}
+  ${nh.length?`<h3 class="sec" style="margin-top:28px">Flares that need a human</h3>`+nh.map(m=>`<div class="card" style="margin-bottom:8px"><div class="row" style="justify-content:space-between"><div><span class="badge sev" style="--c:${cc(m.meta.severity)}">${SEVI[m.meta.severity]||''} ${esc(m.meta.audit_id)}</span> <b>${md(m.text)}</b><div class="small muted" style="margin-top:4px">${esc(m.meta.status_note||m.reason||'')}</div></div><div class="actions" style="margin:0"><button class="btn sm" data-fs2="claimed" data-id="${m.id}">Claim</button><button class="btn sm ok" data-fs2="fixed" data-id="${m.id}">Fixed</button><button class="btn sm warn" data-fs2="wontfix" data-id="${m.id}">Won't fix</button><button class="btn sm bad" data-fs2="withdrawn" data-id="${m.id}">Withdraw</button></div></div></div>`).join(''):''}
   ${pairs.length+stale.length+nh.length?'':'<div class="empty">✓ Nothing needs a decision. The ledger is consistent.</div>'}`;
  document.querySelectorAll('[data-keep]').forEach(b=>b.onclick=()=>act({type:'keep',id:b.dataset.keep,drop:b.dataset.drop,note:prompt('Why keep this one? (optional)')||''}));
  document.querySelectorAll('[data-both]').forEach(b=>b.onclick=()=>act({type:'both_valid',id:b.dataset.both,other:b.dataset.other,note:prompt('Why are both true? (optional)')||''}));
@@ -838,16 +838,16 @@ function docs(){
  const SECTIONS=[
  ['roles','0 · What it means for each role',`
   <table><tr><th>role</th><th>the complaint</th><th>what changes</th></tr>
-  <tr><td><b>Product manager</b></td><td>"I keep adding features and the app gets more confusing; nobody tells me what a feature collides with until it is half built."</td><td><b>Intake</b> answers before a line is written: lanes touched, decisions it collides with, findings in the way, who owns that area. The <b>Atlas</b> shows the real shape of the product, always current.</td></tr>
+  <tr><td><b>Product manager</b></td><td>"I keep adding features and the app gets more confusing; nobody tells me what a feature collides with until it is half built."</td><td><b>Horizon</b> answers before a line is written: lanes touched, decisions it collides with, findings in the way, who owns that area. The <b>Atlas</b> shows the real shape of the product, always current.</td></tr>
   <tr><td><b>Project manager</b></td><td>"Three people ended up in the same feature. Every call repeats the same three asks. I cannot see who knows what."</td><td><b>Lanes</b> show who is active where and flag overlap this month. The <b>Gate</b> asks the three questions so the call does not have to. <b>Dreams</b> and <b>Verdicts</b> give a weekly rhythm: consolidate, decide, commit.</td></tr>
   <tr><td><b>Developer</b></td><td>"I re-learn the codebase every session. My AI writes in a different style from my teammate's. I did not know that constraint existed."</td><td>The <b>Ledger</b> hands over what others learned, matched to the files you touch. The <b>Charter</b> makes every AI write the same way. <code>remember:</code> keeps what you found in ten seconds.</td></tr>
-  <tr><td><b>QA</b></td><td>"My findings live in a document nobody reopens. Fixed bugs come back. Nobody tells me when a finding is picked up."</td><td><b>Findings</b> have a lifecycle and a board; a fixed bug reported again is flagged <i>regressed</i>; an open finding on a file the AI edits is raised at the Gate; cards go to Slack once, with reactions to claim or close.</td></tr>
+  <tr><td><b>QA</b></td><td>"My findings live in a document nobody reopens. Fixed bugs come back. Nobody tells me when a finding is picked up."</td><td><b>Flares</b> have a lifecycle and a board; a fixed bug reported again is flagged <i>regressed</i>; an open finding on a file the AI edits is raised at the Gate; cards go to Slack once, with reactions to claim or close.</td></tr>
   <tr><td><b>Tech lead / architect</b></td><td>"There is no diagram, or it is a month old. Decisions live in people's heads."</td><td>The <b>Atlas</b> is generated from the repo and drift-checked. Every decision in the Ledger carries its reason, evidence and date; contradictions surface instead of silently coexisting.</td></tr></table>`],
  ['agents','1 · Works with every agent',`
   <p>One store, every tool. Claude Code, Codex (CLI and Desktop), Gemini CLI, Antigravity, Cursor, GitHub Copilot, Cline, Windsurf and Cowork all read the same Charter, Ledger and Atlas — three ways:</p>
   <table><tr><th>how</th><th>what</th><th>agents</th></tr>
   <tr><td>Instruction files</td><td>the same managed block written to <code>CLAUDE.md</code>, <code>AGENTS.md</code>, <code>GEMINI.md</code>, <code>.cursor/rules/cosmos.mdc</code>, <code>.github/copilot-instructions.md</code>, <code>.clinerules</code>, <code>.windsurfrules</code></td><td>all</td></tr>
-  <tr><td>MCP server</td><td><code>cosmos mcp</code> — tools: <code>cosmos_recall</code>, <code>cosmos_remember</code>, <code>cosmos_finding</code>, <code>cosmos_charter</code>, <code>cosmos_why</code>, <code>cosmos_intake</code>, <code>cosmos_atlas</code>, <code>cosmos_lanes</code>. Configured by <code>cosmos connect</code> in <code>.mcp.json</code>, <code>.cursor/mcp.json</code>, <code>.gemini/settings.json</code>, <code>.vscode/mcp.json</code>; Codex via <code>~/.codex/config.toml</code>; Cowork via Settings → Connectors.</td><td>all MCP clients</td></tr>
+  <tr><td>MCP server</td><td><code>cosmos mcp</code> — tools: <code>cosmos_recall</code>, <code>cosmos_remember</code>, <code>cosmos_flare</code>, <code>cosmos_charter</code>, <code>cosmos_why</code>, <code>cosmos_horizon</code>, <code>cosmos_atlas</code>, <code>cosmos_lanes</code>. Configured by <code>cosmos connect</code> in <code>.mcp.json</code>, <code>.cursor/mcp.json</code>, <code>.gemini/settings.json</code>, <code>.vscode/mcp.json</code>; Codex via <code>~/.codex/config.toml</code>; Cowork via Settings → Connectors.</td><td>all MCP clients</td></tr>
   <tr><td>Capture</td><td>Claude Code: hooks, automatic. Codex: <code>cosmos capture --agent codex</code> reads <code>~/.codex/sessions</code> rollouts (exact format). Gemini / Antigravity: best-effort JSON reader. Any agent: <code>cosmos_remember</code> over MCP.</td><td>Claude Code · Codex · Gemini · any via MCP</td></tr></table>
   <pre>cosmos connect all            # instruction files + MCP configs for every agent
 cosmos connect codex --write-user
@@ -858,8 +858,8 @@ cosmos capture --agent all    # pull facts out of Claude, Codex and Gemini sessi
   <pre>cd &lt;your-repo&gt; &amp;&amp; cosmos init
 cosmos capture --agent claude --transcript &lt;path-to-session&gt;.jsonl -v      <span style="color:var(--dim)"># one session</span>
 cosmos capture --agent all -v                                             <span style="color:var(--dim)"># every Claude, Codex, Gemini session on this repo</span>
-cosmos audit import &lt;findings.json&gt; --prefix &lt;ID-PREFIX&gt; --source &lt;report-name&gt;
-cosmos audit slack --seed-state &lt;legacy .slack-posted.json&gt; --prefix &lt;ID-PREFIX&gt; --status
+cosmos flares import &lt;findings.json&gt; --prefix &lt;ID-PREFIX&gt; --source &lt;report-name&gt;
+cosmos flares slack --seed-state &lt;legacy .slack-posted.json&gt; --prefix &lt;ID-PREFIX&gt; --status
 cosmos dream &amp;&amp; cosmos review &amp;&amp; cosmos lanes &amp;&amp; cosmos ui
 cosmos atlas          <span style="color:var(--dim)"># then: claude → /atlas</span>
 cosmos connect all
@@ -884,7 +884,7 @@ git commit -m "cosmos: ledger"</pre>
  ['daily','4 · Daily use (nothing to do)',`
   ${step(1,'Work with Claude Code as usual','On <b>SessionStart</b> the top facts are injected. On every <b>UserPromptSubmit</b> the memories relevant to your prompt (by words and by the files they anchor to) are injected — including open findings on those files.')}
   ${step(2,'Cosmos captures silently','On <b>Stop</b>, <b>PreCompact</b> and <b>SessionEnd</b> the transcript is read incrementally and durable facts are extracted: architecture, decisions, conventions, constraints, bug root causes, dependency limits, workflows, domain rules. Narration, questions and one-off tasks are dropped. Secrets are redacted before anything touches disk; transcripts are never stored.')}
-  ${step(3,'Force a memory when you want one','Type <code>remember: never modify prod schemas by hand</code> or <code>finding: /transitions has no role gate</code> in the chat — or use the <b>+ Remember</b> box on the Ledger page, or <code>cosmos remember "…" -c constraint</code>.')}
+  ${step(3,'Force a memory when you want one','Type <code>remember: never modify prod schemas by hand</code> or <code>flare: /transitions has no role gate</code> in the chat — or use the <b>+ Remember</b> box on the Ledger page, or <code>cosmos remember "…" -c constraint</code>.')}
   ${step(4,'Ask why','<code>cosmos why redis</code> — evidence files, dates, who saw it, what it superseded. Or click any card here.')}`],
  ['dream','5 · Dreams (consolidation)',`
   <p>Observations pile up per developer. A <b>dream</b> turns them into the shared ledger: normalize → dedupe (same fact twice = one memory, evidence +1) → contradiction check → evidence-based supersession → staleness → optional LLM refinement → write notes, index, CLAUDE.md/AGENTS.md.</p>
@@ -905,8 +905,8 @@ cosmos gate --transcript ~/.claude/projects/&lt;repo&gt;/&lt;session&gt;.jsonl  
   <p><b>Lanes</b> — every fact, finding and diagram is filed under the feature/module it belongs to, inferred from its files (or configured in <code>config.json → lanes</code>). The Lanes page shows facts, open findings and the people active in each lane over the last 30 days, and flags overlap.</p>
   <pre>cosmos atlas            # build · cosmos atlas --check   # drift
 cosmos lanes [--days 30]</pre>`],
- ['intake','8 · Intake',`
-  <p>A feature enters with a map, not a Slack message. <code>cosmos intake "bulk invite with partial success" -f path/hint.py</code> answers, from what the repo already knows: lanes touched (with overlap warnings), recorded decisions it collides with, open findings in the way, who has been working there, a suggested owner. Saved under <code>.cosmos/ledger/intake/</code> so the PR that implements the feature carries its own impact note.</p>`],
+ ['horizon','8 · Horizon',`
+  <p>A feature enters with a map, not a Slack message. <code>cosmos horizon "bulk invite with partial success" -f path/hint.py</code> answers, from what the repo already knows: lanes touched (with overlap warnings), recorded decisions it collides with, open findings in the way, who has been working there, a suggested owner. Saved under <code>.cosmos/ledger/intake/</code> so the PR that implements the feature carries its own impact note.</p>`],
  ['approve','9 · Verdicts (the human gate)',`
   <p>Three things are never decided automatically; they wait on the <b>Verdicts</b> page (and <code>cosmos review</code>):</p>
   <table><tr><th>item</th><th>why it appears</th><th>your options</th></tr>
@@ -914,18 +914,18 @@ cosmos lanes [--days 30]</pre>`],
   <tr><td>Stale candidate</td><td>evidence files disappeared, or not re-observed within the category limit</td><td><b>Still true</b> (verified today) · <b>Forget</b></td></tr>
   <tr><td>Finding needs a human</td><td>the fix loop could not reproduce it or the intent is ambiguous</td><td><b>Claim</b> · <b>Fixed</b> · <b>Won't fix</b> · <b>Withdraw</b> (+ note)</td></tr></table>
   <p>Supersession happens without you only when evidence is unambiguous: the old fact's files are gone and the new fact's exist, or a developer's explicit rule contradicts an inferred fact. Explicit rules always outrank inferred ones.</p>`],
- ['findings','10 · QA findings lifecycle',`
+ ['flares','10 · Flares (QA findings lifecycle)',`
   <pre>open → claimed → pr_open → fixed
                  ↘ needs_human → (human) fixed | wontfix | withdrawn
 fixed/wontfix reported again by a later audit → regressed ⚠️</pre>
   <table><tr><th>stage</th><th>how</th></tr>
-  <tr><td>Report</td><td>An audit session writes <code>qa-findings.json</code> → <code>cosmos audit import docs/qa-findings.json --prefix QA</code>. Same id = update, never a duplicate. Or type <code>finding: …</code> in a session.</td></tr>
-  <tr><td>Triage</td><td><b>Findings</b> board, kanban by status. Click a card for What / Impact / Evidence / Fix.</td></tr>
-  <tr><td>Fix</td><td><code>cosmos audit claim QA-12</code> → <code>pr-open</code> → <code>fix QA-12 "PR #<n>"</code> (records the commit). Or the buttons in the card. Or the QA fix loop, which writes <code>status</code>/<code>status_note</code>/<code>status_at</code> into the JSON — re-import is the sync point; an incoming <i>open</i> never downgrades a local <i>claimed</i>.</td></tr>
-  <tr><td>Withdraw</td><td><code>cosmos audit withdraw QA-8 "shared reference data by design"</code>. Kept forever so nobody re-files it; hidden from retrieval.</td></tr>
-  <tr><td>Publish</td><td><code>cosmos audit slack --validate</code> → <code>cosmos audit slack --send --channel C…</code> (token from <code>SLACK_BOT_TOKEN</code> only). One Block Kit card per open finding, 👀 ✅ 🚫 pre-seeded, never double-posts. <code>--convert</code> rewrites already-posted messages in place.</td></tr>
-  <tr><td>Report</td><td><code>cosmos audit report -o docs/qa-audit.md</code> regenerates the full report from the ledger. <code>cosmos audit export</code> writes the JSON back.</td></tr>
-  <tr><td>Lint</td><td><code>cosmos audit lint …</code> flags repository filter keys that are not real model columns (the bug class behind two findings).</td></tr></table>
+  <tr><td>Report</td><td>An audit session writes <code>qa-findings.json</code> → <code>cosmos flares import docs/qa-findings.json --prefix QA</code>. Same id = update, never a duplicate. Or type <code>flare: …</code> in a session.</td></tr>
+  <tr><td>Triage</td><td><b>Flares</b> board, kanban by status. Click a card for What / Impact / Evidence / Fix.</td></tr>
+  <tr><td>Fix</td><td><code>cosmos flares claim QA-12</code> → <code>pr-open</code> → <code>fix QA-12 "PR #<n>"</code> (records the commit). Or the buttons in the card. Or the QA fix loop, which writes <code>status</code>/<code>status_note</code>/<code>status_at</code> into the JSON — re-import is the sync point; an incoming <i>open</i> never downgrades a local <i>claimed</i>.</td></tr>
+  <tr><td>Withdraw</td><td><code>cosmos flares withdraw QA-8 "shared reference data by design"</code>. Kept forever so nobody re-files it; hidden from retrieval.</td></tr>
+  <tr><td>Publish</td><td><code>cosmos flares slack --validate</code> → <code>cosmos flares slack --send --channel C…</code> (token from <code>SLACK_BOT_TOKEN</code> only). One Block Kit card per open finding, 👀 ✅ 🚫 pre-seeded, never double-posts. <code>--convert</code> rewrites already-posted messages in place.</td></tr>
+  <tr><td>Report</td><td><code>cosmos flares report -o docs/qa-audit.md</code> regenerates the full report from the ledger. <code>cosmos flares export</code> writes the JSON back.</td></tr>
+  <tr><td>Lint</td><td><code>cosmos flares lint …</code> flags repository filter keys that are not real model columns (the bug class behind two findings).</td></tr></table>
   <p>Severity <code>note</code> items are verification notes: no lifecycle, never claimable.</p>`],
  ['obsidian','11 · Obsidian & other agents',`
   <p>The ledger <b>is</b> a vault: one markdown note per fact with frontmatter, <code>[[wikilinks]]</code> between related / contradicting / superseding facts, <code>_index.md</code> as the map of content, graph colours per category.</p>
@@ -938,7 +938,7 @@ cosmos obsidian --vault ~/Obsidian/Team  # link several repos' ledgers into one 
   <tr><th>command</th><th>does</th></tr>
   <tr><td><code>cosmos init [--no-vendor]</code></td><td>set up this repo (charter, hooks, ledger, atlas, /atlas command, wrapper, CLAUDE.md/AGENTS.md block, vault)</td></tr>
   <tr><td><code>cosmos charter [show|add|edit|gate]</code> · <code>gate [--transcript F]</code></td><td>the working agreement · the Stop-hook checklist</td></tr>
-  <tr><td><code>cosmos atlas [--check]</code> · <code>lanes [--days N]</code> · <code>intake "…" [-f F]</code></td><td>architecture from the repo · feature lanes and overlap · map a feature before coding</td></tr>
+  <tr><td><code>cosmos atlas [--check]</code> · <code>lanes [--days N]</code> · <code>horizon "…" [-f F]</code></td><td>architecture from the repo · feature lanes and overlap · map a feature before coding</td></tr>
   <tr><td><code>cosmos connect [all|claude|codex|gemini|cursor|copilot|cline|windsurf]</code> · <code>mcp</code> · <code>capture --agent all</code></td><td>wire every agent · the MCP server · read other agents' session logs</td></tr>
   <tr><td><code>cosmos status</code> · <code>doctor</code> · <code>health</code></td><td>quick state · installation check · memory quality metrics</td></tr>
   <tr><td><code>cosmos ui</code> [<code>--static</code>] · <code>ledger --obsidian</code></td><td>this control room · read-only snapshot HTML · open the vault</td></tr>
@@ -950,7 +950,7 @@ cosmos obsidian --vault ~/Obsidian/Team  # link several repos' ledgers into one 
   <tr><td><code>cosmos verify ID [--resolve]</code> · <code>forget ID</code></td><td>mark verified (and supersede what it contradicts) · retire</td></tr>
   <tr><td><code>cosmos render</code></td><td>rewrite CLAUDE.md/AGENTS.md block and ledger index</td></tr>
   <tr><td><code>cosmos update</code> · <code>uninstall</code></td><td>refresh the vendored copy · remove hooks</td></tr>
-  <tr><td><code>cosmos audit import|list|show|claim|pr-open|needs-human|fix|wontfix|withdraw|reopen|set|export|report|slack|lint</code></td><td>QA findings lifecycle (section 5)</td></tr>
+  <tr><td><code>cosmos flares import|list|show|claim|pr-open|needs-human|fix|wontfix|withdraw|reopen|set|export|report|slack|lint</code></td><td>QA findings lifecycle (section 5)</td></tr>
   </table>
   <p class="small dim">Teammates without an install: prefix with <code>.cosmos/cosmosw</code>, e.g. <code>.cosmos/cosmosw status</code>.</p>`],
  ['config','13 · Configuration & layout',`

@@ -21,11 +21,11 @@ TOOLS: List[Dict[str, Any]] = [
      "inputSchema": {"type": "object", "properties": {"query": {"type": "string", "description": "what you are about to do"}, "files": {"type": "array", "items": {"type": "string"}}, "k": {"type": "integer", "default": 8}}, "required": ["query"]}},
     {"name": "cosmos_remember", "description": "Record a durable engineering fact or rule for the whole team (explicit rules outrank inferred facts).",
      "inputSchema": {"type": "object", "properties": {"text": {"type": "string"}, "category": {"type": "string", "enum": ["architecture", "decision", "convention", "constraint", "bug", "dependency", "workflow", "domain", "rejected"], "default": "convention"}, "files": {"type": "array", "items": {"type": "string"}}}, "required": ["text"]}},
-    {"name": "cosmos_finding", "description": "File a QA / security finding with a lifecycle (open → claimed → fixed …).",
+    {"name": "cosmos_flare", "description": "File a QA / security finding with a lifecycle (open → claimed → fixed …).",
      "inputSchema": {"type": "object", "properties": {"title": {"type": "string"}, "severity": {"type": "string", "enum": ["critical", "high", "medium", "low"], "default": "medium"}, "locations": {"type": "string", "description": "file:line list"}, "what": {"type": "string"}, "impact": {"type": "string"}, "fix": {"type": "string"}}, "required": ["title"]}},
     {"name": "cosmos_charter", "description": "The team's working agreement: coding style, testing, how to point at code, self-review, architecture rules. Read it before writing code.", "inputSchema": {"type": "object", "properties": {}}},
     {"name": "cosmos_why", "description": "Explain a fact: evidence files, timeline, who saw it, contradictions.", "inputSchema": {"type": "object", "properties": {"query": {"type": "string"}}, "required": ["query"]}},
-    {"name": "cosmos_intake", "description": "Map a feature before coding: lanes touched, colliding decisions, open findings in the way, people active there, model assessment. Pass folders/files it will touch and the brief text if you have it.", "inputSchema": {"type": "object", "properties": {"text": {"type": "string"}, "files": {"type": "array", "items": {"type": "string"}}, "brief": {"type": "string"}}, "required": ["text"]}},
+    {"name": "cosmos_horizon", "description": "Map a feature before coding: lanes touched, colliding decisions, open findings in the way, people active there, model assessment. Pass folders/files it will touch and the brief text if you have it.", "inputSchema": {"type": "object", "properties": {"text": {"type": "string"}, "files": {"type": "array", "items": {"type": "string"}}, "brief": {"type": "string"}}, "required": ["text"]}},
     {"name": "cosmos_atlas", "description": "Architecture status and diagrams (inventory, containers, deployment, api) generated from the repo, with drift status.", "inputSchema": {"type": "object", "properties": {"doc": {"type": "string", "enum": ["status", "inventory", "containers", "deployment", "api", "dependencies", "data-flow", "system-context"], "default": "status"}}}},
     {"name": "cosmos_lanes", "description": "Feature lanes: facts, open findings and people active per lane; overlap warnings.", "inputSchema": {"type": "object", "properties": {"days": {"type": "integer", "default": 30}}}},
 ]
@@ -59,7 +59,7 @@ def call_tool(cfg: Config, name: str, args: Dict[str, Any]) -> Dict[str, Any]:
         mems[mid] = m
         Ledger(cfg.paths).save_all(mems.values()); render_all(cfg, mems)
         return _txt(f"Remembered {mid}: {text}")
-    if name == "cosmos_finding":
+    if name in ("cosmos_flare", "cosmos_finding"):
         from .audit import import_findings
         import tempfile, os
         item = {"id": make_id(str(args.get("title", "")))[-6:], "severity": args.get("severity", "medium"), "title": str(args.get("title", "")), "area": "",
@@ -86,7 +86,7 @@ def call_tool(cfg: Config, name: str, args: Dict[str, Any]) -> Dict[str, Any]:
         L += [f"evidence: {f}" for f in hit.files] + ([f"seen by: {', '.join(hit.authors)}"] if hit.authors else []) + ([f"note: {hit.reason}"] if hit.reason else [])
         L += [f"contradicts {c}: {mems[c].text}" for c in hit.contradicts if c in mems]
         return _txt("\n".join(L))
-    if name == "cosmos_intake":
+    if name in ("cosmos_horizon", "cosmos_intake"):
         from .intake import analyse, render_md, save
         res = analyse(cfg, str(args.get("text", "")), args.get("files") or [], brief=str(args.get("brief", "")))
         save(cfg, res)
@@ -129,7 +129,7 @@ def serve(cfg: Config) -> None:
             if method == "initialize":
                 resp = {"protocolVersion": params.get("protocolVersion", PROTOCOL), "capabilities": {"tools": {"listChanged": False}},
                         "serverInfo": {"name": "cosmos", "version": __version__},
-                        "instructions": "cosmos is this repository's shared engineering memory, charter and architecture. Call cosmos_charter once at the start, cosmos_recall before editing files you did not write, cosmos_remember for durable decisions, cosmos_finding for bugs worth tracking."}
+                        "instructions": "cosmos is this repository's shared engineering memory, charter and architecture. Call cosmos_charter once at the start, cosmos_recall before editing files you did not write, cosmos_remember for durable decisions, cosmos_flare for bugs worth tracking."}
             elif method == "ping":
                 resp = {}
             elif method == "tools/list":

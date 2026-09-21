@@ -26,8 +26,8 @@ footer{border-top:1px solid var(--line);padding:26px 0;font-size:11px;letter-spa
 cosmos capture --agent codex  --transcript &lt;path-to-rollout&gt;.jsonl -v   # a Codex session
 cosmos capture --agent all -v                                        # every session on this repo</code></pre>
 <h2 id="3-bring-in-an-existing-audit">3. Bring in an existing audit</h2>
-<pre><code>cosmos audit import &lt;findings.json&gt; --prefix &lt;ID-PREFIX&gt; --source &lt;report-name&gt;
-cosmos audit slack --seed-state &lt;legacy .slack-posted.json&gt; --prefix &lt;ID-PREFIX&gt; --status</code></pre>
+<pre><code>cosmos flares import &lt;findings.json&gt; --prefix &lt;ID-PREFIX&gt; --source &lt;report-name&gt;
+cosmos flares slack --seed-state &lt;legacy .slack-posted.json&gt; --prefix &lt;ID-PREFIX&gt; --status</code></pre>
 <h2 id="4-consolidate-and-look">4. Consolidate and look</h2>
 <pre><code>cosmos dream &amp;&amp; cosmos review &amp;&amp; cosmos lanes &amp;&amp; cosmos ui</code></pre>
 <h2 id="5-architecture">5. Architecture</h2>

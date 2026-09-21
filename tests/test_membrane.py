@@ -572,7 +572,7 @@ class TestMultiAgent(unittest.TestCase):
                     {"jsonrpc": "2.0", "id": 3, "method": "tools/call", "params": {"name": "cosmos_recall", "arguments": {"query": "change the redis lock", "files": ["src/redis-lock.ts"]}}},
                     {"jsonrpc": "2.0", "id": 4, "method": "tools/call", "params": {"name": "cosmos_remember", "arguments": {"text": "Never modify production schemas by hand.", "category": "constraint"}}},
                     {"jsonrpc": "2.0", "id": 5, "method": "tools/call", "params": {"name": "cosmos_charter", "arguments": {}}},
-                    {"jsonrpc": "2.0", "id": 6, "method": "tools/call", "params": {"name": "cosmos_finding", "arguments": {"title": "Webhook replay possible", "severity": "high", "locations": "`src/webhooks.ts:10`", "what": "no nonce"}}}]
+                    {"jsonrpc": "2.0", "id": 6, "method": "tools/call", "params": {"name": "cosmos_flare", "arguments": {"title": "Webhook replay possible", "severity": "high", "locations": "`src/webhooks.ts:10`", "what": "no nonce"}}}]
             out = subprocess.run([sys.executable, "-m", "cosmos", "mcp"], cwd=r.root, input="\n".join(json.dumps(m) for m in msgs) + "\n", capture_output=True, text=True, timeout=30, env={**os.environ, "PYTHONPATH": str(ROOT)})
             self.assertEqual(out.returncode, 0, out.stderr)
             res = {json.loads(l)["id"]: json.loads(l) for l in out.stdout.splitlines() if l.strip()}
@@ -680,7 +680,7 @@ class TestIntakeContext(unittest.TestCase):
             self.assertTrue(any("Webhook" in m.text for m in res["related"] + res["collisions"]))
             p = save(r.cfg, res)
             self.assertIn("## Attached documents", p.read_text())
-            self.assertTrue((r.cfg.paths.ledger / "intake" / "attachments" / p.stem / "prd.md").exists())
+            self.assertTrue((r.cfg.paths.ledger / "horizon" / "attachments" / p.stem / "prd.md").exists())
             bin_ = r.root / "img.png"; bin_.write_bytes(b"\x89PNG\x00\x00binary")
             self.assertEqual(read_attachment(bin_)["text"], "", "binary files contribute their name only")
 

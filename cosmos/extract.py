@@ -42,7 +42,7 @@ SESSION_PAST = re.compile(r"\b(was|were|got|has been|have been|is now|are now|al
 # something concrete to anchor the fact
 SPECIFIC = re.compile(r"(`[^`]+`|[\w\-/]+\.(py|ts|tsx|js|kt|java|go|rs|rb|md|json|ya?ml|toml|sql|sh)\b|\b[A-Z][a-z]+[A-Z]\w+\b|\b\w+_\w+\b|\b(Redis|Postgres|PostgreSQL|Kafka|Snowflake|ClickHouse|Mongo\w*|Docker|Kubernetes|Stripe|Authentik|GraphQL|gRPC|REST|S3|SQS|Lambda)\b|/[\w\-]+/[\w\-]+)")
 
-EXPLICIT_RULE = re.compile(r"^\s*(remember|cosmos|rule|convention|note to memory|finding)\s*:\s*(.+)$", re.I | re.S)
+EXPLICIT_RULE = re.compile(r"^\s*(remember|cosmos|rule|convention|note to memory|finding|flare)\s*:\s*(.+)$", re.I | re.S)
 IMPERATIVE_RULE = re.compile(r"^\s*(always|never|do not|don't|from now on|going forward)\b", re.I)
 
 MAX_LEN = 320
@@ -115,7 +115,7 @@ def extract_from_turn(turn: Turn, prev_files: Optional[List[str]] = None, min_sc
             body = " ".join(m.group(2).split())[:MAX_LEN]
             if len(body) >= 8:
                 _, cat, sig = classify(body)
-                if m.group(1).lower() == "finding":
+                if m.group(1).lower() in ("finding", "flare"):
                     cat = "finding"
                 obs.append(Observation(body, cat or "convention", 0.95, "explicit", files, sig, turn.uuid))
             return obs

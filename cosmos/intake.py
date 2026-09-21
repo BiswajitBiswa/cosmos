@@ -1,4 +1,4 @@
-"""Intake: a feature request enters with a map, not a Slack message.
+"""Horizon: a feature request enters with a map, not a Slack message.
 
 Before code is written, `cosmos intake "…"` names the lanes it touches, the existing decisions and constraints it
 collides with, the open findings sitting on those files, and who has been working there - deterministically,
@@ -16,6 +16,12 @@ from .lanes import infer_lane, lane_report
 from .retrieve import retrieve
 from .store import Ledger, Memory, Observations, slugify, today
 
+
+
+def _dir(cfg):
+    """ledger/horizon (the new name); a repository that already has ledger/intake keeps working."""
+    new, old = cfg.paths.ledger / "horizon", cfg.paths.ledger / "intake"
+    return old if old.exists() and not new.exists() else new
 
 def expand_hints(cfg: Config, hints: Optional[Iterable[str]], limit: int = 60) -> List[str]:
     """A hint may be a file or a folder (relative to the repo or absolute). Folders contribute every code/doc file inside."""
@@ -108,7 +114,7 @@ def _llm_assessment(cfg: Config, res: Dict) -> str:
 
 
 def render_md(a: Dict, author: str) -> str:
-    L = [f"---", f"kind: intake", f"created: {today()}", f"by: \"{author}\"", f"lanes: {a['lanes']}", "---", "", f"# Intake: {a['text']}", ""]
+    L = [f"---", f"kind: horizon", f"created: {today()}", f"by: \"{author}\"", f"lanes: {a['lanes']}", "---", "", f"# Horizon: {a['text']}", ""]
     if a.get("brief"):
         L += ["## Brief", "", a["brief"], ""]
     if a.get("attachments"):
@@ -126,7 +132,7 @@ def render_md(a: Dict, author: str) -> str:
 
 
 def save(cfg: Config, a: Dict) -> Path:
-    d = cfg.paths.ledger / "intake"
+    d = _dir(cfg)
     d.mkdir(parents=True, exist_ok=True)
     slug = f"{today()}-{slugify(a['text'], 40)}"
     p = d / f"{slug}.md"
@@ -150,13 +156,13 @@ def read_attachment(path: Path, limit: int = 200_000) -> Dict:
 
 
 def list_intakes(cfg: Config) -> List[Dict]:
-    d = cfg.paths.ledger / "intake"
+    d = _dir(cfg)
     out = []
     if not d.exists():
         return out
     for p in sorted(d.glob("*.md"), reverse=True):
         txt = p.read_text()
-        title = re.search(r"^# Intake: (.+)$", txt, re.M)
+        title = re.search(r"^# Horizon: (.+)$", txt, re.M)
         lanes = re.search(r"^lanes: (\[.*\])$", txt, re.M)
         out.append({"file": p.name, "title": title.group(1) if title else p.stem, "lanes": lanes.group(1) if lanes else "[]", "created": p.name[:10], "body": txt})
     return out

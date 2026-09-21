@@ -34,7 +34,7 @@ def managed_block(mems: Dict[str, Memory], k: int, cfg: Optional[Config] = None)
         for m in ts:
             lines.append(f"- **{m.category}**" + (f" · {m.lane}" if m.lane else "") + f": {m.text}")
         lines.append("")
-    lines.append("`cosmos why <id>` explains a fact · `remember: …` adds a rule · `finding: …` files a finding · `cosmos intake \"…\"` maps a feature before coding")
+    lines.append("`cosmos why <id>` explains a fact · `remember: …` adds a rule · `flare: …` files a flare · `cosmos horizon \"…\"` maps a feature before coding")
     lines.append(END)
     return "\n".join(lines)
 

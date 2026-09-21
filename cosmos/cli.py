@@ -85,7 +85,7 @@ def cmd_init(a) -> int:
     print(col("✓", "g"), "CLAUDE.md / AGENTS.md / GEMINI.md block written · .mcp.json → `cosmos mcp` (run `cosmos connect all` for Cursor, Copilot, Cline, Codex)")
     print(col("✓", "g"), "ledger is an Obsidian vault  →  cosmos obsidian --open")
     print()
-    print("Now just work with Claude Code. Later:  cosmos dream  ·  cosmos ui  ·  cosmos lanes  ·  cosmos intake \"feature\"")
+    print("Now just work with Claude Code. Later:  cosmos dream  ·  cosmos ui  ·  cosmos lanes  ·  cosmos horizon \"feature\"")
     return 0
 
 
@@ -171,7 +171,7 @@ def cmd_connect(a) -> int:
         else:
             print(col("  Codex", "B"), "reads MCP servers from ~/.codex/config.toml — add (or run `cosmos connect codex --write-user`):\n" + "\n".join("    " + l for l in codex_snippet(cfg.paths.root).splitlines()))
     print(col("  Cowork / Claude Desktop", "B"), "reads CLAUDE.md in the project; add the same MCP entry under Settings → Connectors (command python3, args .cosmos/cosmosw mcp).")
-    print(col("  capture", "d"), "Claude Code: automatic via hooks · Codex / Gemini: `cosmos capture --agent all` reads their session logs · everyone: cosmos_remember / cosmos_finding tools via MCP")
+    print(col("  capture", "d"), "Claude Code: automatic via hooks · Codex / Gemini: `cosmos capture --agent all` reads their session logs · everyone: cosmos_remember / cosmos_flare tools via MCP")
     return 0
 
 
@@ -420,7 +420,7 @@ def cmd_update(a) -> int:
     return 0
 
 
-# ---------------------------------------------------------------- lanes · atlas · charter · intake · gate
+# ---------------------------------------------------------------- lanes · atlas · charter · horizon · gate
 def cmd_lanes(a) -> int:
     from .lanes import assign_lanes, lane_report, propose
     cfg = load_config(); _require(cfg)
@@ -692,7 +692,7 @@ def build_parser() -> argparse.ArgumentParser:
     s = sp.add_parser("connect", help="wire agents to cosmos: instruction files + MCP configs"); s.add_argument("agents", nargs="*", default=["all"], choices=["all", "claude", "codex", "gemini", "cursor", "copilot", "cline", "windsurf"]); s.add_argument("--write-user", action="store_true", help="also write ~/.codex/config.toml"); s.set_defaults(fn=cmd_connect)
     s = sp.add_parser("dream", help="consolidate observations into the ledger"); s.add_argument("--llm", action="store_true", help="force LLM refinement"); s.add_argument("--no-llm", action="store_true"); s.set_defaults(fn=cmd_dream)
     for name in ("ui", "ledger"):
-        s = sp.add_parser(name, help="open the control room (overview · ledger · findings · dreams · verdicts · activity)"); s.add_argument("--port", type=int, default=7331, help="first port to try (default 7331; the next free one is used if busy)"); s.add_argument("--strict-port", action="store_true", help="fail instead of moving to the next free port"); s.add_argument("--static", action="store_true", help="write a read-only snapshot HTML instead of serving"); s.add_argument("--obsidian", action="store_true"); s.add_argument("--no-open", action="store_true"); s.set_defaults(fn=cmd_ledger)
+        s = sp.add_parser(name, help="open the control room (overview · ledger · flares · dreams · verdicts · activity)"); s.add_argument("--port", type=int, default=7331, help="first port to try (default 7331; the next free one is used if busy)"); s.add_argument("--strict-port", action="store_true", help="fail instead of moving to the next free port"); s.add_argument("--static", action="store_true", help="write a read-only snapshot HTML instead of serving"); s.add_argument("--obsidian", action="store_true"); s.add_argument("--no-open", action="store_true"); s.set_defaults(fn=cmd_ledger)
     s = sp.add_parser("obsidian", help="prepare/open the ledger as an Obsidian vault"); s.add_argument("--open", action="store_true"); s.add_argument("--vault", help="link ledger into an existing vault"); s.set_defaults(fn=cmd_obsidian)
     s = sp.add_parser("remember", help="add an explicit memory"); s.add_argument("text", nargs="+"); s.add_argument("-c", "--category", default="convention", choices=["architecture", "decision", "convention", "constraint", "bug", "dependency", "workflow", "domain", "rejected", "finding"]); s.add_argument("-f", "--file", action="append"); s.set_defaults(fn=cmd_remember)
     s = sp.add_parser("forget", help="retire a memory"); s.add_argument("id"); s.add_argument("--hard", action="store_true", help="delete the note instead of marking forgotten"); s.set_defaults(fn=cmd_forget)
@@ -709,10 +709,10 @@ def build_parser() -> argparse.ArgumentParser:
     s = sp.add_parser("lanes", help="facts, findings and people per feature lane; flags overlap"); s.add_argument("--days", type=int, default=30); s.add_argument("--json", action="store_true"); s.add_argument("--propose", action="store_true", help="suggest a lanes mapping (LLM if configured, else from paths)"); s.add_argument("--write", action="store_true", help="with --propose: save to config and re-file"); s.add_argument("--no-llm", action="store_true"); s.set_defaults(fn=cmd_lanes)
     s = sp.add_parser("atlas", help="build architecture inventory + diagrams from the repo (or --check for drift)"); s.add_argument("--check", action="store_true"); s.set_defaults(fn=cmd_atlas)
     s = sp.add_parser("charter", help="the team's working agreement: show | add \"rule\" | edit | gate"); s.add_argument("action", nargs="?", default="show", choices=["show", "add", "edit", "gate"]); s.add_argument("text", nargs="*"); s.add_argument("--section", default="Architecture rules"); s.set_defaults(fn=cmd_charter)
-    s = sp.add_parser("intake", help="map a feature before coding: lanes, collisions, findings, people"); s.add_argument("text", nargs="+"); s.add_argument("-f", "--file", action="append", help="folder or file it will touch (repeatable)"); s.add_argument("--attach", action="append", help="ad-hoc document to read as context (PRD, spec, notes)"); s.add_argument("--brief", help="text file with the brief"); s.add_argument("--json", action="store_true"); s.add_argument("--no-save", action="store_true"); s.set_defaults(fn=cmd_intake)
+    s = sp.add_parser("horizon", aliases=["intake"], help="map a feature before coding: lanes, collisions, findings, people"); s.add_argument("text", nargs="+"); s.add_argument("-f", "--file", action="append", help="folder or file it will touch (repeatable)"); s.add_argument("--attach", action="append", help="ad-hoc document to read as context (PRD, spec, notes)"); s.add_argument("--brief", help="text file with the brief"); s.add_argument("--json", action="store_true"); s.add_argument("--no-save", action="store_true"); s.set_defaults(fn=cmd_intake)
     s = sp.add_parser("gate", help="show Gate rules, or dry-run it on a transcript"); s.add_argument("--transcript"); s.set_defaults(fn=cmd_gate)
 
-    au = sp.add_parser("audit", help="QA / security findings as memory: import, track lifecycle, report, publish").add_subparsers(dest="audit_cmd", required=True)
+    au = sp.add_parser("flares", aliases=["audit"], help="QA / security findings (flares) as memory: import, track lifecycle, report, publish").add_subparsers(dest="audit_cmd", required=True)
     from .audit import FINDING_STATUSES as FST, SEVERITIES as SEVS
     x = au.add_parser("import", help="import findings JSON (id, severity, title, area, locations, sections)"); x.add_argument("file"); x.add_argument("--prefix", default="QA", help="stable id prefix, e.g. QA"); x.add_argument("--source", help="source document name"); x.set_defaults(fn=cmd_audit_import)
     x = au.add_parser("list", help="list findings"); x.add_argument("--status", choices=FST); x.add_argument("--severity", choices=SEVS); x.add_argument("--json", action="store_true"); x.set_defaults(fn=cmd_audit_list)
@@ -722,7 +722,7 @@ def build_parser() -> argparse.ArgumentParser:
                                 ("pr-open", "pr_open", "a PR is open for it"), ("needs-human", "needs_human", "could not reproduce or intent is ambiguous — a human decides")):
         x = au.add_parser(name, help=help_); x.add_argument("id"); x.add_argument("note", nargs="*"); x.set_defaults(fn=cmd_audit_set(status))
     x = au.add_parser("set", help="set any lifecycle status"); x.add_argument("id"); x.add_argument("status", choices=FST); x.add_argument("note", nargs="*"); x.set_defaults(fn=lambda a: cmd_audit_set(a.status)(a))
-    x = au.add_parser("lint", help="flag repository filter keys that are not real model columns (AST; see docs/audit.md)"); x.add_argument("--repo-base"); x.add_argument("--crud-glob"); x.add_argument("--module-prefix"); x.add_argument("--roots", nargs="*"); x.add_argument("--sys-path", nargs="*"); x.add_argument("--json", action="store_true"); x.set_defaults(fn=cmd_audit_lint)
+    x = au.add_parser("lint", help="flag repository filter keys that are not real model columns (AST; see docs/flares.md)"); x.add_argument("--repo-base"); x.add_argument("--crud-glob"); x.add_argument("--module-prefix"); x.add_argument("--roots", nargs="*"); x.add_argument("--sys-path", nargs="*"); x.add_argument("--json", action="store_true"); x.set_defaults(fn=cmd_audit_lint)
     x = au.add_parser("export", help="export findings JSON (same schema as import)"); x.add_argument("-o", "--out"); x.add_argument("--status", choices=FST); x.add_argument("--severity", choices=SEVS); x.set_defaults(fn=cmd_audit_export)
     x = au.add_parser("report", help="regenerate the audit report from the ledger"); x.add_argument("--format", choices=["md", "slack"], default="md"); x.add_argument("-o", "--out"); x.add_argument("--status", choices=FST); x.add_argument("--severity", choices=SEVS); x.set_defaults(fn=cmd_audit_report)
     x = au.add_parser("slack", help="publish open findings as Block Kit cards (dry run unless --send)"); x.add_argument("--send", action="store_true"); x.add_argument("--status", action="store_true", help="what is posted vs pending"); x.add_argument("--validate", action="store_true", help="blocks.validate every card (no token needed)"); x.add_argument("--all", action="store_true", help="repost everything"); x.add_argument("--channel"); x.add_argument("--seed-state", help="import a legacy .slack-posted.json"); x.add_argument("--prefix", default="QA"); x.add_argument("--severity", choices=SEVS)

@@ -16,8 +16,8 @@ cosmos capture --agent all -v                                        # every ses
 
 ## 3. Bring in an existing audit
 ```bash
-cosmos audit import <findings.json> --prefix <ID-PREFIX> --source <report-name>
-cosmos audit slack --seed-state <legacy .slack-posted.json> --prefix <ID-PREFIX> --status
+cosmos flares import <findings.json> --prefix <ID-PREFIX> --source <report-name>
+cosmos flares slack --seed-state <legacy .slack-posted.json> --prefix <ID-PREFIX> --status
 ```
 
 ## 4. Consolidate and look

@@ -75,7 +75,7 @@ def evaluate(cfg: Config, event: Dict[str, Any]) -> Dict[str, Any]:
             and any(any(ef.endswith(mf) or mf.endswith(ef) for ef in edited) for mf in m.files)]
     result["findings"] = [f"{m.meta.get('audit_id')} — {m.text}" for m in hits[:5]]
     if hits and not any((m.meta.get("audit_id") or "") in last_text for m in hits):
-        result["reasons"].append("Open findings exist on files you touched — address or explicitly defer each: " + "; ".join(result["findings"]))
+        result["reasons"].append("Open flares (QA findings) exist on files you touched — address or explicitly defer each: " + "; ".join(result["findings"]))
     if result["reasons"]:
         result["block"] = True
         result["reasons"].append("Then re-read your diff against .cosmos/charter.md (self-review) and stop.")
