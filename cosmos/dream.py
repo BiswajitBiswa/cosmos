@@ -269,6 +269,8 @@ def dream(cfg: Config, use_llm: Optional[bool] = None, verbose: bool = False, re
         try:
             todo = [o for o in pending if not o.get("curated")]
             kept, dropped = _llm_curate(prov, cfg, todo, mems, verbose)
+            kept_ids = {o["id"] for o in kept}
+            state.mark_dreamed(o["id"] for o in todo if o["id"] not in kept_ids)   # dropped as noise: done, never offered again
             pending = [o for o in pending if o.get("curated") and o not in todo] + kept
             report.dropped = dropped
             report.llm_used = True
