@@ -322,6 +322,17 @@ def dream(cfg: Config, use_llm: Optional[bool] = None, verbose: bool = False, re
             m.reason = f"Stale candidate since {t}: not re-observed for {age} days (limit {limit}d for {m.category})"
             report.stale.append(m.id)
 
+    # ---- 4b. flares: an open flare whose anchor files no longer exist cannot be worked on — a human decides
+    try:
+        from .audit import OPEN_LIKE, set_status
+        for m in list(mems.values()):
+            if m.category == "finding" and m.files and m.meta.get("finding_status", "open") in OPEN_LIKE - {"needs_human"} \
+                    and m.meta.get("severity") != "note" and _files_exist(root, m.files) is False:
+                set_status(cfg, m, "needs_human", "anchor files no longer exist")
+                report.flares_needs_human = getattr(report, "flares_needs_human", 0) + 1
+    except Exception:
+        pass
+
     # ---- 5. LLM refinement of merges / contradictions (validated)
     if want_llm and (report.new or report.contradictions):
         prov = prov or get_provider(cfg.get("llm", {}) or {})
