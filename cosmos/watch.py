@@ -47,6 +47,42 @@ def _summarise(turns, sid: str, agent: str, prev: Optional[Dict[str, Any]]) -> D
     return entry
 
 
+def update_live(cfg: Config, turns, sid: str, agent: str) -> None:
+    """Called by the hooks and by the watcher after reading new turns: refresh this session's live entry."""
+    if not turns:
+        return
+    try:
+        key = f"{agent}:{sid}" if agent != "claude" else sid
+        live = load_live(cfg)
+        live[key] = _summarise(turns, sid, agent, live.get(key))
+        cfg.paths.state.mkdir(parents=True, exist_ok=True)
+        _live_path(cfg).write_text(json.dumps(live, indent=1))
+    except Exception:
+        pass
+
+
+def _recent_tail(cfg: Config, p: Path, sid: str, agent: str, live: Dict[str, Dict[str, Any]]) -> None:
+    """A session that was active in the last hour but has no live entry (its turns were captured by a hook before
+    the watcher ran): summarise its tail without capturing anything twice."""
+    from .adapters import read_session
+    from .transcript import relativize
+    key = f"{agent}:{sid}" if agent != "claude" else sid
+    try:
+        if key in live or time.time() - p.stat().st_mtime > LIVE_MINUTES * 60:
+            return
+        start = max(0, p.stat().st_size - 300_000)
+        turns, _ = read_session(p, agent, start)
+        turns = turns[-40:]
+        if not turns:
+            return
+        root = cfg.paths.root
+        for t in turns:
+            t.files = [r for r in (relativize(f, root) for f in t.files) if not r.startswith(("/", "external/"))]
+        live[key] = _summarise(turns, sid, agent, None)
+    except Exception:
+        pass
+
+
 def tick(cfg: Config, agents: Optional[List[str]] = None, verbose: bool = False) -> Dict[str, Any]:
     """One pass: capture what is new from every session of this repo; refresh the live picture; maybe dream."""
     from .adapters import find_claude_sessions, find_codex_sessions, find_gemini_sessions, read_session
@@ -72,6 +108,7 @@ def tick(cfg: Config, agents: Optional[List[str]] = None, verbose: bool = False)
         except OSError:
             continue
         if size <= before:
+            _recent_tail(cfg, p, sid, agent, live)
             continue
         turns, _ = read_session(p, agent, before)
         if turns:

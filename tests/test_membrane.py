@@ -1127,6 +1127,19 @@ class TestWorktreesAndWatch(unittest.TestCase):
             self.assertEqual((s["agent"], s["branch"], s["ask"], s["files"], s["commits"]), ("claude", "fix/ttl", "fix the lock TTL", ["src/redis-lock.ts"], ["fix(lock): raise TTL"]))
             J = [o for o in Observations(r.cfg.paths).iter_all() if o.get("kind") == "journal"]
             self.assertEqual(len(J), 1, "the watcher captures like a hook would")
+            # a hook-captured session is live too, and a hooked session the watcher never read gets a tail summary
+            (proj / "hooked.jsonl").write_text(json.dumps(dict(_user("rename the queue"), gitBranch="feat/q", timestamp=rows[0]["timestamp"])) + "\n")
+            r.capture(proj / "hooked.jsonl", "hooked")
+            self.assertEqual(load_live(r.cfg)["hooked"]["ask"], "rename the queue")
+            (proj / "silent.jsonl").write_text(json.dumps(dict(_user("old work"), timestamp=rows[0]["timestamp"])) + "\n")
+            from cosmos.store import State
+            st = State(r.cfg.paths); st.set_offset("silent", (proj / "silent.jsonl").stat().st_size); st.save()
+            os.environ["HOME"] = home
+            try:
+                tick(r.cfg, ["claude"])
+            finally:
+                os.environ["HOME"] = old
+            self.assertEqual(load_live(r.cfg)["silent"]["ask"], "old work", "recent but already-captured session still shows as live")
             os.environ["HOME"] = home
             try:
                 self.assertEqual(tick(r.cfg, ["claude"])["captured"], 0, "nothing new on the second pass")

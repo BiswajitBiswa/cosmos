@@ -47,6 +47,8 @@ def capture(cfg: Config, event: Dict[str, Any], agent: str = "claude") -> int:
     root = cfg.paths.root
     for t in turns:
         t.files = [r for r in (relativize(f, root) for f in t.files) if not r.startswith(("/", "external/"))]
+    from .watch import update_live
+    update_live(cfg, turns, sid, agent)
     model_reads = capture_mode(cfg) == "model"
     if model_reads:
         # the model reads this range at dream time; here we keep only what must not wait: explicit rules and findings.
