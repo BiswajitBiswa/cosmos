@@ -258,6 +258,10 @@ Transcripts live in `~/.claude/projects/<repo path, slashes → dashes>/` (Claud
 | The review checklist stops being a person's job. | Memory is per repository; cross-repo recall inside the hooks does not exist yet. |
 | Privacy by construction: local-first, secrets redacted, transcripts never stored. | Verdicts are trust-based; the audit trail is git history, not roles. No Jira integration. |
 
+## Checked by something that is not Claude
+
+cosmos is built with Claude. It should not be graded by Claude. `validation/` asks an independent decision-only model (TypeSafe's Jev) a fixed set of closed questions about what cosmos produced in your repository, compares the answers with what cosmos decided, and writes one report with aggregates only: does the evidence support each fact, should each observation have been kept, is each doubtful fact really outdated, is each retrieved fact relevant, does the code implement each documented claim. New features are reported separately from existing ones. One command, a key from typesafe.ai or Cloudflare Workers AI, about half a cent per repository. See [validation/README.md](validation/README.md).
+
 ## Why use this
 
 **The cost you pay today is invisible.** Nobody files a ticket for “rediscovered the same constraint as last week”, “the AI used a different style again”, or “the diagram was wrong”. It shows up as slower onboarding, repeated mistakes, review calls that repeat themselves, and a quiet erosion of trust in the AI tools. cosmos makes the knowledge, rules and structure that already exist in your team stay put, for the price of one `init`.

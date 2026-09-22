@@ -6,3 +6,4 @@ dist/
 .cosmos/state/
 .cosmos/ledger/.obsidian/workspace*.json
 .cosmos/vendor/
+validation/results.jsonl
