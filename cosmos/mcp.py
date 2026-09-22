@@ -50,9 +50,12 @@ def call_tool(cfg: Config, name: str, args: Dict[str, Any]) -> Dict[str, Any]:
         return _txt(out)
     if name == "cosmos_remember":
         from .privacy import redact
-        text = redact(" ".join(str(args.get("text", "")).split()))[0]
+        raw = next((args[k] for k in ("text", "fact", "note", "content", "rule", "memory") if isinstance(args.get(k), str) and args[k].strip()), "")
+        if not raw:
+            return _txt(f"cosmos_remember needs `text` (got: {', '.join(sorted(args)) or 'nothing'}). Example: {{\"text\": \"Universe erase treats an empty s3_key as 'nothing to delete'\", \"category\": \"constraint\", \"kind\": \"fact\", \"files\": [\"path/file.py\"]}}")
+        text = redact(" ".join(str(raw).split()))[0]
         if len(text) < 8:
-            return _txt("Too short to be a fact.")
+            return _txt(f"cosmos_remember: `text` is {len(text)} characters; write the fact as one full sentence (what is true, where, why).")
         mid = make_id(text)
         rule = str(args.get("kind", "fact")) == "rule"
         imp = args.get("importance")
@@ -68,7 +71,13 @@ def call_tool(cfg: Config, name: str, args: Dict[str, Any]) -> Dict[str, Any]:
     if name in ("cosmos_flare", "cosmos_finding"):
         from .audit import import_findings
         import tempfile, os
-        item = {"id": make_id(str(args.get("title", "")))[-6:], "severity": args.get("severity", "medium"), "title": str(args.get("title", "")), "area": "",
+        title = next((str(args[k]).strip() for k in ("title", "text", "summary", "finding") if isinstance(args.get(k), str) and args[k].strip()), "")
+        if len(title) < 8:
+            return _txt(f"cosmos_flare needs `title` (got: {', '.join(sorted(args)) or 'nothing'}). Example: {{\"title\": \"GET /transitions has no role gate\", \"severity\": \"high\", \"locations\": \"webserver/app/api/v1/endpoints/transitions.py:42\", \"what\": \"…\", \"fix\": \"…\"}}")
+        sev = str(args.get("severity", "medium")).lower()
+        if sev not in ("critical", "high", "medium", "low", "note"):
+            sev = "medium"
+        item = {"id": make_id(title)[-6:], "severity": sev, "title": title, "area": "",
                 "locations": str(args.get("locations", "")), "sections": [[k.title(), str(args[k])] for k in ("what", "impact", "fix") if args.get(k)]}
         with tempfile.NamedTemporaryFile("w", suffix=".json", delete=False) as fh:
             json.dump([item], fh); tmp = fh.name

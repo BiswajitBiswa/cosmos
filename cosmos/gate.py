@@ -60,12 +60,15 @@ def evaluate(cfg: Config, event: Dict[str, Any]) -> Dict[str, Any]:
     result["edited"] = edited
     if not edited:
         return result
-    result["reflect"] = bool(gc.get("reflect", True))
+    size = sum(t.edit_chars for t in turn)
+    small = len(edited) <= int(gc.get("small_change_files", 1)) and size < int(gc.get("small_change_chars", 400))
+    result["small"] = small
+    result["reflect"] = bool(gc.get("reflect", True)) and not small
     commands = [c for t in turn for c in t.commands]
     tests_ran = any(any(p in c for p in gc.get("test_patterns", [])) for c in commands)
     last_text = next((t.text for t in reversed(turn) if t.role == "assistant" and t.text.strip()), "")
     has_refs = bool(REF.search(last_text))
-    if gc.get("require_tests", True) and not tests_ran:
+    if gc.get("require_tests", True) and not tests_ran and not small:
         result["reasons"].append(f"You edited {len(edited)} code file(s) but ran no tests this turn. Run the tests that cover: " + ", ".join(edited[:6]) + ". If none exist, say so explicitly and state what was NOT tested.")
     if gc.get("require_refs", True) and not has_refs:
         result["reasons"].append("Point precisely: your summary has no `path/to/file.ext:line` references. Cite the exact location of each change you made.")

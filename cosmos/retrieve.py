@@ -64,12 +64,14 @@ def score(mem: Memory, q_tokens: Set[str], q_paths: Set[str]) -> float:
     return (overlap * 1.0 + poverlap * 1.4) * (0.5 + mem.confidence) * (0.5 + mem.importance) * _recency(mem)
 
 
-def retrieve(mems: Dict[str, Memory], query: str = "", paths: Optional[Iterable[str]] = None, k: int = 6) -> List[Memory]:
+def retrieve(mems: Dict[str, Memory], query: str = "", paths: Optional[Iterable[str]] = None, k: int = 6, include_doubtful: bool = False) -> List[Memory]:
+    """Facts for a query. Only *active* facts are returned: a stale candidate or a contradicted fact is a question for
+    a human on Verdicts, never something handed to an agent as knowledge (it would cite it)."""
     q_tokens = tokens(query)
     q_paths = path_tokens(paths or [])
     ranked = []
     for m in mems.values():
-        if m.status in ("superseded", "forgotten"):
+        if m.status != "active" and not (include_doubtful and m.status in ("stale-candidate", "contradicted")):
             continue
         s = score(m, q_tokens, q_paths)
         if s > 0:
@@ -90,8 +92,9 @@ def format_for_agent(mems: List[Memory], header: str) -> str:
         return ""
     lines = [header]
     for m in mems:
-        flag = "" if m.status == "active" else f" ({m.status})"
+        flag = "" if m.status == "active" else f" (UNVERIFIED: {m.status} — check before relying on it)"
         files = f" — see `{m.files[0]}`" if m.files else ""
-        lines.append(f"- [{m.category}] {m.text}{files}{flag}")
+        verified = f" (verified {m.last_verified})" if m.last_verified else ""
+        lines.append(f"- [{m.category}] {m.text}{files}{verified}{flag}")
     lines.append("(Details: `.cosmos/ledger/_index.md`; `cosmos why <id|text>` explains any item.)")
     return "\n".join(lines)

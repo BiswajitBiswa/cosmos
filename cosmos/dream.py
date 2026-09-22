@@ -112,6 +112,34 @@ def looks_contradictory(a: Memory, b: Memory) -> bool:
     return neg_flip and j >= 0.4
 
 
+_IDENT = re.compile(r"`([A-Za-z_][A-Za-z0-9_./-]{4,})`|\b([A-Za-z_]*[a-z][A-Za-z0-9]*_[A-Za-z0-9_]{2,}|[A-Z_]{2,}[A-Z0-9_]{4,}|[a-z]+[A-Z][A-Za-z0-9]{3,})\b")
+
+
+def _missing_identifiers(root, m: Memory) -> List[str]:
+    """Code identifiers named by the fact (snake_case, CONSTANTS, camelCase, backticked names) that appear in none of
+    its evidence files any more. Cheap, deterministic, and the reason most facts go wrong: the code moved on."""
+    if not m.files:
+        return []
+    names = []
+    for a, b in _IDENT.findall(m.text):
+        n = (a or b).strip()
+        if n and n not in names and "/" not in n and "." not in n.strip(".") and len(n) >= 5:
+            names.append(n)
+    if not names:
+        return []
+    blobs = []
+    for f in m.files[:8]:
+        p = root / f
+        try:
+            if p.is_file() and p.stat().st_size < 2_000_000:
+                blobs.append(p.read_text(errors="ignore"))
+        except Exception:
+            continue
+    if not blobs:
+        return []
+    return [n for n in names if not any(n in b for b in blobs)]
+
+
 def _files_exist(root, files: List[str]) -> Optional[bool]:
     if not files:
         return None
@@ -284,6 +312,10 @@ def dream(cfg: Config, use_llm: Optional[bool] = None, verbose: bool = False, re
         if _files_exist(root, m.files) is False:
             m.status, m.updated = "stale-candidate", t
             m.reason = f"Stale candidate since {t}: none of the evidence files exist anymore"
+            report.stale.append(m.id)
+        elif cfg.get("dream.verify_identifiers", True) and m.source != "explicit" and (gone := _missing_identifiers(root, m)):
+            m.status, m.updated = "stale-candidate", t
+            m.reason = f"Stale candidate since {t}: `{gone[0]}` no longer appears in the evidence files"
             report.stale.append(m.id)
         elif age > limit and m.source != "explicit" and m.category != "finding":
             m.status, m.updated = "stale-candidate", t

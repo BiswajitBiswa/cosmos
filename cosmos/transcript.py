@@ -20,6 +20,7 @@ class Turn:
     uuid: str = ""
     branch: str = ""              # git branch the agent was on (Claude Code records it per entry)
     cwd: str = ""                 # working directory recorded on the entry
+    edit_chars: int = 0             # size of the edits in this entry (old + new text), a proxy for change size
     offset: int = 0                 # byte offset just after this entry in the transcript file
 
 
@@ -78,8 +79,14 @@ def iter_turns(path: Path, offset: int = 0, sidechain: bool = False, until: Opti
                         continue
                     name = b.get("name", "")
                     inp = b.get("input") or {}
-                    if name in EDIT_TOOLS and isinstance(inp, dict) and inp.get("file_path"):
-                        turn.files.append(str(inp["file_path"]))
+                    if name in EDIT_TOOLS and isinstance(inp, dict) and (inp.get("file_path") or inp.get("notebook_path")):
+                        turn.files.append(str(inp.get("file_path") or inp.get("notebook_path")))
+                        if name == "Write":
+                            turn.edit_chars += len(str(inp.get("content", "")))
+                        elif name == "MultiEdit":
+                            turn.edit_chars += sum(len(str(e.get("old_string", ""))) + len(str(e.get("new_string", ""))) for e in (inp.get("edits") or []) if isinstance(e, dict))
+                        else:
+                            turn.edit_chars += len(str(inp.get("old_string", ""))) + len(str(inp.get("new_string", "")))
                     elif name == "Bash" and isinstance(inp, dict) and inp.get("command"):
                         turn.commands.append(str(inp["command"])[:4000])
             # tool_result-only user messages carry no prose; keep them out

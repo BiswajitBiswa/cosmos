@@ -460,6 +460,7 @@ class TestLanesCharterGateIntakeAtlas(unittest.TestCase):
             summ = charter.summary(r.cfg, {})
             self.assertIn("Never call the DB", summ)
             # a turn that edits code, runs no tests and cites no file:line → blocked with precise reasons
+            cp = charter.path(r.cfg); cp.write_text(cp.read_text().replace('"small_change_chars": 400', '"small_change_chars": 0'))   # every change is "big" here
             t = r.transcript("t.jsonl", [_user("fix the lock"), _asst("Done, I changed the lock logic.", [str(r.root / "src/redis-lock.ts")])])
             res = evaluate(r.cfg, {"transcript_path": str(t), "session_id": "s"})
             self.assertTrue(res["block"])
@@ -1146,3 +1147,57 @@ class TestWorktreesAndWatch(unittest.TestCase):
                 self.assertEqual(tick(r.cfg, ["claude"])["captured"], 0, "nothing new on the second pass")
             finally:
                 os.environ["HOME"] = old
+
+
+class TestReviewFixes(unittest.TestCase):
+    """The points raised by an agent that lived with cosmos for a day."""
+
+    def test_doubtful_facts_are_never_injected(self):
+        from cosmos.retrieve import retrieve, top, format_for_agent
+        good = Memory(id="a", text="Redis lock TTL is 30 seconds in src/redis-lock.ts", category="constraint", files=["src/redis-lock.ts"], status="active")
+        stale = Memory(id="b", text="Redis lock TTL is 10 seconds in src/redis-lock.ts", category="constraint", files=["src/redis-lock.ts"], status="stale-candidate")
+        mems = {"a": good, "b": stale}
+        self.assertEqual([m.id for m in retrieve(mems, "redis lock ttl", paths=["src/redis-lock.ts"])], ["a"])
+        self.assertEqual([m.id for m in top(mems)], ["a"])
+        self.assertIn("UNVERIFIED", format_for_agent(retrieve(mems, "redis", include_doubtful=True), "x"))
+
+    def test_identifier_that_left_the_code_makes_a_fact_stale(self):
+        from cosmos.dream import _missing_identifiers
+        with Repo() as r:
+            (r.root / "src" / "erase.py").write_text("UNIVERSE_ERASE_CHECKPOINT_KEYS = ['a']\n")
+            m = Memory(id="mem_erase1", text="Erase uses `UNIVERSE_ERASE_CHECKPOINT_KEYS` and the s3_key convention.", category="constraint", files=["src/erase.py"])
+            self.assertEqual(_missing_identifiers(r.root, m), ["s3_key"])
+            (r.root / "src" / "erase.py").write_text("CHECKPOINTS = ['a']\ns3_key = None\n")
+            self.assertEqual(_missing_identifiers(r.root, m), ["UNIVERSE_ERASE_CHECKPOINT_KEYS"])
+            rep = dream(r.cfg, use_llm=False)  # nothing pending; staleness pass alone
+            Ledger(r.cfg.paths).save(m)
+            rep = dream(r.cfg, use_llm=False)
+            self.assertIn("mem_erase1", rep.stale)
+            self.assertIn("no longer appears", Ledger(r.cfg.paths).load()["mem_erase1"].reason)
+
+    def test_tools_say_what_they_need_and_accept_obvious_spellings(self):
+        from cosmos.mcp import call_tool
+        with Repo() as r:
+            out = call_tool(r.cfg, "cosmos_remember", {"fact": "Universe erase treats an empty s3_key as nothing to delete.", "lane": "universe"})
+            self.assertIn("Remembered", out["content"][0]["text"], "`fact` is accepted as the text")
+            out = call_tool(r.cfg, "cosmos_remember", {"lane": "universe", "category": "constraint"})
+            self.assertIn("needs `text` (got: category, lane)", out["content"][0]["text"])
+            out = call_tool(r.cfg, "cosmos_flare", {"text": "GET /transitions has no role gate", "severity": "HIGH"})
+            self.assertIn("Filed QA-", out["content"][0]["text"])
+            out = call_tool(r.cfg, "cosmos_flare", {"severity": "high"})
+            self.assertIn("needs `title`", out["content"][0]["text"])
+
+    def test_gate_is_proportional_to_the_change(self):
+        from cosmos.gate import evaluate
+        with Repo() as r:
+            small = [_user("fix the typo"), {"type": "assistant", "uuid": "s1", "timestamp": "2026-09-22T10:00:00Z", "message": {"role": "assistant", "content": [
+                {"type": "tool_use", "id": "t1", "name": "Edit", "input": {"file_path": str(r.root / "src/redis-lock.ts"), "old_string": "ttl = 10", "new_string": "ttl = 30"}},
+                {"type": "text", "text": "Fixed in src/redis-lock.ts:12."}]}}]
+            res = evaluate(r.cfg, {"transcript_path": str(r.transcript("small.jsonl", small)), "session_id": "s"})
+            self.assertTrue(res["small"]); self.assertFalse(res["block"], "a one-line fix with a citation is not held: no tests, no reflection demanded")
+            big = [_user("add retries"), {"type": "assistant", "uuid": "b1", "timestamp": "2026-09-22T10:00:00Z", "message": {"role": "assistant", "content": [
+                {"type": "tool_use", "id": "t1", "name": "Write", "input": {"file_path": str(r.root / "src/retry.ts"), "content": "x" * 900}},
+                {"type": "tool_use", "id": "t2", "name": "Bash", "input": {"command": "npm test"}},
+                {"type": "text", "text": "Added src/retry.ts:1."}]}}]
+            res = evaluate(r.cfg, {"transcript_path": str(r.transcript("big.jsonl", big)), "session_id": "s"})
+            self.assertFalse(res["small"]); self.assertTrue(res["block"]); self.assertIn("Record what the team learned", res["reasons"][0])
