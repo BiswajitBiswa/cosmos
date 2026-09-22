@@ -881,20 +881,15 @@ function docs(){
   <tr><td>Instruction files</td><td>the same managed block written to <code>CLAUDE.md</code>, <code>AGENTS.md</code>, <code>GEMINI.md</code>, <code>.cursor/rules/cosmos.mdc</code>, <code>.github/copilot-instructions.md</code>, <code>.clinerules</code>, <code>.windsurfrules</code></td><td>all</td></tr>
   <tr><td>MCP server</td><td><code>cosmos mcp</code> — tools: <code>cosmos_recall</code>, <code>cosmos_remember</code>, <code>cosmos_flare</code>, <code>cosmos_charter</code>, <code>cosmos_why</code>, <code>cosmos_horizon</code>, <code>cosmos_atlas</code>, <code>cosmos_lanes</code>. Configured by <code>cosmos connect</code> in <code>.mcp.json</code>, <code>.cursor/mcp.json</code>, <code>.gemini/settings.json</code>, <code>.vscode/mcp.json</code>; Codex via <code>~/.codex/config.toml</code>; Cowork via Settings → Connectors.</td><td>all MCP clients</td></tr>
   <tr><td>Capture</td><td>Claude Code: hooks, automatic. Codex: <code>cosmos capture --agent codex</code> reads <code>~/.codex/sessions</code> rollouts (exact format). Gemini / Antigravity: best-effort JSON reader. Any agent: <code>cosmos_remember</code> over MCP.</td><td>Claude Code · Codex · Gemini · any via MCP</td></tr></table>
-  <pre>cosmos connect all            # instruction files + MCP configs for every agent
-cosmos connect codex --write-user
-cosmos capture --agent all    # pull facts out of Claude, Codex and Gemini sessions</pre>
+  <pre>cosmos init                   # writes every agent's instruction file and MCP config; nothing else to run
+cosmos connect codex --write-user   # only Codex keeps its MCP config in ~/.codex/config.toml</pre>
+  <p><b>Capture is not a step.</b> Hooks record Claude Code turns; the watcher (started by <code>init</code> and by every session start) follows Claude Code, Codex and Gemini session files on this machine, all worktrees and subagents; the model reads what is new at the next dream, which starts by itself.</p>
   <p><b>Shareable:</b> everything is in <code>.cosmos/</code> and the instruction files — commit and push, and every teammate on every tool has it. <code>cosmos ui --static</code> makes a read-only snapshot page for people outside the repo.</p>`],
  ['link','2 · Link an existing codebase & past sessions',`
-  <p>Most projects already have months of history. Bring it in: initialise, read the old sessions, import the audit, consolidate, draw the architecture, wire every agent, commit on a branch.</p>
+  <p>Most projects already have months of history. <code>cosmos init</code> reads the old sessions (all worktrees, subagents), writes their journal, marks recent history for the model and starts the first dream and the watcher. The rest is the audit, the Charter and a commit.</p>
   <pre>cd &lt;your-repo&gt; &amp;&amp; cosmos init
-cosmos capture --agent claude --transcript &lt;path-to-session&gt;.jsonl -v      <span style="color:var(--dim)"># one session</span>
-cosmos capture --agent all -v                                             <span style="color:var(--dim)"># every Claude, Codex, Gemini session on this repo</span>
-cosmos flares import &lt;findings.json&gt; --prefix &lt;ID-PREFIX&gt; --source &lt;report-name&gt;
-cosmos flares slack --seed-state &lt;legacy .slack-posted.json&gt; --prefix &lt;ID-PREFIX&gt; --status
-cosmos dream &amp;&amp; cosmos review &amp;&amp; cosmos lanes &amp;&amp; cosmos ui
-cosmos atlas          <span style="color:var(--dim)"># then: claude → /atlas</span>
-cosmos connect all
+cosmos flares import &lt;findings.json&gt; --prefix &lt;ID-PREFIX&gt; --source &lt;report-name&gt;   <span style="color:var(--dim)"># only if you have an audit document</span>
+cosmos ui             <span style="color:var(--dim)"># look while the first dream finishes</span>
 cosmos charter edit
 git checkout -b cosmos/init origin/&lt;base-branch&gt;
 git add .cosmos .claude/settings.json .claude/commands .mcp.json CLAUDE.md AGENTS.md GEMINI.md .gitignore
