@@ -1313,6 +1313,9 @@ class TestEvidencePaths(unittest.TestCase):
                 self.assertEqual(resolve_evidence(r.root, "agent_router.py"), "webserver/app/services/agent_router.py", "partial path → unique tree match")
                 self.assertEqual(resolve_evidence(r.root, "frontend-x/src/App.tsx"), "../frontend-x/src/App.tsx", "a sibling repo cited without ../")
                 self.assertEqual(resolve_evidence(r.root, "../frontend-x/src/App.tsx"), "../frontend-x/src/App.tsx")
+                subprocess.run(["git", "init", "-q"], cwd=sib, check=True)
+                self.assertEqual(resolve_evidence(r.root, "src/App.tsx"), "../frontend-x/src/App.tsx", "a path relative to the sibling repo's own root")
+                self.assertEqual(resolve_evidence(r.root, "App.tsx"), "../frontend-x/src/App.tsx", "a bare file name found in the sibling repo")
                 self.assertEqual(resolve_evidence(r.root, "nowhere/at/all.py"), "", "made up → dropped")
             finally:
                 import shutil; shutil.rmtree(sib)

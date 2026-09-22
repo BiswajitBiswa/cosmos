@@ -95,10 +95,34 @@ def resolve_evidence(root, fragment: str) -> str:
     if (parent / frag).exists() and frag.split("/")[0] != Path(root).resolve().name:
         return "../" + frag                       # cited as `frontend/src/x.ts` from the backend repo
     from .transcript import worktrees
-    for wt in worktrees(Path(root)):
+    wts = worktrees(Path(root))
+    for wt in wts:
         if (wt / frag).exists():
             return frag                           # exists on another worktree of this repo
+    # a sibling repository the session also touched, cited relative to *its* root (or as a bare file name)
+    for sib in _sibling_repos(Path(root)):
+        if sib in wts:
+            continue
+        if (sib / frag).exists():
+            return f"../{sib.name}/{frag}"
+        skey = str(sib)
+        if skey not in _INDEX_CACHE:
+            _INDEX_CACHE[skey] = _tree_index(sib)
+        r = resolve_path(frag, _INDEX_CACHE[skey])
+        if r != frag and (sib / r).exists():
+            return f"../{sib.name}/{r}"
     return ""
+
+
+def _sibling_repos(root):
+    """Other git repositories next to this one (the frontend beside the backend, typically), most recently touched first."""
+    from pathlib import Path
+    try:
+        parent = Path(root).resolve().parent
+        sibs = [d for d in parent.iterdir() if d.is_dir() and d != Path(root).resolve() and (d / ".git").exists()]
+        return sorted(sibs, key=lambda d: -d.stat().st_mtime)[:12]
+    except Exception:
+        return []
 
 
 def resolve_path(fragment: str, index: Dict[str, List[str]]) -> str:
