@@ -163,6 +163,25 @@ def cmd_capture(a) -> int:
     return 0
 
 
+def cmd_watch(a) -> int:
+    """Follow every agent's sessions for this repo (all worktrees, subagents; Claude Code, Codex, Gemini) without hooks."""
+    from .watch import run
+    cfg = load_config(); _require(cfg)
+    agents = ["claude", "codex", "gemini"] if a.agent == "all" else [a.agent]
+    if not a.once:
+        print(col("cosmos watch", "B"), f"· {cfg.paths.root.name} · every {a.interval}s · Ctrl-C to stop", flush=True)
+    return run(cfg, interval=a.interval, once=a.once, agents=agents, verbose=True)
+
+
+def cmd_hooks(a) -> int:
+    """Install the Claude Code hooks at user level so every checkout and worktree of every cosmos repo is covered."""
+    from .hooks import install_hooks
+    p = Path.home() / ".claude" / "settings.json"
+    changed = install_hooks(p)
+    print(col("✓", "g"), f"user-level hooks {'installed' if changed else 'already present'} in {p} — they run only where a repo has .cosmos, and exit silently elsewhere")
+    return 0
+
+
 def cmd_mcp(a) -> int:
     from .mcp import serve
     cfg = load_config(); _require(cfg)
@@ -727,6 +746,8 @@ def build_parser() -> argparse.ArgumentParser:
     s = sp.add_parser("capture", help="capture from session logs: Claude Code, Codex, Gemini/Antigravity"); s.add_argument("--transcript"); s.add_argument("--agent", default="all", choices=["all", "claude", "codex", "gemini"]); s.add_argument("-v", "--verbose", action="store_true"); s.add_argument("--rebuild-journal", action="store_true", help="re-read whole transcripts and write the journal for work done before cosmos was installed"); s.add_argument("--days", type=int, default=14, help="when reading whole transcripts, only turns from the last N days are read by the model (default 14)"); s.add_argument("--reread", action="store_true", help="start again from the beginning of every transcript (with --days, the model reads only recent turns)"); s.set_defaults(fn=cmd_capture)
     s = sp.add_parser("mcp", help="run the MCP server (stdio) — one point of contact for every agent"); s.set_defaults(fn=cmd_mcp)
     s = sp.add_parser("connect", help="wire agents to cosmos: instruction files + MCP configs"); s.add_argument("agents", nargs="*", default=["all"], choices=["all", "claude", "codex", "gemini", "cursor", "copilot", "cline", "windsurf"]); s.add_argument("--write-user", action="store_true", help="also write ~/.codex/config.toml"); s.set_defaults(fn=cmd_connect)
+    s = sp.add_parser("watch", help="follow every agent's sessions on this machine (all worktrees, subagents; hooks not required)"); s.add_argument("--interval", type=int, default=30); s.add_argument("--once", action="store_true"); s.add_argument("--agent", choices=["all", "claude", "codex", "gemini"], default="all"); s.set_defaults(fn=cmd_watch)
+    s = sp.add_parser("hooks", help="install the Claude Code hooks at user level (~/.claude/settings.json) so any checkout or worktree is covered"); s.add_argument("--user", action="store_true", help="(default) user level"); s.set_defaults(fn=cmd_hooks)
     s = sp.add_parser("dream", help="consolidate observations into the ledger"); s.add_argument("--llm", action="store_true", help="force LLM refinement"); s.add_argument("--no-llm", action="store_true"); s.add_argument("--auto", action="store_true", help=argparse.SUPPRESS); s.add_argument("--recurate", action="store_true", help="ask the model to re-judge every existing fact against the current bar (keep · rewrite · retire)"); s.set_defaults(fn=cmd_dream)
     for name in ("ui", "ledger"):
         s = sp.add_parser(name, help="open the control room (overview · ledger · flares · dreams · verdicts · activity)"); s.add_argument("--port", type=int, default=7331, help="first port to try (default 7331; the next free one is used if busy)"); s.add_argument("--strict-port", action="store_true", help="fail instead of moving to the next free port"); s.add_argument("--static", action="store_true", help="write a read-only snapshot HTML instead of serving"); s.add_argument("--obsidian", action="store_true"); s.add_argument("--no-open", action="store_true"); s.set_defaults(fn=cmd_ledger)

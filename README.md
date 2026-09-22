@@ -162,6 +162,7 @@ git clone <repo> && claude
 
 | | |
 |---|---|
+| **Watch** | `cosmos watch` is one local process that tails every agent's own session files for this repository, all worktrees and subagents included, captures what is new, shows who is working on what right now in the console, and starts dreams when enough is waiting. It needs no hooks, so it also covers sessions opened before cosmos existed and agents without a hook system. |
 | **Recall at the edit** | The moment the agent opens a file to change it, it sees the open flares, constraints and rules attached to that file, once per file per session. Knowledge arrives at the decision, not in a report afterwards. |
 | **Journal** | What the team did, not only what it learned: one line per agent turn with the ask, the files, the commits and the branch, filed by lane and person under `ledger/journal/`. A session that ships five commits and teaches no new fact is still on record. |
 | **Control room** | `cosmos ui`: overview, ledger, lanes, atlas, charter, horizon, flares, dreams, verdicts, activity, docs. Localhost only; picks a free port. |
@@ -177,7 +178,7 @@ git clone <repo> && claude
 <tr>
 <td width="33%" valign="top"><img src="docs/assets/icon-charter.svg" width="36" alt=""><br><strong>They read the same rules</strong><br>The Charter and the key facts are written to every tool's own instruction file, kept in sync automatically.<br><br><code>CLAUDE.md</code> — Claude Code, Cowork<br><code>AGENTS.md</code> — Codex, Cursor, Copilot CLI, Gemini<br><code>GEMINI.md</code>, <code>.cursor/rules/</code>, <code>.github/copilot-instructions.md</code>, <code>.clinerules</code>, <code>.windsurfrules</code></td>
 <td width="33%" valign="top"><img src="docs/assets/icon-agents.svg" width="36" alt=""><br><strong>They call the same tools</strong><br><code>cosmos mcp</code> is a Model Context Protocol server every one of these agents can connect to. One command writes the configs.<br><br><code>cosmos_recall</code> — facts and findings for the files you are about to touch<br><code>cosmos_remember</code>, <code>cosmos_flare</code> — write back from any tool<br><code>cosmos_charter</code>, <code>cosmos_atlas</code>, <code>cosmos_lanes</code>, <code>cosmos_horizon</code>, <code>cosmos_why</code></td>
-<td width="33%" valign="top"><img src="docs/assets/icon-session.svg" width="36" alt=""><br><strong>They feed the same memory</strong><br>Claude Code captures through hooks. Codex sessions are read from its own logs (exact format). Gemini and Antigravity best-effort. Anything else writes through MCP.<br><br><code>cosmos connect all</code><br><code>cosmos capture --agent all</code><br><code>git push</code> — every teammate on every tool has it</td>
+<td width="33%" valign="top"><img src="docs/assets/icon-session.svg" width="36" alt=""><br><strong>They feed the same memory</strong><br>Claude Code captures through hooks, in every worktree. <code>cosmos watch</code> follows Claude Code, Codex and Gemini session files on the machine whether hooks fired or not, and keeps a live picture of who is doing what. Web and cloud sessions are covered by the committed hooks and MCP tools. Anything else writes through MCP.<br><br><code>cosmos connect all</code><br><code>cosmos watch</code> · <code>cosmos hooks --user</code><br><code>git push</code> — every teammate on every tool has it</td>
 </tr>
 </table>
 

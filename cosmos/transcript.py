@@ -19,6 +19,7 @@ class Turn:
     timestamp: str = ""
     uuid: str = ""
     branch: str = ""              # git branch the agent was on (Claude Code records it per entry)
+    cwd: str = ""                 # working directory recorded on the entry
     offset: int = 0                 # byte offset just after this entry in the transcript file
 
 
@@ -70,7 +71,7 @@ def iter_turns(path: Path, offset: int = 0, sidechain: bool = False, until: Opti
                 continue
             msg = o.get("message") or {}
             content = msg.get("content")
-            turn = Turn(role=t, text=_text_of(content), timestamp=o.get("timestamp", ""), uuid=o.get("uuid", ""), branch=str(o.get("gitBranch") or ""))
+            turn = Turn(role=t, text=_text_of(content), timestamp=o.get("timestamp", ""), uuid=o.get("uuid", ""), branch=str(o.get("gitBranch") or ""), cwd=str(o.get("cwd") or ""))
             if isinstance(content, list):
                 for b in content:
                     if not isinstance(b, dict) or b.get("type") != "tool_use":
@@ -89,16 +90,40 @@ def iter_turns(path: Path, offset: int = 0, sidechain: bool = False, until: Opti
     return turns, offset
 
 
+_WORKTREES: dict = {}
+
+
+def worktrees(root: Path) -> List[Path]:
+    """Every checkout of this repository (git worktrees), main one first. Cached per process."""
+    key = str(root)
+    if key in _WORKTREES:
+        return _WORKTREES[key]
+    out: List[Path] = [root.resolve()]
+    try:
+        import subprocess
+        res = subprocess.run(["git", "worktree", "list", "--porcelain"], cwd=root, capture_output=True, text=True, timeout=3)
+        for line in res.stdout.splitlines():
+            if line.startswith("worktree "):
+                p = Path(line[9:].strip()).resolve()
+                if p not in out:
+                    out.append(p)
+    except Exception:
+        pass
+    _WORKTREES[key] = out
+    return out
+
+
 def relativize(path: str, root: Path) -> str:
-    """Inside the repo → repo-relative. Outside (a sibling repo the session also touched) → ../<sibling>/… so it stays
-    readable and never leaks the machine's home directory into the ledger."""
+    """Inside the repo (any of its worktrees) → repo-relative. Outside (a sibling repo the session also touched) →
+    ../<sibling>/… so it stays readable and never leaks the machine's home directory into the ledger."""
     try:
         p = Path(path).resolve()
         r = root.resolve()
-        try:
-            return str(p.relative_to(r))
-        except ValueError:
-            pass
+        for base in worktrees(root):
+            try:
+                return str(p.relative_to(base))
+            except ValueError:
+                continue
         try:
             return "../" + str(p.relative_to(r.parent))
         except ValueError:

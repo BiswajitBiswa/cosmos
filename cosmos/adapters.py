@@ -197,11 +197,14 @@ AGENTS = {
 
 def find_claude_sessions(root: Path) -> List[Tuple[Path, str]]:
     """Every Claude Code transcript for this repo: main sessions and their subagents. Returns (path, session_id)."""
-    d = Path.home() / ".claude" / "projects" / str(root.resolve()).replace("/", "-")
-    if not d.exists():
-        return []
-    out = [(p, p.stem) for p in sorted(d.glob("*.jsonl"))]
-    out += [(p, f"{p.parent.parent.name}/{p.stem}") for p in sorted(d.glob("*/subagents/*.jsonl"))]
+    from .transcript import worktrees
+    out: List[Tuple[Path, str]] = []
+    for base in worktrees(root):
+        d = Path.home() / ".claude" / "projects" / str(base).replace("/", "-")
+        if not d.exists():
+            continue
+        out += [(p, p.stem) for p in sorted(d.glob("*.jsonl"))]
+        out += [(p, f"{p.parent.parent.name}/{p.stem}") for p in sorted(d.glob("*/subagents/*.jsonl"))]
     return out
 
 

@@ -1083,3 +1083,52 @@ class TestDecisionTime(unittest.TestCase):
             fact = next(m for m in mems.values() if "is_reminder" in m.text); rule = next(m for m in mems.values() if "erase" in m.text)
             self.assertEqual((fact.source, fact.lane, fact.importance < 0.9), ("agent", "reminders", True))
             self.assertEqual((rule.source, rule.importance), ("explicit", 0.95))
+
+
+class TestWorktreesAndWatch(unittest.TestCase):
+    def test_files_in_a_worktree_are_repo_relative(self):
+        from cosmos import transcript
+        with Repo() as r:
+            subprocess.run(["git", "add", "-A"], cwd=r.root, check=True)
+            subprocess.run(["git", "-c", "user.email=t@t", "-c", "user.name=t", "commit", "-q", "-m", "init"], cwd=r.root, check=True)
+            wt = r.root.parent / (r.root.name + "-fix")
+            subprocess.run(["git", "worktree", "add", "-q", str(wt), "-b", "fix"], cwd=r.root, check=True)
+            try:
+                transcript._WORKTREES.clear()
+                self.assertEqual(transcript.relativize(str(wt / "src" / "redis-lock.ts"), r.root), "src/redis-lock.ts", "a worktree is the same repo")
+                self.assertTrue(transcript.relativize(str(r.root.parent / "other-repo" / "a.py"), r.root).startswith("../other-repo/"), "a sibling repo stays a sibling")
+            finally:
+                subprocess.run(["git", "worktree", "remove", "--force", str(wt)], cwd=r.root, check=True)
+                transcript._WORKTREES.clear()
+
+    def test_hook_command_falls_back_to_the_main_worktree(self):
+        from cosmos.wrapper import HOOK_CMD
+        self.assertIn("--git-common-dir", HOOK_CMD)
+        self.assertTrue(HOOK_CMD.endswith("exit 0"), "never breaks a session where cosmos is absent")
+
+    def test_watch_once_builds_the_live_picture(self):
+        from cosmos.watch import load_live, tick
+        with Repo() as r, tempfile.TemporaryDirectory() as home:
+            proj = Path(home) / ".claude" / "projects" / str(r.root.resolve()).replace("/", "-")
+            proj.mkdir(parents=True)
+            rows = [dict(_user("fix the lock TTL"), gitBranch="fix/ttl", cwd=str(r.root)), _asst("Done.", files=[str(r.root / "src" / "redis-lock.ts")]),
+                    {"type": "assistant", "uuid": "b1", "timestamp": "2026-09-22T10:00:03Z", "message": {"role": "assistant", "content": [{"type": "tool_use", "id": "t", "name": "Bash", "input": {"command": 'git commit -m "fix(lock): raise TTL"'}}]}}]
+            for x in rows:
+                x["timestamp"] = datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ")
+            (proj / "live1.jsonl").write_text("\n".join(json.dumps(x) for x in rows) + "\n")
+            old = os.environ.get("HOME"); os.environ["HOME"] = home
+            try:
+                res = tick(r.cfg, ["claude"])
+            finally:
+                os.environ["HOME"] = old
+            self.assertEqual(res["sessions"], 1)
+            live = load_live(r.cfg)
+            s = live["live1"]
+            self.assertEqual((s["agent"], s["branch"], s["ask"], s["files"], s["commits"]), ("claude", "fix/ttl", "fix the lock TTL", ["src/redis-lock.ts"], ["fix(lock): raise TTL"]))
+            J = [o for o in Observations(r.cfg.paths).iter_all() if o.get("kind") == "journal"]
+            self.assertEqual(len(J), 1, "the watcher captures like a hook would")
+            os.environ["HOME"] = home
+            try:
+                self.assertEqual(tick(r.cfg, ["claude"])["captured"], 0, "nothing new on the second pass")
+            finally:
+                os.environ["HOME"] = old

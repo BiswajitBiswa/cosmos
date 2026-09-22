@@ -27,6 +27,11 @@ def _mem(m: Memory) -> Dict[str, Any]:
             "contradicts": m.contradicts, "related": m.related, "reason": m.reason, "meta": m.meta, "details": m.details}
 
 
+def _live(cfg: Config) -> List[Dict[str, Any]]:
+    from .watch import load_live
+    return sorted(load_live(cfg).values(), key=lambda s: s.get("last", ""), reverse=True)
+
+
 def snapshot(cfg: Config) -> Dict[str, Any]:
     mems = Ledger(cfg.paths).load()
     state = State(cfg.paths)
@@ -64,7 +69,7 @@ def snapshot(cfg: Config) -> Dict[str, Any]:
         "version": __version__, "repo": cfg.paths.root.name, "root": str(cfg.paths.root), "head": git_head(cfg.paths.root), "author": git_author(cfg.paths.root),
         "memories": [_mem(m) for m in mems.values()],
         "observations": sorted(obs, key=lambda o: o.get("ts", ""), reverse=True)[:300],
-        "pending_observations": len(pending), "windows_waiting": len(state.data.get("windows", [])), "dreams": runs, "hooklog": log, "hooks": hooks,
+        "pending_observations": len(pending), "windows_waiting": len(state.data.get("windows", [])), "live": _live(cfg), "dreams": runs, "hooklog": log, "hooks": hooks,
         "sessions": len(state.data.get("sessions", {})), "agents": sorted({o.get("agent", "claude") for o in obs}),
         "health": {"total": len(mems), "active": len(active), "with_evidence": int(100 * sum(1 for m in active if m.files) / max(1, len(active))),
                    "fresh90": int(100 * fresh / max(1, len(active))), "contradicted": sum(1 for m in mems.values() if m.status == "contradicted"),
@@ -815,6 +820,7 @@ function activity(){
   ${stat(J.length,'journal entries','what was done, per turn',J.length?'':'')}
   ${stat(commits,'commits recorded','from the journal')}
   ${stat(F.length,'observations','candidate facts from sessions')}
+  ${stat((S.live||[]).length,'live now','sessions active in the last hour',(S.live||[]).length?'':'')}
   ${stat(S.windows_waiting||0,'session ranges for the model','read at the next dream',S.windows_waiting?'warn':'')}
   ${stat(S.pending_observations,'waiting for a dream',S.pending_observations?'press Run dream':'all consolidated',S.pending_observations?'warn':'')}
   ${stat(S.sessions,'sessions','read so far')}
@@ -824,7 +830,9 @@ function activity(){
  ${stepper([{icon:'session',title:'Session',desc:'someone works with their agent',value:S.sessions,unit:'sessions',lit:S.sessions},{icon:'hook',title:'Hooks fire',desc:'Stop · PreCompact · SessionEnd',value:S.hooks.length,unit:'armed',lit:S.hooks.length},{icon:'gather',title:'Marked for reading',desc:'hooks mark the session range and write the journal; explicit rules are kept at once',value:F.length,unit:'captured',lit:F.length},{icon:'curate',title:'Next dream',desc:'the model reads the marked ranges and your Claude Code notes, keeps what the team should know',value:S.pending_observations,unit:'waiting',lit:S.pending_observations,llm:true}],{compact:true,title:'How activity becomes memory'})}
  <div class="grid g2" style="margin-top:26px;align-items:start">
   <div>
-   <h3 class="sec">Journal</h3>
+   ${(S.live||[]).length?`<h3 class="sec">Live now</h3><div class="small dim" style="margin:-6px 0 14px">Who is doing what on this machine, from the agents' own session files (<code>cosmos watch</code>). Sessions go quiet after an hour.</div>
+   ${S.live.map(s=>`<div class="ev"><span class="small dim">${esc(s.agent)}<br>${esc((s.last||'').slice(11,16))}Z</span><span>${s.ask?`<div>${esc(s.ask)}</div>`:''}<div class="small" style="margin-top:3px">${s.branch?`<code>${esc(s.branch)}</code> `:''}${(s.commits||[]).slice(-2).map(c=>'<code>'+esc(c)+'</code>').join(' ')}${(s.files||[]).length?` <span class="dim">· ${s.files.length} file${s.files.length===1?'':'s'} · <code>${esc(s.files[s.files.length-1])}</code></span>`:''}</div></span></div>`).join('')}`:''}
+   <h3 class="sec" style="margin-top:${(S.live||[]).length?'28px':'0'}">Journal</h3>
    <div class="small dim" style="margin:-6px 0 14px">One line per agent turn: what was asked, what was edited, which commits landed. Kept in <code>.cosmos/ledger/journal/</code> after each dream.</div>
    ${jDays.length?jDays.slice(0,14).map(d=>`<div class="day"><div class="dayhead"><span>${d}</span><span class="dim">${jDay[d].length}</span></div>${jDay[d].filter(o=>jq.includes(o)).map(jRow).join('')}</div>`).join(''):'<div class="empty">No journal yet — it starts with the next agent turn.</div>'}
    <h3 class="sec" style="margin-top:28px">What was captured</h3>

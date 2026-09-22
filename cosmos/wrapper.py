@@ -9,7 +9,8 @@ from __future__ import annotations
 import shutil
 from pathlib import Path
 
-HOOK_CMD = 'd="${CLAUDE_PROJECT_DIR:-.}"; [ -f "$d/.cosmos/cosmosw" ] && exec python3 "$d/.cosmos/cosmosw" hook; exit 0'
+HOOK_CMD = ('d="${CLAUDE_PROJECT_DIR:-.}"; [ -f "$d/.cosmos/cosmosw" ] || d="$(dirname "$(git -C "$d" rev-parse --path-format=absolute '
+            '--git-common-dir 2>/dev/null)")"; [ -f "$d/.cosmos/cosmosw" ] && exec python3 "$d/.cosmos/cosmosw" hook; exit 0')
 
 WRAPPER = '''#!/usr/bin/env python3
 """cosmosw - runs cosmos without requiring an install (see .cosmos/vendor). Committed on purpose."""
