@@ -198,6 +198,19 @@ def cmd_capture(a) -> int:
     return 0
 
 
+def cmd_eval(a) -> int:
+    """Recall eval over the ledger: would the right fact reach an agent? Prints recall@k and the misses."""
+    from .eval import run
+    cfg = load_config(); _require(cfg)
+    r = run(cfg, k=a.k)
+    if not r["cases"]:
+        print(col("·", "d"), "no facts with evidence yet — nothing to measure"); return 0
+    print(col("recall@%d" % r["k"], "B"), f"{r['recall_at_k']:.3f} over {r['cases']} cases · by file {r['by_kind']['file']} · by question {r['by_kind']['question']}")
+    for mid, q in r["misses"][:a.show]:
+        print(col("  miss", "y"), f"{mid} ← {q[:100]}")
+    return 0
+
+
 def cmd_sync(a) -> int:
     """Commit and publish the ledger branch (normally done for you by dreams and the watcher)."""
     from . import sync as _sync
@@ -398,6 +411,7 @@ def cmd_why(a) -> int:
     print(f"  category    {m.category}      status {m.status}      source {m.source}")
     print(f"  confidence  {int(m.confidence*100)}%   ({m.evidence_count} observation{'s' if m.evidence_count!=1 else ''})")
     print(f"  timeline    created {m.created} · updated {m.updated} · verified {m.last_verified}")
+    print(f"  valid       {m.valid_from or m.created} → {m.valid_to or 'now'}" + (f"   (superseded by {m.superseded_by})" if m.superseded_by else ""))
     for f in m.files:
         print(f"  evidence    {f}")
     if m.authors:
@@ -499,6 +513,22 @@ def cmd_doctor(a) -> int:
             line(bool(r), f"LLM: {prov.name}" + ("" if r else " (no reply)"))
         except Exception as e:
             line(False, f"LLM: {prov.name} configured but failing — {str(e)[:120]}")
+    try:
+        from .charter import check as charter_check
+        bad = charter_check(cfg)
+        line(not bad, "charter is grounded: every path it names exists" if not bad else f"charter names {len(bad)} path(s) that do not exist: " + ", ".join(bad[:4]))
+        from .hooks import session_start
+        start = session_start(cfg)
+        print(col("  ·", "d"), f"a session start injects ≈{max(1, len(start) // 4)} tokens (charter summary, top facts, handoff, atlas status)")
+        il = cfg.paths.state / "inject.log"
+        if il.exists():
+            import datetime as _dt
+            today_ = _dt.date.today().isoformat()
+            rows = [l.split() for l in il.read_text().splitlines() if l.startswith(today_)]
+            if rows:
+                print(col("  ·", "d"), f"today: {len(rows)} injections, ≈{sum(int(r[2]) for r in rows if len(r) > 2)} tokens")
+    except Exception:
+        pass
     if cfg.paths.log.exists():
         tail = cfg.paths.log.read_text().splitlines()[-3:]
         print(col("  last hook log lines:", "d"))
@@ -796,6 +826,7 @@ def build_parser() -> argparse.ArgumentParser:
     s = sp.add_parser("capture", help="capture from session logs: Claude Code, Codex, Gemini/Antigravity"); s.add_argument("--transcript"); s.add_argument("--agent", default="all", choices=["all", "claude", "codex", "gemini"]); s.add_argument("-v", "--verbose", action="store_true"); s.add_argument("--rebuild-journal", action="store_true", help="re-read whole transcripts and write the journal for work done before cosmos was installed"); s.add_argument("--days", type=int, default=14, help="when reading whole transcripts, only turns from the last N days are read by the model (default 14)"); s.add_argument("--reread", action="store_true", help="start again from the beginning of every transcript (with --days, the model reads only recent turns)"); s.set_defaults(fn=cmd_capture)
     s = sp.add_parser("mcp", help="run the MCP server (stdio) — one point of contact for every agent"); s.set_defaults(fn=cmd_mcp)
     s = sp.add_parser("connect", help="wire agents to cosmos: instruction files + MCP configs"); s.add_argument("agents", nargs="*", default=["all"], choices=["all", "claude", "codex", "gemini", "cursor", "copilot", "cline", "windsurf"]); s.add_argument("--write-user", action="store_true", help="also write ~/.codex/config.toml"); s.set_defaults(fn=cmd_connect)
+    s = sp.add_parser("eval", help="recall eval: does the right fact reach the agent? recall@k over the ledger"); s.add_argument("-k", type=int, default=5); s.add_argument("--show", type=int, default=10); s.set_defaults(fn=cmd_eval)
     s = sp.add_parser("sync", help="commit and push the cosmos branch (dreams and the watcher do this for you)"); s.add_argument("--push", action="store_true"); s.add_argument("-m", "--message"); s.set_defaults(fn=cmd_sync)
     s = sp.add_parser("watch", help="follow every agent's sessions on this machine (all worktrees, subagents; hooks not required)"); s.add_argument("--interval", type=int, default=30); s.add_argument("--once", action="store_true"); s.add_argument("--agent", choices=["all", "claude", "codex", "gemini"], default="all"); s.add_argument("--daemon", action="store_true", help=argparse.SUPPRESS); s.add_argument("--idle", type=int, default=120, help=argparse.SUPPRESS); s.set_defaults(fn=cmd_watch)
     s = sp.add_parser("hooks", help="install the Claude Code hooks at user level (~/.claude/settings.json) so any checkout or worktree is covered"); s.add_argument("--user", action="store_true", help="(default) user level"); s.set_defaults(fn=cmd_hooks)

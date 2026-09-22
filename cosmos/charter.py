@@ -107,6 +107,21 @@ def summary(cfg: Config, mems: Dict[str, Memory], max_lines: int = 28) -> str:
     return "\n".join(lines)
 
 
+def check(cfg: Config) -> List[str]:
+    """Paths the Charter names that do not exist (in any worktree): a Charter, like a fact, must be grounded."""
+    from .lanes import resolve_evidence
+    body_ = body(cfg)
+    bad: List[str] = []
+    for tok in re.findall(r"`([^`\n]{3,120})`", body_):
+        t = re.sub(r":\d+(-\d+)?$", "", tok.strip())          # `file.py:123` → `file.py`
+        if "path/to" in t or "file.ext" in t or "…" in t or "<" in t or t.startswith("*"):
+            continue                                        # a placeholder, not a path
+        looks_like_path = ("/" in t or re.search(r"\.(py|ts|tsx|js|md|json|ya?ml|toml|sql|sh|kt|java|go|rs)$", t)) and " " not in t and not t.startswith(("http", "<", "cosmos", "-"))
+        if looks_like_path and t.rstrip("/") not in (".cosmos", ".cosmos/charter.md") and not resolve_evidence(cfg.paths.root, t):
+            bad.append(t)
+    return bad
+
+
 def add_section_rule(cfg: Config, text: str, section: str = "Architecture rules") -> Path:
     p = ensure(cfg)
     txt = p.read_text()

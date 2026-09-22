@@ -27,6 +27,16 @@ def _log(cfg: Config, msg: str) -> None:
         pass
 
 
+def _log_inject(cfg: Config, event: str, text: str) -> None:
+    """Context handed to an agent, measured: what cosmos costs a session in tokens is a number, not a feeling."""
+    try:
+        cfg.paths.state.mkdir(parents=True, exist_ok=True)
+        with (cfg.paths.state / "inject.log").open("a") as fh:
+            fh.write(f"{now_iso()} {event} {max(1, len(text) // 4)} {text.count(chr(10) + '- ')}\n")
+    except Exception:
+        pass
+
+
 def _session_tag(session_id: str) -> str:
     return hashlib.sha1(session_id.encode()).hexdigest()[:8] if session_id else ""
 
@@ -211,6 +221,10 @@ def session_start(cfg: Config) -> str:
     facts = format_for_agent(top(mems, k), "Cosmos · LEDGER (highest-signal team facts, grouped by lane in .cosmos/ledger/_index.md):")
     if facts:
         parts.append(facts)
+    from .handoff import latest as latest_handoff
+    h = latest_handoff(cfg)
+    if h:
+        parts.append(h)
     at = check(cfg)
     if at.get("exists"):
         drift = f" ⚠ {len(at['drift'])+len(at['missing'])} source file(s) changed since — run `cosmos atlas`" if (at["drift"] or at["missing"]) else ""
@@ -346,6 +360,7 @@ def handle(stdin_text: str) -> int:
             out = session_start(cfg)
             if out:
                 print(out)
+                _log_inject(cfg, name, out)
             auto_refresh(cfg)
             if ensure_watcher(cfg):
                 _log(cfg, "watcher started")
@@ -353,14 +368,19 @@ def handle(stdin_text: str) -> int:
             out = prompt_context(cfg, event)
             if out:
                 print(out)
+                _log_inject(cfg, name, out)
         elif name == "PreToolUse":
             out = file_context(cfg, event)
             if out:
                 print(json.dumps({"hookSpecificOutput": {"hookEventName": "PreToolUse", "additionalContext": out}}))
+                _log_inject(cfg, name, out)
         elif name in ("Stop", "SessionEnd", "PreCompact", "PostToolUse", "SubagentStop"):
             n = capture(cfg, event)
             if n:
                 _log(cfg, f"{name}: captured {n} observation(s)")
+            if name == "Stop" and event.get("last_assistant_message"):
+                from .handoff import record_auto
+                record_auto(cfg, str(event.get("last_assistant_message")), event)
             if name in ("Stop", "SessionEnd") and event.get("hook_event_name") != "manual":
                 pend = pending_count(cfg)
                 if should_auto_dream(cfg, pend) and auto_dream(cfg):

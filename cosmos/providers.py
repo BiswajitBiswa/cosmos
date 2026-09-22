@@ -48,7 +48,8 @@ CURATE_SCHEMA: Dict[str, Any] = {
         "text": {"type": "string", "description": "the fact rewritten crisply in third person, absolute dates, no narration"},
         "category": {"type": "string", "enum": ["architecture", "decision", "convention", "constraint", "bug", "dependency", "workflow", "domain", "rejected"]},
         "lane": {"type": "string", "description": "feature / module a product manager would recognise, kebab-case; reuse an existing lane when one fits"},
-        "importance": {"type": "number"}, "why_dropped": {"type": "string"}},
+        "importance": {"type": "number"}, "why_dropped": {"type": "string"},
+        "question": {"type": "string", "description": "one question a new developer would ask that this fact answers"}},
         "required": ["id", "keep"], "additionalProperties": False}}},
     "required": ["items"], "additionalProperties": False}
 
@@ -59,7 +60,7 @@ CURATE_SYSTEM = (
     "session, one-off task status, speculation, questions, generic advice, anything about the AI tool itself, and anything that "
     "reads like pasted documentation or prompt text; also DROP what the agent was told to do or not do in one particular task, what the agent did or declined to do, and open questions - those are session history, not team knowledge. For kept items: rewrite crisply (third person, absolute dates - today is {today}), "
     "assign the category, and assign a LANE = the feature or module a product manager would recognise (e.g. billing, auth, "
-    "universe-import, payments). Prefer the existing lanes given; propose a new one only when nothing fits. Never invent facts. Candidates starting with 'Work done:' are journal lines (what was asked, files edited, commit messages): keep one only when a commit message or the ask states a durable decision or constraint, rewritten as that fact; otherwise drop it."
+    "universe-import, payments). Prefer the existing lanes given; propose a new one only when nothing fits. For each kept item also write `question`: the one question a new developer would ask that this fact answers, in their words. Never invent facts. Candidates starting with 'Review comment on PR' are code-review remarks: keep one only when it states a durable expectation (a rule, a constraint, a recurring mistake) and rewrite it as that rule, category convention or constraint; drop praise, nits and one-off requests. Candidates starting with 'Commit note by' are commit messages: keep one only when it records a decision with its reason or a constraint. Candidates starting with 'Work done:' are journal lines (what was asked, files edited, commit messages): keep one only when a commit message or the ask states a durable decision or constraint, rewritten as that fact; otherwise drop it."
 )
 
 READ_SCHEMA: Dict[str, Any] = {

@@ -62,7 +62,41 @@ def snapshot(cfg: Config) -> Dict[str, Any]:
             f = atlas_dir / f"{name}.md"
             if f.exists():
                 atlas_docs[name] = f.read_text()
+    inject = {"today_tokens": 0, "today_count": 0, "by_event": {}}
+    il = cfg.paths.state / "inject.log"
+    if il.exists():
+        for l in il.read_text().splitlines()[-2000:]:
+            parts = l.split()
+            if len(parts) >= 3 and parts[0].startswith(date.today().isoformat()):
+                try:
+                    inject["today_tokens"] += int(parts[2]); inject["today_count"] += 1
+                    inject["by_event"][parts[1]] = inject["by_event"].get(parts[1], 0) + int(parts[2])
+                except ValueError:
+                    pass
+    team: Dict[str, Dict[str, Any]] = {}
+    jdir = cfg.paths.ledger / "journal"
+    if jdir.exists():
+        import re as _re
+        for p in sorted(jdir.glob("*.md"), reverse=True)[:14]:
+            day = p.stem
+            for line in p.read_text().splitlines():
+                m_ = _re.match(r"- \*\*(\d\d:\d\d)\*\* (.+?) · \*([^*]+)\*(?: · `([^`]*)`)? — (.*)", line)
+                if not m_:
+                    continue
+                who, lane, branch, rest = m_.group(2), m_.group(3), m_.group(4) or "", m_.group(5)
+                t = team.setdefault(who, {"name": who, "entries": 0, "commits": 0, "lanes": {}, "branches": {}, "last": day})
+                t["entries"] += 1; t["commits"] += rest.count('commit')
+                t["lanes"][lane] = t["lanes"].get(lane, 0) + 1
+                if branch:
+                    t["branches"][branch] = t["branches"].get(branch, 0) + 1
+                t["last"] = max(t["last"], day)
+    team_rows = sorted(team.values(), key=lambda t: (-t["entries"], t["name"]))
+    for t in team_rows:
+        t["lanes"] = [k for k, _ in sorted(t["lanes"].items(), key=lambda kv: -kv[1])[:4]]
+        t["branches"] = [k for k, _ in sorted(t["branches"].items(), key=lambda kv: -kv[1])[:3]]
     return {
+        "team": team_rows,
+        "inject": inject,
         "lanes": lane_report(cfg, mems, obs), "atlas": {"check": atlas_check(cfg), "docs": atlas_docs},
         "charter": {"body": charter_body(cfg), "rules": [_mem(m) for m in charter_rules(mems)], "gate": gate_config(cfg)},
         "intakes": list_intakes(cfg),
@@ -839,6 +873,7 @@ function activity(){
   ${stat(commits,'commits recorded','from the journal')}
   ${stat(F.length,'observations','candidate facts from sessions')}
   ${stat((S.live||[]).length,'live now','sessions active in the last hour',(S.live||[]).length?'':'')}
+  ${stat((S.inject&&S.inject.today_tokens)||0,'tokens injected today',S.inject&&S.inject.today_count?`${S.inject.today_count} injections · `+Object.entries(S.inject.by_event).map(([k,v])=>k.replace('UserPromptSubmit','prompt').replace('SessionStart','start').replace('PreToolUse','edit')+' '+v).join(' · '):'what cosmos costs a session')}
   ${stat(S.windows_waiting||0,'session ranges for the model','read at the next dream',S.windows_waiting?'warn':'')}
   ${stat(S.pending_observations,'waiting for a dream',S.pending_observations?'press Run dream':'all consolidated',S.pending_observations?'warn':'')}
   ${stat(S.sessions,'sessions','read so far')}
@@ -848,7 +883,9 @@ function activity(){
  ${stepper([{icon:'session',title:'Session',desc:'someone works with their agent',value:S.sessions,unit:'sessions',lit:S.sessions},{icon:'hook',title:'Hooks fire',desc:'Stop · PreCompact · SessionEnd',value:S.hooks.length,unit:'armed',lit:S.hooks.length},{icon:'gather',title:'Marked for reading',desc:'hooks mark the session range and write the journal; explicit rules are kept at once',value:F.length,unit:'captured',lit:F.length},{icon:'curate',title:'Next dream',desc:'the model reads the marked ranges and your Claude Code notes, keeps what the team should know',value:S.pending_observations,unit:'waiting',lit:S.pending_observations,llm:true}],{compact:true,title:'How activity becomes memory'})}
  <div class="grid g2" style="margin-top:26px;align-items:start">
   <div>
-   ${(S.live||[]).length?`<h3 class="sec">Live now</h3><div class="small dim" style="margin:-6px 0 14px">Who is doing what on this machine, from the agents' own session files (<code>cosmos watch</code>). Sessions go quiet after an hour.</div>
+   ${(S.team||[]).length?`<h3 class="sec">Team · last 14 days</h3><div class="small dim" style="margin:-6px 0 14px">From the journal: agent sessions and git history, whoever wrote the commits. Overlap shows where two people share a lane.</div>
+   <div class="lanelist">${S.team.slice(0,12).map(t=>`<div class="lanerow"><span class="ln"><b>${esc(t.name)}</b></span><span class="small">${t.entries} turns · ${t.commits} commits · last ${esc(t.last)}</span><span class="small dim">${t.lanes.map(l=>'<code>'+esc(l)+'</code>').join(' ')}${t.branches.length?' · '+t.branches.map(b=>esc(b)).join(', '):''}</span></div>`).join('')}</div>`:''}
+   ${(S.live||[]).length?`<h3 class="sec" style="margin-top:${(S.team||[]).length?'28px':'0'}">Live now</h3><div class="small dim" style="margin:-6px 0 14px">Who is doing what on this machine, from the agents' own session files (<code>cosmos watch</code>). Sessions go quiet after an hour.</div>
    ${S.live.map(s=>`<div class="ev"><span class="small dim">${esc(s.agent)}<br>${esc((s.last||'').slice(11,16))}Z</span><span>${s.ask?`<div>${esc(s.ask)}</div>`:''}<div class="small" style="margin-top:3px">${s.branch?`<code>${esc(s.branch)}</code> `:''}${(s.commits||[]).slice(-2).map(c=>'<code>'+esc(c)+'</code>').join(' ')}${(s.files||[]).length?` <span class="dim">· ${s.files.length} file${s.files.length===1?'':'s'} · <code>${esc(s.files[s.files.length-1])}</code></span>`:''}</div></span></div>`).join('')}`:''}
    <h3 class="sec" style="margin-top:${(S.live||[]).length?'28px':'0'}">Journal</h3>
    <div class="small dim" style="margin:-6px 0 14px">One line per agent turn: what was asked, what was edited, which commits landed. Kept in <code>.cosmos/ledger/journal/</code> after each dream.</div>

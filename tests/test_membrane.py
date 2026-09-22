@@ -530,6 +530,51 @@ class TestLanesCharterGateIntakeAtlas(unittest.TestCase):
             self.assertEqual(check(r.cfg)["drift"], ["docker-compose.yml"])
             self.assertEqual(parse_yaml_subset("a:\n  b: [x, y]\n  c:\n    - 1\n    - 2\n"), {"a": {"b": ["x", "y"], "c": ["1", "2"]}})
 
+    def test_atlas_reads_unindented_sequences_nested_manifests_and_dedupes_nodes(self):
+        """A compose file written the way docker writes it must not blank the Atlas.
+
+        parse_yaml_subset cannot read a sequence at the same indent as its key, and the
+        caller used to swallow the resulting AttributeError, so every service silently
+        vanished and containers.md rendered as an empty flowchart.
+        """
+        from cosmos.atlas import build, load_yaml
+        unindented = ("services:\n"
+                      "  api:\n"
+                      "    image: api:1\n"
+                      "    ports:\n"
+                      "    - \"8000:8000\"\n"
+                      "    volumes:\n"
+                      "    - api_data:/var/lib/api\n"
+                      "    depends_on:\n"
+                      "    - db\n"
+                      "  db:\n"
+                      "    image: postgres:16\n"
+                      "    volumes:\n"
+                      "    - pg_data:/var/lib/postgresql/data\n")
+        self.assertEqual(sorted(load_yaml(unindented, "t.yml")["services"]), ["api", "db"])
+
+        with Repo() as r:
+            (r.root / "docker-compose.yml").write_text(unindented)
+            # same services declared again, as a local override
+            (r.root / "docker-compose.local.yml").write_text(unindented)
+            (r.root / "svc").mkdir()
+            (r.root / "svc" / "requirements.txt").write_text("fastapi\nuvicorn\n")
+            inv = build(r.cfg)
+
+            self.assertEqual({s["name"] for s in inv["services"]}, {"api"})
+            self.assertEqual({s["name"] for s in inv["stores"]}, {"db"})
+            self.assertEqual(inv["services"][0]["depends_on"], ["db"])
+            # a manifest below the repo root is an app
+            self.assertIn("svc", [a["name"] for a in inv["apps"]])
+
+            diagram = (r.cfg.paths.ledger / "atlas" / "containers.md").read_text()
+            self.assertEqual(diagram.count("api --> db"), 1, "edge duplicated per compose file")
+            self.assertEqual(diagram.count('api["api'), 1, "node duplicated per compose file")
+            # both compose files still surface in the table, so the overlap stays visible
+            table = (r.cfg.paths.ledger / "atlas" / "inventory.md").read_text()
+            self.assertIn("docker-compose.local.yml", table)
+            self.assertIn("docker-compose.yml", table)
+
 
 class TestMultiAgent(unittest.TestCase):
     def test_codex_adapter_reads_real_rollout_shape(self):
@@ -1331,3 +1376,90 @@ class TestEvidencePaths(unittest.TestCase):
             rep = dream(r.cfg, use_llm=False)
             got = Ledger(r.cfg.paths).load()["mem_p1"]
             self.assertEqual((got.status, got.files), ("active", ["webserver/agent_router.py"]))
+
+
+class TestDisclosureHandoffValidity(unittest.TestCase):
+    def test_recall_is_compact_and_points_to_the_full_note(self):
+        from cosmos.retrieve import format_for_agent, brief
+        m = Memory(id="mem_abc12345", text="The universe erase flow treats an empty s3_key as 'nothing to delete' and skips the S3 call entirely, which is why re-running erase on a half-imported universe is safe " * 2, category="constraint", lane="universe-import", files=["a/b.py"])
+        out = format_for_agent([m], "H")
+        line = out.splitlines()[1]
+        self.assertLess(len(line), 260); self.assertIn("mem_abc12345", line); self.assertIn("universe-import", line); self.assertTrue(line.count("…") == 1)
+        self.assertIn("cosmos_why", out)
+        self.assertEqual(brief("short fact"), "short fact")
+
+    def test_final_message_becomes_the_branch_handoff_and_opens_the_next_session(self):
+        from cosmos.handoff import record_auto, latest, record_explicit
+        with Repo() as r:
+            subprocess.run(["git", "add", "-A"], cwd=r.root, check=True)
+            subprocess.run(["git", "-c", "user.email=t@t", "-c", "user.name=t", "commit", "-q", "-m", "init"], cwd=r.root, check=True)
+            subprocess.run(["git", "checkout", "-q", "-b", "feat/locks"], cwd=r.root, check=True)
+            self.assertIsNone(record_auto(r.cfg, "ok", {"cwd": str(r.root)}), "too short to be a summary")
+            p = record_auto(r.cfg, "Changed the lock TTL to 30s in src/redis-lock.ts:12 and added a regression test; the flaky timeout test still needs a look tomorrow.", {"cwd": str(r.root)})
+            self.assertTrue(p and p.name == "feat-locks.md")
+            out = latest(r.cfg)
+            self.assertIn("WHERE `feat/locks` WAS LEFT", out); self.assertIn("flaky timeout", out); self.assertIn("last turn by", out)
+            record_explicit(r.cfg, "TTL must stay ≥30s", "flaky timeout test", "fix the timeout test, then open the PR")
+            self.assertIn("**Next:** fix the timeout test", latest(r.cfg))
+            record_auto(r.cfg, "Some later final message that is long enough to count as a summary of what happened in this turn.", {"cwd": str(r.root)})
+            self.assertIn("**Next:**", latest(r.cfg), "an explicit handoff is not overwritten by the next turn's message for six hours")
+            from cosmos.hooks import session_start
+            self.assertIn("WAS LEFT", session_start(r.cfg))
+
+    def test_validity_window_follows_the_lifecycle(self):
+        with Repo() as r:
+            m = Memory(id="mem_v9", text="Redis lock TTL is 30 seconds in src/redis-lock.ts.", category="constraint")
+            led = Ledger(r.cfg.paths); led.save(m)
+            got = led.load()["mem_v9"]; self.assertEqual((got.valid_from, got.valid_to), (m.created, ""))
+            got.status = "superseded"; led.save(got)
+            got = led.load()["mem_v9"]; self.assertEqual(got.valid_to, date.today().isoformat())
+            got.status = "active"; led.save(got)
+            self.assertEqual(led.load()["mem_v9"].valid_to, "", "a revived fact is valid again")
+
+    def test_charter_paths_are_checked(self):
+        from cosmos import charter
+        with Repo() as r:
+            charter.ensure(r.cfg)
+            charter.add_section_rule(r.cfg, "Locks live in `src/redis-lock.ts`; never edit `src/legacy/locks.py` directly.")
+            self.assertEqual(charter.check(r.cfg), ["src/legacy/locks.py"])
+
+
+class TestTeamSources(unittest.TestCase):
+    def test_git_history_becomes_journal_and_candidates(self):
+        from cosmos.sources import ingest_git
+        from cosmos.store import State
+        with Repo() as r:
+            subprocess.run(["git", "add", "-A"], cwd=r.root, check=True)
+            subprocess.run(["git", "-c", "user.email=a@t", "-c", "user.name=Ana", "commit", "-q", "-m", "feat(locks): raise TTL to 30s\n\nThe 10s TTL caused lost locks under GC pauses; 30s matches the longest observed pause plus margin."], cwd=r.root, check=True)
+            (r.root / "src" / "x.ts").write_text("x"); subprocess.run(["git", "add", "-A"], cwd=r.root, check=True)
+            subprocess.run(["git", "-c", "user.email=b@t", "-c", "user.name=dependabot[bot]", "commit", "-q", "-m", "chore(deps): bump"], cwd=r.root, check=True)
+            st = State(r.cfg.paths); store = Observations(r.cfg.paths)
+            n, cands = ingest_git(r.cfg, st, store, set())
+            self.assertEqual(n, 1, "bots are skipped")
+            J = [o for o in store.iter_all() if o.get("kind") == "journal"]
+            self.assertEqual((J[0]["author"], J[0]["commits"], J[0]["source"]), ("Ana", ["feat(locks): raise TTL to 30s"], "git"))
+            self.assertEqual(len(cands), 1); self.assertIn("GC pauses", cands[0]["text"]); self.assertEqual(cands[0]["source"], "git")
+            st.save()
+            self.assertEqual(ingest_git(r.cfg, State(r.cfg.paths), store, set())[0], 0, "incremental")
+            self.assertEqual(ingest_git(r.cfg, State(r.cfg.paths), store, {"feat(locks): raise TTL to 30s"})[0], 0, "a commit a session already journaled is not repeated")
+            rep = dream(r.cfg, use_llm=False)
+            self.assertTrue(any("Ana" in l for l in (r.cfg.paths.ledger / "journal").glob("*.md").__iter__().__next__().read_text().splitlines()))
+
+    def test_reviews_need_gh_and_are_off_without_it(self):
+        from cosmos.sources import ingest_reviews, gh_ready
+        from cosmos.store import State
+        with Repo() as r:
+            r.cfg.data.setdefault("sources", {})["github_reviews"] = False
+            self.assertFalse(gh_ready(r.cfg))
+            self.assertEqual(ingest_reviews(r.cfg, State(r.cfg.paths), Observations(r.cfg.paths)), [])
+
+    def test_recall_eval_measures_retrieval(self):
+        from cosmos.eval import run
+        with Repo() as r:
+            Ledger(r.cfg.paths).save_all([
+                Memory(id="mem_q1", text="Redis lock TTL is 30 seconds.", category="constraint", files=["src/redis-lock.ts"], meta={"eval_q": "how long do redis locks live"}),
+                Memory(id="mem_q2", text="Payments retry three times with backoff.", category="convention", files=["src/payments/retry.ts"]),
+            ])
+            res = run(r.cfg, k=5)
+            self.assertEqual(res["cases"], 3)
+            self.assertGreaterEqual(res["recall_at_k"], 0.66)

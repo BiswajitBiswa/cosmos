@@ -87,14 +87,26 @@ def top(mems: Dict[str, Memory], k: int = 10) -> List[Memory]:
     return live[:k]
 
 
-def format_for_agent(mems: List[Memory], header: str) -> str:
+def brief(text: str, n: int = 140) -> str:
+    """One line of a fact, cut at a word boundary. The full note is always one call away."""
+    t = " ".join(text.split())
+    if len(t) <= n:
+        return t
+    cut = t[:n].rsplit(" ", 1)[0]
+    return cut + " …"
+
+
+def format_for_agent(mems: List[Memory], header: str, compact: bool = True) -> str:
+    """Progressive disclosure: ~30 tokens per fact (category · lane · one line · first file · id). An agent that
+    needs the reasoning, the evidence and the history asks cosmos_why / `cosmos why <id>` for that one fact."""
     if not mems:
         return ""
     lines = [header]
     for m in mems:
         flag = "" if m.status == "active" else f" (UNVERIFIED: {m.status} — check before relying on it)"
-        files = f" — see `{m.files[0]}`" if m.files else ""
-        verified = f" (verified {m.last_verified})" if m.last_verified else ""
-        lines.append(f"- [{m.category}] {m.text}{files}{verified}{flag}")
-    lines.append("(Details: `.cosmos/ledger/_index.md`; `cosmos why <id|text>` explains any item.)")
+        files = f" — `{m.files[0]}`" if m.files else ""
+        lane = f" · {m.lane}" if m.lane and m.lane != "general" else ""
+        text = brief(m.text) if compact else m.text
+        lines.append(f"- [{m.category}{lane}] {text}{files} · {m.id}{flag}")
+    lines.append("(One line each. Full note with evidence and history: cosmos_why <id>, or `cosmos why <id>`.)")
     return "\n".join(lines)

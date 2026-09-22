@@ -91,7 +91,7 @@ git clone <repo> && claude
 |---|---|
 | **what** | One markdown note per fact the team has learned (architecture, decisions and their reasons, conventions, constraints, bug root causes, dependency limits, workflows, domain rules), each with the files that prove it, the dates it was seen, how many times, and by whom. |
 | **you do** | Nothing. Work in your AI tool; facts are captured when a turn ends. Type `remember: …` when something must be kept for sure. |
-| **you get** | Your next session, and every teammate's, starts knowing what the last one learned. Ask `cosmos why redis` to see the evidence for anything. |
+| **you get** | Your next session, and every teammate's, starts knowing what the last one learned, one line per fact with its id; the full note with evidence and history is one call away (`cosmos_why`). Every fact carries when it became true and when it stopped. |
 | **command** | `cosmos capture` · `cosmos why` · `cosmos search` · `cosmos remember` |
 
 ### <img src="docs/assets/icon-charter.svg" width="28" alt=""> Charter · one style for every AI
@@ -161,6 +161,9 @@ git clone <repo> && claude
 
 | | |
 |---|---|
+| **Handoff** | The last thing said on a branch is kept as its handoff, automatically; `cosmos_handoff(learned, open, next)` when stopping mid-work. The next session on that branch, on any machine, opens with it. |
+| **Team sources** | Git history and pull-request review comments feed the ledger without anyone installing anything: every commit by anyone becomes a journal line; commit bodies and review remarks are offered to the model as candidate rules and facts. Reviews need the GitHub CLI logged in; on by default when it is. |
+| **Recall, measured** | Every dream records recall@5: would the right fact reach an agent working on that file or asking that question? Questions are written by the model for each fact. `cosmos eval` prints the misses. |
 | **Watch** | `cosmos watch` is one local process that tails every agent's own session files for this repository, all worktrees and subagents included, captures what is new, shows who is working on what right now in the console, and starts dreams when enough is waiting. It needs no hooks, so it also covers sessions opened before cosmos existed and agents without a hook system. |
 | **Recall at the edit** | The moment the agent opens a file to change it, it sees the open flares, constraints and rules attached to that file, once per file per session. Knowledge arrives at the decision, not in a report afterwards. |
 | **Journal** | What the team did, not only what it learned: one line per agent turn with the ask, the files, the commits and the branch, filed by lane and person under `ledger/journal/`. A session that ships five commits and teaches no new fact is still on record. |

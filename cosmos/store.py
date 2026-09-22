@@ -56,6 +56,8 @@ class Memory:
     related: List[str] = field(default_factory=list)
     lane: str = ""                                               # feature / module this fact belongs to (see lanes.py)
     meta: Dict[str, str] = field(default_factory=dict)          # small typed extras (e.g. audit severity)
+    valid_from: str = ""                                         # when this became true for the team (defaults to created)
+    valid_to: str = ""                                           # when it stopped being true (set on supersede / retire)
     details: List[List[str]] = field(default_factory=list)      # [[label, text], ...] rendered as sections
 
     # ----- markdown (Obsidian) -----
@@ -67,6 +69,7 @@ class Memory:
             "last_verified": self.last_verified, "evidence_count": self.evidence_count,
             "files": self.files, "tags": self.tags, "authors": self.authors, "sessions": self.sessions,
             "supersedes": self.supersedes, "superseded_by": self.superseded_by, "contradicts": self.contradicts,
+            "valid_from": self.valid_from or self.created, "valid_to": self.valid_to or None,
         }
         for k, v in sorted(self.meta.items()):
             fm[f"meta_{k}"] = v
@@ -142,6 +145,7 @@ class Memory:
             supersedes=fm.get("supersedes"), superseded_by=fm.get("superseded_by"),
             contradicts=list(fm.get("contradicts", []) or []), reason=reason,
             meta={k[5:]: str(v) for k, v in fm.items() if k.startswith("meta_")}, lane=str(fm.get("lane", "") or ""),
+            valid_from=str(fm.get("valid_from") or ""), valid_to=str(fm.get("valid_to") or ""),
         )
         det = re.search(r"^## Details\n(.*?)(?=^## )", body, re.M | re.S)
         if det:
@@ -174,6 +178,13 @@ class Ledger:
         return out
 
     def save(self, mem: Memory) -> Path:
+        # validity window follows the lifecycle: closed when a fact stops being true, reopened if it comes back
+        if mem.status in ("superseded", "forgotten") and not mem.valid_to:
+            mem.valid_to = today()
+        elif mem.status == "active" and mem.valid_to:
+            mem.valid_to = ""
+        if not mem.valid_from:
+            mem.valid_from = mem.created
         # remove old file if slug/category changed
         for old in self.dir.rglob(f"{mem.id}-*.md"):
             if old != self._path_for(mem):

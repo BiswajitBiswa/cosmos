@@ -49,6 +49,9 @@ class DreamReport:
     flares_closed: int = 0
     verified: int = 0
     retired: int = 0
+    git_commits: int = 0
+    review_comments: int = 0
+    recall_at_5: Optional[float] = None
 
     def to_dict(self) -> Dict:
         return {"new": [{"id": m.id, "text": m.text, "category": m.category} for m in self.new],
@@ -56,7 +59,7 @@ class DreamReport:
                 "contradictions": [{"older": a, "newer": b} for a, b in self.contradictions],
                 "superseded": [{"old": a, "by": b} for a, b in self.superseded],
                 "stale": list(self.stale), "revived": list(self.revived), "llm_used": self.llm_used,
-                "observations_processed": self.observations_processed, "dropped": self.dropped, "recurated": self.recurated, "recurated_dropped": self.recurated_dropped, "journal_entries": self.journal_entries, "windows_read": self.windows_read, "turns_read": self.turns_read, "windows_waiting": self.windows_waiting, "auto_memory_notes": self.auto_memory_notes, "fallback_windows": self.fallback_windows, "llm_available": self.llm_available, "summary": self.summary()}
+                "observations_processed": self.observations_processed, "dropped": self.dropped, "recurated": self.recurated, "recurated_dropped": self.recurated_dropped, "journal_entries": self.journal_entries, "recall_at_5": self.recall_at_5, "git_commits": self.git_commits, "review_comments": self.review_comments, "windows_read": self.windows_read, "turns_read": self.turns_read, "windows_waiting": self.windows_waiting, "auto_memory_notes": self.auto_memory_notes, "fallback_windows": self.fallback_windows, "llm_available": self.llm_available, "summary": self.summary()}
 
     def summary(self) -> str:
         return (f"{self.observations_processed} observations → {len(self.new)} new, {len(self.merged)} merged, "
@@ -70,6 +73,9 @@ class DreamReport:
                 + (f" · {self.fallback_windows} ranges read heuristically (no model for days)" if self.fallback_windows else "")
                 + (f" · {self.flares_closed} flares marked fixed by commit messages" if self.flares_closed else "")
                 + (f" · model verified {self.verified} doubtful facts still true, retired {self.retired}" if (self.verified or self.retired) else "")
+                + (f" · recall@5 {self.recall_at_5:.2f}" if isinstance(self.recall_at_5, float) else "")
+                + (f" · {self.git_commits} commits from git history" if self.git_commits else "")
+                + (f" · {self.review_comments} review comments offered" if self.review_comments else "")
                 + (f" · {len(self.revived)} came back with fresh evidence" if self.revived else "")
                 + ("" if self.llm_available else " · heuristics only — no LLM available (cosmos doctor)"))
 
@@ -215,6 +221,21 @@ def dream(cfg: Config, use_llm: Optional[bool] = None, verbose: bool = False, re
     # ---- 1a. the journal (what was done) is written down first, always; entries with commits or edits are also
     #          offered to the model - a commit message often carries a decision worth keeping as a fact
     from . import journal as _journal
+    want_llm = cfg.get("dream.llm", "auto") if use_llm is None else use_llm
+    prov = get_provider(cfg.get("llm", {}) or {}) if want_llm else None
+    report.llm_available = prov is not None
+    from . import sources as _sources
+    try:   # git history and PR reviews: the whole team, no agent required on their side
+        known_msgs = {c for o in pending if o.get("kind") == "journal" for c in (o.get("commits") or [])} | {c for o in obs_store.iter_all() if o.get("kind") == "journal" for c in (o.get("commits") or [])}
+        n_git, git_cands = _sources.ingest_git(cfg, state, obs_store, known_msgs)
+        rev_cands = _sources.ingest_reviews(cfg, state, obs_store) if prov is not None else []
+        if git_cands or rev_cands:
+            obs_store.append(git_cands + rev_cands)
+        pending = [o for o in obs_store.iter_all() if o.get("id") and not state.is_dreamed(o["id"])]
+        report.git_commits, report.review_comments = n_git, len(rev_cands)
+    except Exception as e:
+        if verbose:
+            print(f"  sources skipped: {str(e)[:160]}")
     journals = [o for o in pending if o.get("kind") == "journal"]
     report.journal_entries = _journal.persist(cfg, journals, mems)
     report.flares_closed = _flares_from_commits(cfg, journals, mems)
@@ -222,9 +243,6 @@ def dream(cfg: Config, use_llm: Optional[bool] = None, verbose: bool = False, re
     state.mark_dreamed(o["id"] for o in journals)
 
     # ---- 1b. LLM curation: the model decides what is worth keeping, rewrites it, names category + lane.
-    want_llm = cfg.get("dream.llm", "auto") if use_llm is None else use_llm
-    prov = get_provider(cfg.get("llm", {}) or {}) if want_llm else None
-    report.llm_available = prov is not None
     from . import reader as _reader
     if prov is not None:
         try:   # the model reads the session ranges the hooks marked, and this developer's own Claude Code notes
@@ -320,6 +338,8 @@ def dream(cfg: Config, use_llm: Optional[bool] = None, verbose: bool = False, re
             mem.source = "llm"
         mems[mem.id] = mem
         index.append((otoks, mem))
+        if o.get("eval_q"):
+            mem.meta["eval_q"] = str(o["eval_q"])[:200]
         report.new.append(mem)
 
     # ---- 3. contradictions (deterministic candidates; supersession only with evidence)
@@ -440,6 +460,11 @@ def dream(cfg: Config, use_llm: Optional[bool] = None, verbose: bool = False, re
     ledger.save_all(mems.values())
     state.mark_dreamed(seen_ids)
     state.save()
+    try:   # the number that tells whether retrieval got better or worse
+        from .eval import run as eval_run
+        report.recall_at_5 = eval_run(cfg).get("recall_at_k")
+    except Exception:
+        pass
     _persist_run(cfg, report, started)
     try:
         from .sync import sync_background
@@ -523,6 +548,8 @@ def _llm_curate(prov, cfg: Config, pending: List[Dict], mems: Dict[str, Memory],
                 o["lane"] = re.sub(r"[^a-z0-9/._\-]+", "-", str(a["lane"]).lower()).strip("-")[:40]
             if isinstance(a.get("importance"), (int, float)):
                 o["score"] = max(float(o.get("score", 0.5)), min(1.0, float(a["importance"])))
+            if isinstance(a.get("question"), str) and 8 <= len(a["question"]) <= 200:
+                o["eval_q"] = " ".join(a["question"].split())
             o["curated"] = True
             kept.append(o)
         if verbose:

@@ -24,6 +24,8 @@ TOOLS: List[Dict[str, Any]] = [
      "inputSchema": {"type": "object", "properties": {"text": {"type": "string"}, "kind": {"type": "string", "enum": ["fact", "rule"], "default": "fact"}, "category": {"type": "string", "enum": ["architecture", "decision", "convention", "constraint", "bug", "dependency", "workflow", "domain", "rejected"], "default": "convention"}, "lane": {"type": "string", "description": "feature or module, kebab-case"}, "files": {"type": "array", "items": {"type": "string"}}, "importance": {"type": "number"}}, "required": ["text"]}},
     {"name": "cosmos_flare", "description": "File a QA / security finding with a lifecycle (open → claimed → fixed …).",
      "inputSchema": {"type": "object", "properties": {"title": {"type": "string"}, "severity": {"type": "string", "enum": ["critical", "high", "medium", "low"], "default": "medium"}, "locations": {"type": "string", "description": "file:line list"}, "what": {"type": "string"}, "impact": {"type": "string"}, "fix": {"type": "string"}}, "required": ["title"]}},
+    {"name": "cosmos_handoff", "description": "Leave a handoff for whoever continues this branch (any machine): what was learned, what is open, what to do next. Use it when stopping mid-work; a finished turn needs none (its final message is kept automatically).",
+     "inputSchema": {"type": "object", "properties": {"learned": {"type": "string"}, "open": {"type": "string"}, "next": {"type": "string"}, "branch": {"type": "string"}}, "required": ["next"]}},
     {"name": "cosmos_charter", "description": "The team's working agreement: coding style, testing, how to point at code, self-review, architecture rules. Read it before writing code.", "inputSchema": {"type": "object", "properties": {}}},
     {"name": "cosmos_why", "description": "Explain a fact: evidence files, timeline, who saw it, contradictions.", "inputSchema": {"type": "object", "properties": {"query": {"type": "string"}}, "required": ["query"]}},
     {"name": "cosmos_horizon", "description": "Map a feature before coding: lanes touched, colliding decisions, open findings in the way, people active there, model assessment. Pass folders/files it will touch and the brief text if you have it.", "inputSchema": {"type": "object", "properties": {"text": {"type": "string"}, "files": {"type": "array", "items": {"type": "string"}}, "brief": {"type": "string"}}, "required": ["text"]}},
@@ -88,6 +90,10 @@ def call_tool(cfg: Config, name: str, args: Dict[str, Any]) -> Dict[str, Any]:
         render_all(cfg, Ledger(cfg.paths).load())
         m = (new or upd)[0]
         return _txt(f"Filed {m.meta['audit_id']} [{m.meta['severity']}] {m.text}")
+    if name == "cosmos_handoff":
+        from .handoff import record_explicit
+        p = record_explicit(cfg, str(args.get("learned", "")), str(args.get("open", "")), str(args.get("next", "")), str(args.get("branch", "")))
+        return _txt(f"Handoff recorded for this branch ({p.name}); the next session here opens with it.")
     if name == "cosmos_charter":
         from .charter import body, rules
         rs = rules(mems)

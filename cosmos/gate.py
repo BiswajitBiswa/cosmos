@@ -85,7 +85,8 @@ def evaluate(cfg: Config, event: Dict[str, Any]) -> Dict[str, Any]:
             "Record what the team learned this turn, then stop: for each durable fact, decision with its reason, constraint, or "
             "correction the user made, call cosmos_remember (kind=fact; kind=rule only for something the user stated as a rule). "
             "A bug you found is filed with cosmos_flare now - status fixed if this change fixed it, open otherwise - without asking. "
-            "Task progress is not knowledge; if nothing durable was learned, say 'nothing to record'.")
+            "Task progress is not knowledge; if nothing durable was learned, say 'nothing to record'. "
+            "Stopping with work unfinished? cosmos_handoff(learned, open, next) — your final message is kept automatically otherwise.")
     if result["reasons"]:
         result["block"] = True
         result["reasons"].append("Then re-read your diff against .cosmos/charter.md (self-review) and stop.")

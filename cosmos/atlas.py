@@ -10,6 +10,7 @@ from __future__ import annotations
 import hashlib
 import json
 import re
+import sys
 from collections import defaultdict
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
@@ -17,7 +18,8 @@ from typing import Any, Dict, List, Optional, Tuple
 from .config import Config, git_head
 from .store import today
 
-MANIFESTS = ["package.json", "pyproject.toml", "requirements.txt", "requirements-*.txt", "requirements/*.txt", "pom.xml", "build.gradle", "build.gradle.kts", "go.mod", "Cargo.toml", "Gemfile"]
+MANIFESTS = ["package.json", "pyproject.toml", "requirements.txt", "requirements-*.txt", "requirements/*.txt", "pom.xml", "build.gradle", "build.gradle.kts", "go.mod", "Cargo.toml", "Gemfile",
+             "setup.py", "**/package.json", "**/pyproject.toml", "**/requirements.txt", "**/setup.py", "**/go.mod", "**/Cargo.toml"]
 COMPOSE = ["docker-compose*.yml", "docker-compose*.yaml", "compose*.yml", "compose*.yaml", "**/docker-compose*.yml"]
 K8S_DIRS = ["k8s", "kubernetes", "deploy", "deployment", "helm", "charts", "manifests"]
 TF = ["**/*.tf"]
@@ -99,6 +101,29 @@ def parse_yaml_subset(text: str) -> Any:
     return data if data is not None else {}
 
 
+def load_yaml(text: str, where: str) -> Any:
+    """Parse YAML with PyYAML when it is installed, else the subset parser above.
+
+    parse_yaml_subset cannot read a block sequence written at the same indent as its
+    parent key ("volumes:" followed by "- data:/var/lib" at equal indent), which is
+    valid YAML and common in docker-compose. Preferring PyYAML keeps those files
+    readable; the subset parser stays as the no-dependency fallback.
+    """
+    try:
+        import yaml
+    except ImportError:
+        return parse_yaml_subset(text)
+    try:
+        return yaml.safe_load(text) or {}
+    except Exception as exc:
+        warn(f"{where}: PyYAML could not read it ({exc.__class__.__name__}); falling back to the subset parser")
+        return parse_yaml_subset(text)
+
+
+def warn(msg: str) -> None:
+    print(f"cosmos atlas: {msg}", file=sys.stderr)
+
+
 # ---------------------------------------------------------------- inventory
 def inventory(cfg: Config) -> Dict[str, Any]:
     root = cfg.paths.root
@@ -142,8 +167,12 @@ def inventory(cfg: Config) -> Dict[str, Any]:
     for p in _walk(root, COMPOSE, 10):
         rel = src(p)
         try:
-            data = parse_yaml_subset(p.read_text(errors="ignore"))
-        except Exception:
+            data = load_yaml(p.read_text(errors="ignore"), rel)
+        except Exception as exc:
+            warn(f"{rel}: unreadable ({exc.__class__.__name__}: {exc}); its services are missing from the Atlas")
+            continue
+        if not isinstance(data, dict):
+            warn(f"{rel}: parsed to {type(data).__name__}, not a mapping; skipped")
             continue
         for name, svc in (data.get("services") or {}).items():
             if not isinstance(svc, dict):
@@ -209,22 +238,40 @@ def _id(s: str) -> str:
     return re.sub(r"[^A-Za-z0-9_]", "_", s)
 
 
+def _unique_by_name(records: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    """First record wins per name, order preserved.
+
+    A service defined in several compose files (docker-compose.yml and
+    docker-compose.local.yml both declare rms_postgresql) is one box in the picture.
+    inventory.md still lists every row, with its compose file, so the overlap stays visible.
+    """
+    seen: Dict[str, Dict[str, Any]] = {}
+    for r in records:
+        seen.setdefault(r["name"], r)
+    return list(seen.values())
+
+
 def mermaid_containers(inv: Dict[str, Any]) -> str:
     L = ["flowchart LR"]
-    for s in inv["services"]:
+    services, stores = _unique_by_name(inv["services"]), _unique_by_name(inv["stores"])
+    for s in services:
         port = f"<br/>:{s['ports'][0].split(':')[0]}" if s["ports"] else ""
         L.append(f'  {_id(s["name"])}["{s["name"]}{port}"]')
-    for s in inv["stores"]:
+    for s in stores:
         L.append(f'  {_id(s["name"])}[("{s["name"]}<br/><i>{s["kind"]}</i>")]')
-    for s in inv["services"] + inv["stores"]:
+    edges = []
+    for s in services + stores:
         for d in s["depends_on"]:
-            L.append(f"  {_id(s['name'])} --> {_id(d)}")
+            edge = f"  {_id(s['name'])} --> {_id(d)}"
+            if edge not in edges:
+                edges.append(edge)
+    L += edges
     if len(L) == 1:
         for a in inv["apps"]:
             L.append(f'  {_id(a["name"])}["{a["name"]}<br/><i>{a.get("language","")}</i>"]')
-    if inv["stores"]:
+    if stores:
         L.append("  classDef store fill:#f3ead3,stroke:#b8923c,color:#1b2a4a")
-        L.append("  class " + ",".join(_id(s["name"]) for s in inv["stores"]) + " store")
+        L.append("  class " + ",".join(_id(s["name"]) for s in stores) + " store")
     return "\n".join(L)
 
 
@@ -260,10 +307,10 @@ def build(cfg: Config) -> Dict[str, Any]:
         L += [f"README: **{inv['readme_title']}**", ""]
     L += ["## Apps and packages", "", "| name | language | manifest | dependencies | scripts |", "|---|---|---|---|---|"]
     L += [f"| {a['name']} | {a.get('language','?')} | `{a['path']}` | {a['deps']} | {', '.join(a['scripts'])} |" for a in inv["apps"]] or ["| — | | | | |"]
-    L += ["", "## Services (docker-compose)", "", "| service | image / build | ports | depends on |", "|---|---|---|---|"]
-    L += [f"| {s['name']} | {s['image'] or s['build']} | {', '.join(s['ports'])} | {', '.join(s['depends_on'])} |" for s in inv["services"]] or ["| — | | | |"]
-    L += ["", "## Data stores, queues, infrastructure containers", "", "| name | kind | image |", "|---|---|---|"]
-    L += [f"| {s['name']} | {s['kind']} | {s['image']} |" for s in inv["stores"]] or ["| — | | |"]
+    L += ["", "## Services (docker-compose)", "", "| service | image / build | ports | depends on | defined in |", "|---|---|---|---|---|"]
+    L += [f"| {s['name']} | {s['image'] or s['build']} | {', '.join(s['ports'])} | {', '.join(s['depends_on'])} | `{s['compose']}` |" for s in inv["services"]] or ["| — | | | | |"]
+    L += ["", "## Data stores, queues, infrastructure containers", "", "| name | kind | image | defined in |", "|---|---|---|---|"]
+    L += [f"| {s['name']} | {s['kind']} | {s['image']} | `{s['compose']}` |" for s in inv["stores"]] or ["| — | | | |"]
     if inv["env_keys"]:
         L += ["", f"## Configuration keys (.env.example, {len(inv['env_keys'])})", "", ", ".join(f"`{k}`" for k in inv["env_keys"])]
     L += ["", "## Sources", "", srcs]
