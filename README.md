@@ -78,7 +78,7 @@ git clone <repo> && claude
 | 2 | **Capture** | Hooks mark the session range for the model, keep explicit `remember:` lines at once, and write one journal line per turn: what was asked, which files changed, which commits landed. Transcripts are read in place, never copied. |
 | 3 | **Dream** | Runs by itself when enough is waiting. The model reads the marked session ranges in context and this developer's own Claude Code auto memory notes, and writes down what the team should still know in six months (keep · rewrite · category · lane). Duplicates merge, contradictions are flagged, facts are filed by lane, the Atlas is drift-checked. A human settles what evidence cannot. |
 | 4 | **Ledger** | One markdown note per fact, with evidence. Committed. Opens as an Obsidian vault. |
-| 5 | **Gate & recall** | Each prompt gets the facts that matter for its files; each turn that edits code is held until it meets the checklist. |
+| 5 | **Gate & recall** | Before the agent edits a file it is told what the team knows about that file: open flares, constraints, rules. A turn that edits code is held once: tests, `file:line`, flares addressed, and *record what the team learned* via `cosmos_remember`. A commit message naming a flare closes it. Nothing is asked of the person. |
 
 > **Git is the database.** No server, no account, no cloud. Everything travels with the code, merges like code, and is reviewed in pull requests like code. Remove the hooks with one command and nothing else changes.
 
@@ -137,7 +137,7 @@ git clone <repo> && claude
 |---|---|
 | **what** | A check that runs when the AI says it is done. If the turn changed code but ran no tests, gave no `file:line` references, or ignored an open finding on a file it touched, the AI is handed the exact list and keeps going. |
 | **you do** | Nothing. Tune the rules in the Charter if you want. |
-| **you get** | “Did you test? Point precisely. Review your own change.” stops being something a person says on every call. A turn is held at most once; documentation edits are never held. |
+| **you get** | “Did you test? Point precisely. Review your own change.” stops being something a person says on every call, and the agent writes down what it learned while it still has the full context. A turn is held at most once; documentation edits are never held. Bugs found are filed as flares without asking. |
 | **command** | `cosmos gate` · `cosmos gate --transcript FILE` |
 
 ### <img src="docs/assets/icon-flares.svg" width="28" alt=""> Flares · QA that follows the code
@@ -162,6 +162,7 @@ git clone <repo> && claude
 
 | | |
 |---|---|
+| **Recall at the edit** | The moment the agent opens a file to change it, it sees the open flares, constraints and rules attached to that file, once per file per session. Knowledge arrives at the decision, not in a report afterwards. |
 | **Journal** | What the team did, not only what it learned: one line per agent turn with the ask, the files, the commits and the branch, filed by lane and person under `ledger/journal/`. A session that ships five commits and teaches no new fact is still on record. |
 | **Control room** | `cosmos ui`: overview, ledger, lanes, atlas, charter, horizon, flares, dreams, verdicts, activity, docs. Localhost only; picks a free port. |
 | **The model** | Uses your existing Claude Code login by default (`claude -p`), or `ANTHROPIC_API_KEY`, or any OpenAI-compatible endpoint. `COSMOS_LLM_PROVIDER=none` runs heuristics only, and says so. |

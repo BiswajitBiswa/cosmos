@@ -49,8 +49,15 @@ def capture(cfg: Config, event: Dict[str, Any], agent: str = "claude") -> int:
         t.files = [r for r in (relativize(f, root) for f in t.files) if not r.startswith(("/", "external/"))]
     model_reads = capture_mode(cfg) == "model"
     if model_reads:
-        # the model reads this range at dream time; here we keep only what must not wait: explicit rules and findings
-        _reader.register_window(state, Path(tp), sid, agent, state.offset(f"{agent}:{sid}" if agent != "claude" else sid), new_off, event.get("since_days"))
+        # the model reads this range at dream time; here we keep only what must not wait: explicit rules and findings.
+        # A live Claude Code turn that edited code is recorded by the agent itself at the Gate (it has the full context);
+        # such ranges are not queued for a second reading.
+        from .charter import gate_config
+        gc = gate_config(cfg)
+        reflected = (agent == "claude" and event.get("hook_event_name") in ("Stop", "SessionEnd") and gc.get("reflect", True)
+                     and gc.get("enabled", True) and any(_code_file(f, gc) for t in turns for f in t.files))
+        if not reflected:
+            _reader.register_window(state, Path(tp), sid, agent, state.offset(f"{agent}:{sid}" if agent != "claude" else sid), new_off, event.get("since_days"))
         obs = [o for o in extract(turns, float(cfg.get("capture.min_score", 0.5)), 10_000) if o.source == "explicit"]
     else:
         obs = extract(turns, float(cfg.get("capture.min_score", 0.5)), int(cfg.get("capture.max_per_batch", 40)))
@@ -123,6 +130,11 @@ def backfill_journal(cfg: Config, path: Path, sid: str, agent: str = "claude") -
     if records:
         store.append(records)
     return len(records)
+
+
+def _code_file(rel: str, gc: Dict[str, Any]) -> bool:
+    from .gate import _matches
+    return not _matches(rel, gc.get("skip_globs", [])) and _matches(rel, gc.get("code_globs", ["**/*"]))
 
 
 def capture_mode(cfg: Config) -> str:
@@ -214,6 +226,41 @@ def prompt_context(cfg: Config, event: Dict[str, Any]) -> str:
     return format_for_agent(hits, "Relevant team memory for this request:")
 
 
+def file_context(cfg: Config, event: Dict[str, Any]) -> str:
+    """What the team knows about the file the agent is about to change: open flares, facts, rules anchored to it.
+    Shown once per file per session so it informs without nagging."""
+    inp = event.get("tool_input") or {}
+    fp = inp.get("file_path") or inp.get("notebook_path")
+    if not fp:
+        return ""
+    rel = relativize(str(fp), cfg.paths.root)
+    if rel.startswith(("/", "external/")):
+        return ""
+    state = State(cfg.paths)
+    sid = event.get("session_id", "")
+    shown = state.data.setdefault("shown", {}).setdefault(sid or "-", [])
+    if rel in shown:
+        return ""
+    mems = Ledger(cfg.paths).load()
+    from .audit import OPEN_LIKE
+    flares = [m for m in mems.values() if m.category == "finding" and m.meta.get("finding_status", "open") in OPEN_LIKE
+              and any(rel.endswith(f) or f.endswith(rel) for f in m.files)]
+    facts = [m for m in retrieve(mems, rel.rsplit("/", 1)[-1], paths=[rel], k=int(cfg.get("retrieval.file_max", 4)))
+             if m.category != "finding" and m.status == "active" and any(rel.endswith(f) or f.endswith(rel) for f in m.files)]
+    if not flares and not facts:
+        return ""
+    shown.append(rel)
+    if len(shown) > 400:
+        del shown[:200]
+    state.save()
+    lines = [f"cosmos · before you change `{rel}`:"]
+    lines += [f"- open flare {m.meta.get('audit_id')} [{m.meta.get('severity')}]: {m.text}" for m in flares[:3]]
+    lines += [f"- {m.category}: {m.text}" for m in facts[:4]]
+    if flares:
+        lines.append("Address or explicitly defer each open flare; a bug you fix here is filed fixed via cosmos_flare, without asking.")
+    return "\n".join(lines)
+
+
 def handle(stdin_text: str) -> int:
     try:
         event = json.loads(stdin_text) if stdin_text.strip() else {}
@@ -234,6 +281,10 @@ def handle(stdin_text: str) -> int:
             out = prompt_context(cfg, event)
             if out:
                 print(out)
+        elif name == "PreToolUse":
+            out = file_context(cfg, event)
+            if out:
+                print(json.dumps({"hookSpecificOutput": {"hookEventName": "PreToolUse", "additionalContext": out}}))
         elif name in ("Stop", "SessionEnd", "PreCompact", "PostToolUse", "SubagentStop"):
             n = capture(cfg, event)
             if n:
@@ -267,6 +318,7 @@ def hook_entries(command: str = HOOK_COMMAND) -> Dict[str, Any]:
     return {
         "SessionStart": [{"hooks": h(10)}],
         "UserPromptSubmit": [{"hooks": h(10)}],
+        "PreToolUse": [{"matcher": "Edit|Write|MultiEdit|NotebookEdit", "hooks": h(10)}],
         "Stop": [{"hooks": h(20)}],
         "PreCompact": [{"hooks": h(20)}],
         "SessionEnd": [{"hooks": h(20)}],

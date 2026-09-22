@@ -472,7 +472,14 @@ class TestLanesCharterGateIntakeAtlas(unittest.TestCase):
                 {"type": "tool_use", "id": "t2", "name": "Bash", "input": {"command": "npm test -- lock"}},
                 {"type": "text", "text": "Changed the TTL in src/redis-lock.ts:12; tests pass."}]}}]
             t2 = r.transcript("ok.jsonl", ok)
-            self.assertFalse(evaluate(r.cfg, {"transcript_path": str(t2), "session_id": "s2"})["block"])
+            res = evaluate(r.cfg, {"transcript_path": str(t2), "session_id": "s2"})
+            self.assertTrue(res["block"], "a clean editing turn is still held once: record what the team learned")
+            self.assertEqual(len(res["reasons"]), 2)
+            self.assertIn("cosmos_remember", res["reasons"][0]); self.assertIn("without asking", res["reasons"][0])
+            from cosmos import charter as ch
+            cp = ch.path(r.cfg); cp.write_text(cp.read_text().replace('"reflect": true', '"reflect": false'))
+            self.assertFalse(evaluate(r.cfg, {"transcript_path": str(t2), "session_id": "s2"})["block"], "reflect off → checklist only")
+            cp.write_text(cp.read_text().replace('"reflect": false', '"reflect": true'))
             # docs-only edits are not gated
             t3 = r.transcript("docs.jsonl", [_user("docs"), _asst("Updated README.", [str(r.root / "README.md")])])
             self.assertFalse(evaluate(r.cfg, {"transcript_path": str(t3), "session_id": "s3"})["block"])
@@ -570,7 +577,7 @@ class TestMultiAgent(unittest.TestCase):
                     {"jsonrpc": "2.0", "method": "notifications/initialized"},
                     {"jsonrpc": "2.0", "id": 2, "method": "tools/list"},
                     {"jsonrpc": "2.0", "id": 3, "method": "tools/call", "params": {"name": "cosmos_recall", "arguments": {"query": "change the redis lock", "files": ["src/redis-lock.ts"]}}},
-                    {"jsonrpc": "2.0", "id": 4, "method": "tools/call", "params": {"name": "cosmos_remember", "arguments": {"text": "Never modify production schemas by hand.", "category": "constraint"}}},
+                    {"jsonrpc": "2.0", "id": 4, "method": "tools/call", "params": {"name": "cosmos_remember", "arguments": {"kind": "rule", "text": "Never modify production schemas by hand.", "category": "constraint"}}},
                     {"jsonrpc": "2.0", "id": 5, "method": "tools/call", "params": {"name": "cosmos_charter", "arguments": {}}},
                     {"jsonrpc": "2.0", "id": 6, "method": "tools/call", "params": {"name": "cosmos_flare", "arguments": {"title": "Webhook replay possible", "severity": "high", "locations": "`src/webhooks.ts:10`", "what": "no nonce"}}}]
             out = subprocess.run([sys.executable, "-m", "cosmos", "mcp"], cwd=r.root, input="\n".join(json.dumps(m) for m in msgs) + "\n", capture_output=True, text=True, timeout=30, env={**os.environ, "PYTHONPATH": str(ROOT)})
@@ -939,7 +946,7 @@ class TestModelReads(unittest.TestCase):
         from cosmos.store import State
         r = self._model_repo()
         try:
-            p = r.transcript("s.jsonl", [_user("remember: never edit prod schemas by hand"), _asst("Redis is used for locks in `src/redis-lock.ts` with a 30 second TTL.", files=[str(r.root / "src" / "redis-lock.ts")])])
+            p = r.transcript("s.jsonl", [_user("remember: never edit prod schemas by hand"), _asst("Redis is used for locks in `src/redis-lock.ts` with a 30 second TTL.")])
             r.capture(p, "s1")
             obs = [o for o in Observations(r.cfg.paths).iter_all() if o.get("kind") != "journal"]
             self.assertEqual([o["source"] for o in obs], ["explicit"], "no heuristic guesses in model mode")
@@ -949,6 +956,10 @@ class TestModelReads(unittest.TestCase):
             self.assertEqual((w["from"], w["to"] > 0, w["sid"]), (0, True, "s1"))
             r.capture(p, "s1")
             self.assertEqual(windows_waiting(State(r.cfg.paths)), 1, "nothing new: no second window")
+            # a turn that edited code is recorded by the agent itself at the Gate: not queued for a second reading
+            p2 = r.transcript("s2.jsonl", [_user("fix it"), _asst("Done.", files=[str(r.root / "src" / "redis-lock.ts")])])
+            r.capture(p2, "s2")
+            self.assertEqual(windows_waiting(State(r.cfg.paths)), 1, "editing turn: the agent records, the reader does not re-read")
         finally:
             r.__exit__()
 
@@ -957,7 +968,7 @@ class TestModelReads(unittest.TestCase):
         from cosmos.store import State
         r = self._model_repo()
         try:
-            p = r.transcript("s.jsonl", [_user("how do locks work"), _asst("Redis is used for locks in `src/redis-lock.ts` with a 30 second TTL.", files=[str(r.root / "src" / "redis-lock.ts")])])
+            p = r.transcript("s.jsonl", [_user("how do locks work"), _asst("Redis is used for locks in `src/redis-lock.ts` with a 30 second TTL.")])
             r.capture(p, "s1")
             fake = FakeReader(); old = dm.get_provider; dm.get_provider = lambda *_a, **_k: fake
             try:
@@ -1025,7 +1036,7 @@ class TestModelReads(unittest.TestCase):
         from cosmos.store import State
         r = self._model_repo()
         try:
-            p = r.transcript("s.jsonl", [_user("q"), _asst("Redis is used for locks in `src/redis-lock.ts` with a 30 second TTL.", files=[str(r.root / "src" / "redis-lock.ts")])])
+            p = r.transcript("s.jsonl", [_user("q"), _asst("Redis is used for locks in `src/redis-lock.ts` with a 30 second TTL.")])
             r.capture(p, "s1")
             rep = dream(r.cfg, use_llm=False)
             self.assertEqual((rep.windows_waiting, rep.fallback_windows), (1, 0), "recent range waits for a model")
@@ -1035,3 +1046,40 @@ class TestModelReads(unittest.TestCase):
             self.assertTrue(any("30 second" in m.text for m in Ledger(r.cfg.paths).load().values()), "heuristics kept it rather than lose it")
         finally:
             r.__exit__()
+
+
+class TestDecisionTime(unittest.TestCase):
+    """Knowledge shows up where the work happens: before an edit, and in the flare lifecycle."""
+
+    def test_pretooluse_shows_what_is_known_about_the_file_once(self):
+        from cosmos.hooks import file_context
+        with Repo() as r:
+            mems = {}
+            m = Memory(id=make_id("Redis lock TTL is 30 seconds"), text="Redis lock TTL is 30 seconds; do not lower it.", category="constraint", files=["src/redis-lock.ts"])
+            f = Memory(id="mem_f1", text="Lock is never released on timeout", category="finding", files=["src/redis-lock.ts"], meta={"audit_id": "QA-3", "severity": "high", "finding_status": "open"})
+            Ledger(r.cfg.paths).save_all([m, f])
+            ev = {"hook_event_name": "PreToolUse", "session_id": "s", "tool_name": "Edit", "tool_input": {"file_path": str(r.root / "src" / "redis-lock.ts")}}
+            out = file_context(r.cfg, ev)
+            self.assertIn("QA-3", out); self.assertIn("30 seconds", out); self.assertIn("without asking", out)
+            self.assertEqual(file_context(r.cfg, ev), "", "shown once per file per session")
+            self.assertEqual(file_context(r.cfg, {**ev, "tool_input": {"file_path": str(r.root / "src" / "other.ts")}}), "", "nothing known → silent")
+
+    def test_a_commit_naming_a_flare_closes_it(self):
+        from cosmos.dream import _flares_from_commits
+        with Repo() as r:
+            f = Memory(id="mem_f2", text="Approval chain bypassable", category="finding", files=["src/a.py"], meta={"audit_id": "QA-11", "severity": "critical", "finding_status": "open"})
+            Ledger(r.cfg.paths).save_all([f])
+            mems = Ledger(r.cfg.paths).load()
+            n = _flares_from_commits(r.cfg, [{"kind": "journal", "commits": ["fix(auth): QA-11 derive stage server-side"]}], mems)
+            self.assertEqual(n, 1)
+            self.assertEqual(Ledger(r.cfg.paths).load()["mem_f2"].meta["finding_status"], "fixed")
+
+    def test_agent_facts_are_not_human_rules(self):
+        from cosmos.mcp import call_tool
+        with Repo() as r:
+            call_tool(r.cfg, "cosmos_remember", {"text": "The scheduler never sets is_reminder on created reminders.", "category": "bug", "lane": "reminders"})
+            call_tool(r.cfg, "cosmos_remember", {"text": "Never run erase endpoints against the shared dev DB.", "kind": "rule"})
+            mems = Ledger(r.cfg.paths).load()
+            fact = next(m for m in mems.values() if "is_reminder" in m.text); rule = next(m for m in mems.values() if "erase" in m.text)
+            self.assertEqual((fact.source, fact.lane, fact.importance < 0.9), ("agent", "reminders", True))
+            self.assertEqual((rule.source, rule.importance), ("explicit", 0.95))

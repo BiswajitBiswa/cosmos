@@ -60,6 +60,7 @@ def evaluate(cfg: Config, event: Dict[str, Any]) -> Dict[str, Any]:
     result["edited"] = edited
     if not edited:
         return result
+    result["reflect"] = bool(gc.get("reflect", True))
     commands = [c for t in turn for c in t.commands]
     tests_ran = any(any(p in c for p in gc.get("test_patterns", [])) for c in commands)
     last_text = next((t.text for t in reversed(turn) if t.role == "assistant" and t.text.strip()), "")
@@ -76,6 +77,12 @@ def evaluate(cfg: Config, event: Dict[str, Any]) -> Dict[str, Any]:
     result["findings"] = [f"{m.meta.get('audit_id')} — {m.text}" for m in hits[:5]]
     if hits and not any((m.meta.get("audit_id") or "") in last_text for m in hits):
         result["reasons"].append("Open flares (QA findings) exist on files you touched — address or explicitly defer each: " + "; ".join(result["findings"]))
+    if result.get("reflect"):
+        result["reasons"].append(
+            "Record what the team learned this turn, then stop: for each durable fact, decision with its reason, constraint, or "
+            "correction the user made, call cosmos_remember (kind=fact; kind=rule only for something the user stated as a rule). "
+            "A bug you found is filed with cosmos_flare now - status fixed if this change fixed it, open otherwise - without asking. "
+            "Task progress is not knowledge; if nothing durable was learned, say 'nothing to record'.")
     if result["reasons"]:
         result["block"] = True
         result["reasons"].append("Then re-read your diff against .cosmos/charter.md (self-review) and stop.")

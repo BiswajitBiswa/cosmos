@@ -46,6 +46,7 @@ class DreamReport:
     windows_waiting: int = 0
     auto_memory_notes: int = 0
     fallback_windows: int = 0
+    flares_closed: int = 0
 
     def to_dict(self) -> Dict:
         return {"new": [{"id": m.id, "text": m.text, "category": m.category} for m in self.new],
@@ -65,6 +66,7 @@ class DreamReport:
                 + (f" · {self.auto_memory_notes} auto memory notes offered" if self.auto_memory_notes else "")
                 + (f" · {self.windows_waiting} session ranges still waiting for a model" if self.windows_waiting else "")
                 + (f" · {self.fallback_windows} ranges read heuristically (no model for days)" if self.fallback_windows else "")
+                + (f" · {self.flares_closed} flares marked fixed by commit messages" if self.flares_closed else "")
                 + ("" if self.llm_available else " · heuristics only — no LLM available (cosmos doctor)"))
 
 
@@ -132,6 +134,7 @@ def dream(cfg: Config, use_llm: Optional[bool] = None, verbose: bool = False, re
     from . import journal as _journal
     journals = [o for o in pending if o.get("kind") == "journal"]
     report.journal_entries = _journal.persist(cfg, journals, mems)
+    report.flares_closed = _flares_from_commits(cfg, journals, mems)
     pending = [o for o in pending if o.get("kind") != "journal"] + [dict(o, text="Work done: " + o["text"]) for o in journals if o.get("commits")]
     state.mark_dreamed(o["id"] for o in journals)
 
@@ -307,6 +310,27 @@ def dream(cfg: Config, use_llm: Optional[bool] = None, verbose: bool = False, re
     state.save()
     _persist_run(cfg, report, started)
     return report
+
+
+def _flares_from_commits(cfg: Config, journals: List[Dict], mems: Dict[str, Memory]) -> int:
+    """A commit message that names an open flare id closes it: `fix(auth): QA-12 …` → QA-12 fixed, note = the message."""
+    from .audit import OPEN_LIKE, set_status
+    open_ = {m.meta.get("audit_id"): m for m in mems.values() if m.category == "finding" and m.meta.get("audit_id")
+             and m.meta.get("finding_status", "open") in OPEN_LIKE and m.meta.get("severity") != "note"}
+    if not open_:
+        return 0
+    n = 0
+    for j in journals:
+        for msg in j.get("commits") or []:
+            for aid in re.findall(r"\b[A-Z][A-Z0-9]*(?:-[A-Z0-9]+)*-\d+\b", msg):
+                m = open_.pop(aid, None)
+                if m is not None:
+                    try:
+                        set_status(cfg, m, "fixed", f"commit: {msg[:100]}")
+                        n += 1
+                    except SystemExit:
+                        pass
+    return n
 
 
 def _persist_run(cfg: Config, report: DreamReport, started: float) -> None:

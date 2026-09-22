@@ -450,6 +450,9 @@ def cmd_update(a) -> int:
     from .wrapper import vendor, write_wrapper
     cfg = load_config(); _require(cfg)
     write_wrapper(cfg.paths.cosmos); d = vendor(cfg.paths.cosmos)
+    from .hooks import install_hooks
+    if install_hooks(cfg.paths.claude_settings):
+        print(col("✓", "g"), "hooks refreshed in .claude/settings.json (restart open sessions to pick them up)")
     print(col("✓", "g"), f"vendored cosmos {__version__} → {d}")
     return 0
 

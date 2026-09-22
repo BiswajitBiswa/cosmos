@@ -19,7 +19,7 @@ def managed_block(mems: Dict[str, Memory], k: int, cfg: Optional[Config] = None)
              "1. **Charter** `.cosmos/charter.md` — the team's coding style, testing and review rules. Follow it over any personal preference.",
              "2. **Ledger** `.cosmos/ledger/` — one note per fact with evidence, grouped by lane (`_index.md`). Consult before changing architecture, conventions or workflows.",
              "3. **Atlas** `.cosmos/ledger/atlas/` — architecture diagrams generated from the repo. Read `containers.md` before structural changes.",
-             "4. **Gate** — before you stop: run the tests for files you touched, cite `file:line` for each change, address open findings on those files, self-review against the Charter.",
+             "4. **Gate** — before you stop: run the tests for files you touched, cite `file:line` for each change, address open flares on those files, self-review against the Charter, and record what the team learned (cosmos_remember kind=fact; cosmos_flare for bugs found - fixed or open - without asking).",
              "Explicit rules outrank inferred facts.", ""]
     if cfg is not None:
         from .charter import rules

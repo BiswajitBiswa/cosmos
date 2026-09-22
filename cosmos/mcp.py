@@ -7,6 +7,7 @@ same git-tracked store. Standard library only; newline-delimited JSON-RPC 2.0 as
 from __future__ import annotations
 
 import json
+import re
 import sys
 from typing import Any, Dict, List
 
@@ -19,8 +20,8 @@ PROTOCOL = "2025-06-18"
 TOOLS: List[Dict[str, Any]] = [
     {"name": "cosmos_recall", "description": "Team facts, rules and open findings relevant to a task. Call before changing code you did not write. Pass the files you are about to touch.",
      "inputSchema": {"type": "object", "properties": {"query": {"type": "string", "description": "what you are about to do"}, "files": {"type": "array", "items": {"type": "string"}}, "k": {"type": "integer", "default": 8}}, "required": ["query"]}},
-    {"name": "cosmos_remember", "description": "Record a durable engineering fact or rule for the whole team (explicit rules outrank inferred facts).",
-     "inputSchema": {"type": "object", "properties": {"text": {"type": "string"}, "category": {"type": "string", "enum": ["architecture", "decision", "convention", "constraint", "bug", "dependency", "workflow", "domain", "rejected"], "default": "convention"}, "files": {"type": "array", "items": {"type": "string"}}}, "required": ["text"]}},
+    {"name": "cosmos_remember", "description": "Record durable team knowledge. kind=fact (default): something the agent learned about the codebase this turn - architecture, a decision with its reason, a constraint, a correction the user made. kind=rule: something the user stated as a team rule (outranks facts). Not for task progress.",
+     "inputSchema": {"type": "object", "properties": {"text": {"type": "string"}, "kind": {"type": "string", "enum": ["fact", "rule"], "default": "fact"}, "category": {"type": "string", "enum": ["architecture", "decision", "convention", "constraint", "bug", "dependency", "workflow", "domain", "rejected"], "default": "convention"}, "lane": {"type": "string", "description": "feature or module, kebab-case"}, "files": {"type": "array", "items": {"type": "string"}}, "importance": {"type": "number"}}, "required": ["text"]}},
     {"name": "cosmos_flare", "description": "File a QA / security finding with a lifecycle (open → claimed → fixed …).",
      "inputSchema": {"type": "object", "properties": {"title": {"type": "string"}, "severity": {"type": "string", "enum": ["critical", "high", "medium", "low"], "default": "medium"}, "locations": {"type": "string", "description": "file:line list"}, "what": {"type": "string"}, "impact": {"type": "string"}, "fix": {"type": "string"}}, "required": ["title"]}},
     {"name": "cosmos_charter", "description": "The team's working agreement: coding style, testing, how to point at code, self-review, architecture rules. Read it before writing code.", "inputSchema": {"type": "object", "properties": {}}},
@@ -53,12 +54,17 @@ def call_tool(cfg: Config, name: str, args: Dict[str, Any]) -> Dict[str, Any]:
         if len(text) < 8:
             return _txt("Too short to be a fact.")
         mid = make_id(text)
-        m = mems.get(mid) or Memory(id=mid, text=text, category=str(args.get("category", "convention")), source="explicit", confidence=0.95, importance=0.95,
-                                    files=list(args.get("files") or [])[:8], authors=[git_author(cfg.paths.root)])
+        rule = str(args.get("kind", "fact")) == "rule"
+        imp = args.get("importance")
+        imp = min(1.0, max(0.3, float(imp))) if isinstance(imp, (int, float)) else (0.95 if rule else 0.7)
+        m = mems.get(mid) or Memory(id=mid, text=text, category=str(args.get("category", "convention")), source="explicit" if rule else "agent",
+                                    confidence=0.95 if rule else 0.8, importance=imp, files=list(args.get("files") or [])[:8], authors=[git_author(cfg.paths.root)])
+        if args.get("lane"):
+            m.lane = re.sub(r"[^a-z0-9/._\-]+", "-", str(args["lane"]).lower()).strip("-")[:40]
         m.status, m.updated, m.last_verified = "active", today(), today()
         mems[mid] = m
         Ledger(cfg.paths).save_all(mems.values()); render_all(cfg, mems)
-        return _txt(f"Remembered {mid}: {text}")
+        return _txt(f"Remembered {mid} ({'rule' if rule else 'fact'}): {text}")
     if name in ("cosmos_flare", "cosmos_finding"):
         from .audit import import_findings
         import tempfile, os

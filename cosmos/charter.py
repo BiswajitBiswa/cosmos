@@ -14,7 +14,7 @@ from .config import Config
 from .store import Memory
 
 TEMPLATE = """---
-gate: {"enabled": true, "require_tests": true, "require_refs": true, "test_patterns": ["pytest", "npm test", "npm run test", "pnpm test", "yarn test", "go test", "gradle test", "gradlew test", "mvn test", "cargo test", "jest", "vitest", "make test", "./manage.py test"], "code_globs": ["**/*.py", "**/*.ts", "**/*.tsx", "**/*.js", "**/*.kt", "**/*.java", "**/*.go", "**/*.rs", "**/*.rb"], "skip_globs": ["**/*.md", "**/*.json", "**/*.yml", "**/*.yaml", "docs/**", ".cosmos/**"]}
+gate: {"enabled": true, "require_tests": true, "require_refs": true, "reflect": true, "test_patterns": ["pytest", "npm test", "npm run test", "pnpm test", "yarn test", "go test", "gradle test", "gradlew test", "mvn test", "cargo test", "jest", "vitest", "make test", "./manage.py test"], "code_globs": ["**/*.py", "**/*.ts", "**/*.tsx", "**/*.js", "**/*.kt", "**/*.java", "**/*.go", "**/*.rs", "**/*.rb"], "skip_globs": ["**/*.md", "**/*.json", "**/*.yml", "**/*.yaml", "docs/**", ".cosmos/**"]}
 ---
 
 # Charter
@@ -37,7 +37,12 @@ Edit it in a pull request; do not tell your own AI a different style.
 
 ## How we review our own work
 - Before finishing: re-read the diff, check it against this charter, and state what was NOT tested.
-- Open findings on the files you touched are addressed or explicitly deferred with a reason.
+- Open flares on the files you touched are addressed or explicitly deferred with a reason.
+- A bug found while working is filed as a flare without asking: fixed in this change → status fixed; not fixed → open.
+
+## What we remember
+- Before stopping, record durable team knowledge from the turn (`remember: …` or cosmos_remember): decisions with their reason, constraints, corrections the user made. Task status is not knowledge.
+- Personal notes stay in your own Claude Code auto memory; team knowledge goes to cosmos.
 
 ## Architecture rules
 - Add rules here as decisions are made (or type `remember: …` in a session; explicit rules outrank inferred ones).

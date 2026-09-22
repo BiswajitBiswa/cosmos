@@ -201,7 +201,7 @@ a{color:var(--warm2)}
     <div class="fs"><div class="n">2</div><span class="tag">automatic</span><b>Capture</b><span>Hooks mark the session range for the model, keep explicit <code>remember:</code> lines at once, and write one journal line per turn: the ask, the files, the commits. Transcripts are read in place, never copied.</span></div>
     <div class="fs human"><div class="n">3</div><span class="tag">review</span><b>Dream</b><span>Runs by itself when enough is waiting. The model reads the marked session ranges and your own Claude Code auto memory notes, keeps what the team should still know, files it by lane; duplicates merge, contradictions are flagged, the Atlas is drift-checked. A human settles what evidence cannot.</span></div>
     <div class="fs"><div class="n">4</div><span class="tag">git</span><b>Ledger</b><span>One markdown note per fact, with evidence. Committed. Opens as an Obsidian vault.</span></div>
-    <div class="fs"><div class="n">5</div><span class="tag">automatic</span><b>Gate &amp; recall</b><span>Each prompt gets the facts that matter for its files; each turn that edits code is held until it meets the checklist.</span></div>
+    <div class="fs"><div class="n">5</div><span class="tag">automatic</span><b>Gate &amp; recall</b><span>Before the agent edits a file it sees what the team knows about it. A turn that edits code is held once: tests, <code>file:line</code>, flares addressed, and the agent records what it learned while it still has the context. A commit naming a flare closes it.</span></div>
   </div>
   <div class="callout"><b>Git is the database.</b><p>No server, no account, no cloud. Everything travels with the code, merges like code, and is reviewed in pull requests like code. Remove the hooks with one command and nothing else changes.</p></div>
 </div></section>
@@ -228,6 +228,7 @@ a{color:var(--warm2)}
     <div><b>Gate</b><p>Tests run, <code>file:line</code> cited, findings addressed, self-review done — or the turn is not over. Held at most once, never loops, never gates docs.</p></div>
     <div><b>Flares</b><p>QA findings with a lifecycle — open, claimed, PR open, fixed, needs a human, won't fix, withdrawn, regressed. Board, Slack cards, no double posting.</p></div>
     <div><b>Dream</b><p>The model curates every new observation — keep or drop, rewrite, category, lane — then dedupe, contradictions, staleness, evidence-based supersession. Uses your Claude Code login by default; no key to paste.</p></div>
+    <div><b>Recall at the edit</b><p>The moment the agent opens a file to change it, it sees the open flares, constraints and rules attached to that file — once per file per session. Knowledge arrives at the decision, not in a report afterwards.</p></div>
     <div><b>Journal</b><p>What the team did, not only what it learned: one line per agent turn — ask, files, commits, branch — filed by lane and person. Five commits and no new fact is still on record.</p></div>
     <div><b>Control room</b><p><code>cosmos ui</code>: overview, ledger, lanes, atlas, charter, horizon, flares, dreams, verdicts, activity, docs. Localhost only.</p></div>
     <div><b>Other agents</b><p>The same block is written to <code>AGENTS.md</code>, so Codex, Cursor, Gemini CLI and Copilot read the Charter and the facts too.</p></div>
