@@ -1248,3 +1248,54 @@ class TestLedgerBranch(unittest.TestCase):
         self.assertIn("origin/cosmos", HOOK_CMD)
         b1 = managed_block({}, 10); b2 = managed_block({"m": Memory(id="mem_x", text="A volatile fact", category="decision")}, 10, None)
         self.assertEqual(b1, b2, "the block in CLAUDE.md never changes with the ledger")
+
+
+class TestFreshness(unittest.TestCase):
+    def test_evidence_on_another_worktree_or_elsewhere_in_the_repo_is_not_stale(self):
+        from cosmos import dream as dm, transcript
+        with Repo() as r:
+            (r.root / "src" / "erase.py").write_text("UNIVERSE_ERASE_CHECKPOINT_KEYS = ['a']\n")
+            (r.root / "src" / "other.py").write_text("s3_key = None\n")
+            subprocess.run(["git", "add", "-A"], cwd=r.root, check=True)
+            subprocess.run(["git", "-c", "user.email=t@t", "-c", "user.name=t", "commit", "-q", "-m", "init"], cwd=r.root, check=True)
+            dm._TREE_CACHE.clear(); transcript._WORKTREES.clear()
+            m = Memory(id="mem_e1", text="Erase uses `UNIVERSE_ERASE_CHECKPOINT_KEYS` and the s3_key convention.", category="constraint", files=["src/erase.py"])
+            Ledger(r.cfg.paths).save(m)
+            rep = dream(r.cfg, use_llm=False)
+            self.assertEqual(rep.stale, [], "s3_key is not in erase.py but it is in the repo: the fact stands")
+            gone = Memory(id="mem_e2", text="Sector backfill lives in `aura_gateway/aura/search.py`.", category="architecture", files=["aura_gateway/aura/search.py"])
+            Ledger(r.cfg.paths).save(gone)
+            wt = r.root.parent / (r.root.name + "-aura")
+            subprocess.run(["git", "worktree", "add", "-q", str(wt), "-b", "aura"], cwd=r.root, check=True)
+            try:
+                (wt / "aura_gateway" / "aura").mkdir(parents=True); (wt / "aura_gateway" / "aura" / "search.py").write_text("x")
+                subprocess.run(["git", "add", "-A"], cwd=wt, check=True)
+                subprocess.run(["git", "-c", "user.email=t@t", "-c", "user.name=t", "commit", "-q", "-m", "aura"], cwd=wt, check=True)
+                dm._TREE_CACHE.clear(); transcript._WORKTREES.clear()
+                rep = dream(r.cfg, use_llm=False)
+                self.assertNotIn("mem_e2", rep.stale, "the file exists on the aura worktree: branch-bound evidence is still evidence")
+            finally:
+                subprocess.run(["git", "worktree", "remove", "--force", str(wt)], cwd=r.root, check=True)
+                dm._TREE_CACHE.clear(); transcript._WORKTREES.clear()
+
+    def test_auto_flagged_facts_come_back_when_evidence_returns_and_the_model_settles_the_rest(self):
+        from cosmos import dream as dm
+        with Repo() as r:
+            m = Memory(id="mem_v1", text="Lock TTL is 30 seconds in `src/redis-lock.ts`.", category="constraint", files=["src/redis-lock.ts"], status="stale-candidate", reason="Stale candidate since 2026-09-01: none of the evidence files exist anymore")
+            Ledger(r.cfg.paths).save(m)
+            rep = dream(r.cfg, use_llm=False)
+            self.assertIn("mem_v1", rep.revived)
+            self.assertEqual(Ledger(r.cfg.paths).load()["mem_v1"].status, "active")
+            d1 = Memory(id="mem_v2", text="Lock TTL is 10 seconds in `src/redis-lock.ts`.", category="constraint", files=["src/redis-lock.ts"], status="stale-candidate", reason="Stale candidate since 2026-09-01: not re-observed for 200 days (limit 180d for constraint)")
+            Ledger(r.cfg.paths).save(d1)
+            class Judge:
+                def complete(self, system, user, schema):
+                    import json as j
+                    return {"items": [{"id": f["id"], "verdict": "outdated", "reason": "file says 30"} for f in j.loads(user)["facts"]]}
+            old = dm.get_provider; dm.get_provider = lambda *_a, **_k: Judge()
+            try:
+                rep = dream(r.cfg, use_llm=True)
+            finally:
+                dm.get_provider = old
+            self.assertEqual(rep.retired, 1)
+            self.assertEqual(Ledger(r.cfg.paths).load()["mem_v2"].status, "forgotten")

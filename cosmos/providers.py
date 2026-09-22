@@ -88,6 +88,22 @@ READ_SYSTEM = (
     "yield zero to three items; an empty list is the normal answer for routine work. Never invent facts."
 )
 
+VERIFY_SCHEMA: Dict[str, Any] = {
+    "type": "object",
+    "properties": {"items": {"type": "array", "items": {"type": "object", "properties": {
+        "id": {"type": "string"}, "verdict": {"type": "string", "enum": ["still_true", "outdated", "unclear"]},
+        "text": {"type": "string", "description": "the fact, corrected if the evidence shows a small change (name, number, path)"},
+        "reason": {"type": "string"}}, "required": ["id", "verdict"], "additionalProperties": False}}},
+    "required": ["items"], "additionalProperties": False}
+
+VERIFY_SYSTEM = (
+    "You verify doubtful facts in a software team's memory against the current code. Each item has the fact, why it is in "
+    "doubt, and excerpts of its evidence files as they are today (line-numbered; '[missing]' means the file is gone in this "
+    "checkout). Answer still_true when the evidence supports the fact as written or with a small correction (then return the "
+    "corrected text); outdated when the evidence shows the fact is no longer the case; unclear when the excerpts cannot decide. "
+    "Never guess: a missing file alone is unclear, not outdated. Today is {today}."
+)
+
 SYSTEM = (
     "You consolidate engineering memory for a software team. Input: candidate observations (id, text, category, files) "
     "and existing memories. Output only durable, specific, non-obvious facts a new developer would need: architecture, "

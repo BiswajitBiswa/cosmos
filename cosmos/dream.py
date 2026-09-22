@@ -47,6 +47,8 @@ class DreamReport:
     auto_memory_notes: int = 0
     fallback_windows: int = 0
     flares_closed: int = 0
+    verified: int = 0
+    retired: int = 0
 
     def to_dict(self) -> Dict:
         return {"new": [{"id": m.id, "text": m.text, "category": m.category} for m in self.new],
@@ -67,6 +69,8 @@ class DreamReport:
                 + (f" · {self.windows_waiting} session ranges still waiting for a model" if self.windows_waiting else "")
                 + (f" · {self.fallback_windows} ranges read heuristically (no model for days)" if self.fallback_windows else "")
                 + (f" · {self.flares_closed} flares marked fixed by commit messages" if self.flares_closed else "")
+                + (f" · model verified {self.verified} doubtful facts still true, retired {self.retired}" if (self.verified or self.retired) else "")
+                + (f" · {len(self.revived)} came back with fresh evidence" if self.revived else "")
                 + ("" if self.llm_available else " · heuristics only — no LLM available (cosmos doctor)"))
 
 
@@ -140,10 +144,61 @@ def _missing_identifiers(root, m: Memory) -> List[str]:
     return [n for n in names if not any(n in b for b in blobs)]
 
 
+_TREE_CACHE: Dict[str, Set[str]] = {}
+
+
+def _repo_paths(root) -> Set[str]:
+    """Every tracked path across all worktrees of this repository (a fact recorded on the aura branch keeps its
+    evidence even while you sit on another branch). Cached per process."""
+    key = str(root)
+    if key in _TREE_CACHE:
+        return _TREE_CACHE[key]
+    import subprocess
+    from .transcript import worktrees
+    paths: Set[str] = set()
+    for wt in worktrees(root):
+        try:
+            out = subprocess.run(["git", "ls-files", "-z"], cwd=wt, capture_output=True, text=True, timeout=20).stdout
+            paths.update(p for p in out.split("\0") if p)
+        except Exception:
+            continue
+    _TREE_CACHE[key] = paths
+    return paths
+
+
 def _files_exist(root, files: List[str]) -> Optional[bool]:
+    """None when the fact cites no files; True when any cited file exists in this checkout or is tracked in any
+    worktree of the repository; False only when the evidence is gone everywhere."""
     if not files:
         return None
-    return any((root / f).exists() for f in files)
+    if any((root / f).exists() for f in files):
+        return True
+    tracked = _repo_paths(root)
+    return any(f in tracked or f.lstrip("./") in tracked for f in files)
+
+
+def _present_in_repo(root, idents: List[str]) -> Set[str]:
+    """Which of these identifiers appear anywhere in the repository (any worktree), in one git grep per worktree."""
+    if not idents:
+        return set()
+    import subprocess, tempfile
+    from .transcript import worktrees
+    found: Set[str] = set()
+    with tempfile.NamedTemporaryFile("w", delete=False) as fh:
+        fh.write("\n".join(idents) + "\n"); pat = fh.name
+    try:
+        for wt in worktrees(root):
+            try:
+                out = subprocess.run(["git", "grep", "-h", "-o", "-I", "-F", "-f", pat], cwd=wt, capture_output=True, text=True, timeout=60).stdout
+                found.update(l.strip() for l in out.splitlines() if l.strip())
+            except Exception:
+                continue
+            if found >= set(idents):
+                break
+    finally:
+        import os
+        os.unlink(pat)
+    return found
 
 
 def dream(cfg: Config, use_llm: Optional[bool] = None, verbose: bool = False, recurate_all: bool = False) -> DreamReport:
@@ -301,7 +356,23 @@ def dream(cfg: Config, use_llm: Optional[bool] = None, verbose: bool = False, re
 
     # ---- 4. temporal: stale candidates + missing evidence
     thresholds = cfg.get("dream.staleness_days", {}) or {}
+    # identifiers missing from evidence files are checked against the whole repository in one pass, so a name that
+    # merely moved to another file (or lives on another branch) does not make a fact stale
+    candidates = {m.id: _missing_identifiers(root, m) for m in mems.values()
+                  if m.status in ("active", "stale-candidate") and m.source != "explicit" and m.files and cfg.get("dream.verify_identifiers", True)}
+    all_idents = sorted({i for v in candidates.values() for i in v})
+    present = _present_in_repo(root, all_idents) if all_idents else set()
     for m in mems.values():
+        if m.status == "stale-candidate" and (m.reason or "").startswith("Stale candidate since") and m.files \
+                and ("evidence files" in (m.reason or "") or "no longer appears" in (m.reason or "")):
+            # evidence-based doubt only: an age-based doubt is not answered by the files merely existing
+            # automatically flagged earlier: if the evidence checks out again, the fact comes back by itself
+            gone = [i for i in candidates.get(m.id, []) if i not in present]
+            if _files_exist(root, m.files) is not False and not gone:
+                m.status, m.updated, m.last_verified = "active", t, t
+                m.reason = f"Evidence verified again on {t}"
+                report.revived.append(m.id)
+            continue
         if m.status != "active":
             continue
         limit = int(thresholds.get(m.category, thresholds.get("default", 180)))
@@ -309,18 +380,31 @@ def dream(cfg: Config, use_llm: Optional[bool] = None, verbose: bool = False, re
             age = (date.fromisoformat(t) - date.fromisoformat(m.last_verified)).days
         except Exception:
             age = 0
+        gone = [i for i in candidates.get(m.id, []) if i not in present]
         if _files_exist(root, m.files) is False:
             m.status, m.updated = "stale-candidate", t
-            m.reason = f"Stale candidate since {t}: none of the evidence files exist anymore"
+            m.reason = f"Stale candidate since {t}: none of the evidence files exist anymore, in any worktree"
             report.stale.append(m.id)
-        elif cfg.get("dream.verify_identifiers", True) and m.source != "explicit" and (gone := _missing_identifiers(root, m)):
+        elif gone:
             m.status, m.updated = "stale-candidate", t
-            m.reason = f"Stale candidate since {t}: `{gone[0]}` no longer appears in the evidence files"
+            m.reason = f"Stale candidate since {t}: `{gone[0]}` no longer appears in the evidence files or anywhere in the repository"
             report.stale.append(m.id)
         elif age > limit and m.source != "explicit" and m.category != "finding":
             m.status, m.updated = "stale-candidate", t
             m.reason = f"Stale candidate since {t}: not re-observed for {age} days (limit {limit}d for {m.category})"
             report.stale.append(m.id)
+    # ---- 4c. the model settles what it can: it reads the evidence and says still true / outdated / unclear
+    if prov is not None and cfg.get("dream.verify_stale", True):
+        doubtful = [m for m in mems.values() if m.status == "stale-candidate" and m.category != "finding"
+                    and any((root / f).is_file() for f in m.files)]   # nothing to show the model → a human decides
+        if doubtful:
+            try:
+                v, r = _llm_verify_stale(prov, cfg, doubtful[: int(cfg.get("dream.verify_budget", 40))], t, verbose)
+                report.verified, report.retired = v, r
+                report.llm_used = report.llm_used or bool(v or r)
+            except Exception as e:
+                if verbose:
+                    print(f"  stale verification skipped: {str(e)[:160]}")
 
     # ---- 4b. flares: an open flare whose anchor files no longer exist cannot be worked on — a human decides
     try:
@@ -439,6 +523,65 @@ def _llm_curate(prov, cfg: Config, pending: List[Dict], mems: Dict[str, Memory],
         if verbose:
             print(f"  llm curated {min(i + batch, len(pending))}/{len(pending)}")
     return kept, dropped
+
+
+def _evidence_excerpt(root, m: Memory, limit: int = 1400) -> str:
+    """Lines of the evidence files around the identifiers the fact names (or the head of the file)."""
+    idents = [n for a, b in _IDENT.findall(m.text) for n in [(a or b).strip()] if len(n) >= 5]
+    out: List[str] = []
+    for f in m.files[:2]:
+        p = root / f
+        if not p.is_file():
+            out.append(f"[{f}: missing in this checkout]")
+            continue
+        try:
+            lines = p.read_text(errors="ignore").splitlines()
+        except Exception:
+            continue
+        hits = [i for i, l in enumerate(lines) if any(n in l for n in idents)] if idents else []
+        picked: List[int] = []
+        for i in hits[:4]:
+            picked += [j for j in range(max(0, i - 2), min(len(lines), i + 3)) if j not in picked]
+        if not picked:
+            picked = list(range(min(30, len(lines))))
+        out.append(f"[{f}]\n" + "\n".join(f"{j+1}: {lines[j][:160]}" for j in sorted(picked)))
+    text = "\n".join(out)
+    return text[:limit]
+
+
+def _llm_verify_stale(prov, cfg: Config, facts: List[Memory], t: str, verbose: bool, batch: int = 12) -> Tuple[int, int]:
+    """Doubtful facts, with the current evidence in front of the model: still_true → active and verified today;
+    outdated → retired with the reason; unclear → stays for a human. Returns (verified, retired)."""
+    from .providers import VERIFY_SCHEMA, VERIFY_SYSTEM
+    import json as _j
+    root = cfg.paths.root
+    verified = retired = 0
+    for i in range(0, len(facts), batch):
+        chunk = facts[i:i + batch]
+        payload = {"today": t, "facts": [{"id": m.id, "text": m.text, "category": m.category, "doubt": (m.reason or "")[:200],
+                                          "evidence": _evidence_excerpt(root, m)} for m in chunk]}
+        res = prov.complete(VERIFY_SYSTEM.format(today=t), _j.dumps(payload, ensure_ascii=False), VERIFY_SCHEMA)
+        answers = {it.get("id"): it for it in (res or {}).get("items", []) if isinstance(it, dict)}
+        for m in chunk:
+            a = answers.get(m.id)
+            if not a:
+                continue
+            v = a.get("verdict")
+            if v == "still_true":
+                m.status, m.updated, m.last_verified = "active", t, t
+                text = " ".join(str(a.get("text") or "").split())
+                if 12 <= len(text) <= 400:
+                    m.text = text
+                m.meta["verified"] = f"llm:{t}"
+                m.reason = f"Verified against the evidence on {t}" + (f": {str(a.get('reason'))[:160]}" if a.get("reason") else "")
+                verified += 1
+            elif v == "outdated":
+                m.status, m.updated = "forgotten", t
+                m.reason = f"Retired on {t} — outdated per the evidence: {str(a.get('reason') or '')[:200]}"
+                retired += 1
+        if verbose:
+            print(f"  verified {min(i + batch, len(facts))}/{len(facts)} doubtful facts")
+    return verified, retired
 
 
 def _llm_recurate(prov, cfg: Config, facts: List[Memory], mems: Dict[str, Memory], verbose: bool, batch: int = 40) -> Tuple[int, int]:
