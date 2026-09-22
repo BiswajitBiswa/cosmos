@@ -173,13 +173,13 @@ def build_cases(root: Path, sample: int, seed: int) -> List[Dict[str, Any]]:
             if c.get("grep"):
                 lines = text.splitlines(); hits = [i for i, l in enumerate(lines) if any(g in l for g in c["grep"])]
                 picked_lines = set()
-                for i in hits[:6]:
-                    picked_lines.update(range(max(0, i - 8), min(len(lines), i + 14)))
+                for i in hits[:8]:
+                    picked_lines.update(range(max(0, i - 6), min(len(lines), i + 34)))   # whole function bodies, not fragments
                 excerpt.append(f"[{f}]\n" + "\n".join(f"{j+1}: {lines[j]}" for j in sorted(picked_lines)))
             else:
                 excerpt.append(f"[{f}]\n" + text[:3000])
         cases.append({"suite": "tool-claims", "feature": c["feature"], "new": c["feature"] in NEW_FEATURES, "ref": c["id"], "cosmos_says": "implemented",
-                      "state": {"CLAIM": c["claim"], "SOURCE_CODE": _cut("\n\n".join(excerpt), 12000)}, "questions": {"claim": Q_CLAIM}})
+                      "state": {"CLAIM": c["claim"], "SOURCE_CODE": _cut("\n\n".join(excerpt), 6500)}, "questions": {"claim": Q_CLAIM}})
     return cases
 
 
@@ -193,6 +193,19 @@ class TypeSafeJudge:
     def ask(self, state: Any, questions: Dict[str, Dict]) -> Dict[str, Any]:
         body = json.dumps({"state": state, "model": self.model, "questions": questions}).encode()
         req = urllib.request.Request("https://api.typesafe.ai/v1/systemone", data=body, method="POST",
+                                     headers={"Authorization": f"Bearer {self.key}", "Content-Type": "application/json"})
+        return _post(req)
+
+
+class GatewayJudge(TypeSafeJudge):
+    """jev-ai.pro: an independently operated gateway to TypeSafe's Jev (same request shape). Credits are scarce there:
+    input tokens are billed first, then one credit per request, so cases are packed into few requests."""
+    name = "jev-ai.pro gateway → typesafe jev"
+    url = "https://jev-ai.pro/api/v1/systemone"
+
+    def ask(self, state, questions):
+        body = json.dumps({"state": state, "model": self.model, "questions": questions}).encode()
+        req = urllib.request.Request(self.url, data=body, method="POST",
                                      headers={"Authorization": f"Bearer {self.key}", "Content-Type": "application/json"})
         return _post(req)
 
@@ -211,10 +224,23 @@ class CloudflareJudge:
         return out.get("result", out)
 
 
+def _ssl_context():
+    """Framework builds of Python on macOS ship without a CA bundle; use certifi's when present, else the default."""
+    import ssl
+    try:
+        import certifi
+        return ssl.create_default_context(cafile=certifi.where())
+    except Exception:
+        return ssl.create_default_context()
+
+
 def _post(req: urllib.request.Request, tries: int = 4) -> Dict[str, Any]:
+    ctx = _ssl_context()
+    if not req.has_header("User-agent"):   # some gateways sit behind a CDN that rejects Python's default agent (Cloudflare 1010)
+        req.add_header("User-Agent", "cosmos-validation/0.1 (+https://github.com/BiswajitBiswa/cosmos)")
     for attempt in range(tries):
         try:
-            with urllib.request.urlopen(req, timeout=60) as r:
+            with urllib.request.urlopen(req, timeout=60, context=ctx) as r:
                 return json.loads(r.read().decode())
         except urllib.error.HTTPError as e:
             if e.code in (429, 529, 500, 502, 503) and attempt < tries - 1:
@@ -235,14 +261,44 @@ def _answer(ans: Dict[str, Any]) -> Tuple[str, float]:
 
 
 # ---------------------------------------------------------------- run + report
-def run(cases: List[Dict], judge, min_conf: float) -> List[Dict]:
-    out = []
-    for i, c in enumerate(cases, 1):
-        state = "\n\n".join(f"{k}:\n{v if isinstance(v, str) else json.dumps(v, ensure_ascii=False)}" for k, v in c["state"].items())
-        res = judge.ask(state, c["questions"])
-        answers = {q: _answer(a) for q, a in (res.get("answers") or {}).items()}
-        out.append({**{k: v for k, v in c.items() if k != "state"}, "answers": answers, "usage": res.get("usage", {})})
-        print(f"\r  {i}/{len(cases)}", end="", flush=True)
+def _state_text(st: Dict[str, Any]) -> str:
+    return "\n\n".join(f"{k}:\n{v if isinstance(v, str) else json.dumps(v, ensure_ascii=False)}" for k, v in st.items())
+
+
+def run(cases: List[Dict], judge, min_conf: float, batch: int = 1, max_requests: int = 0) -> List[Dict]:
+    """One request per case, or `batch` cases per request: the states are concatenated under numbered headings and
+    each question names its case. Every answer keeps the raw probabilities, confidence and the request latency."""
+    out: List[Dict] = []
+    requests_made = 0
+    groups = [cases[i:i + batch] for i in range(0, len(cases), batch)] if batch > 1 else [[c] for c in cases]
+    for gi, group in enumerate(groups, 1):
+        if max_requests and requests_made >= max_requests:
+            break
+        if len(group) == 1:
+            state, questions, keymap = _state_text(group[0]["state"]), group[0]["questions"], {q: (0, q) for q in group[0]["questions"]}
+        else:
+            parts, questions, keymap = [], {}, {}
+            for n, c in enumerate(group, 1):
+                parts.append(f"===== CASE {n} =====\n" + _state_text(c["state"]))
+                for q, spec in c["questions"].items():
+                    qid = f"case{n}_{q}"
+                    questions[qid] = dict(spec, instructions=f"About CASE {n} only: " + spec["instructions"])
+                    keymap[qid] = (n - 1, q)
+            state = "\n\n".join(parts)
+        t0 = time.time()
+        res = judge.ask(state, questions)
+        ms = int((time.time() - t0) * 1000)
+        requests_made += 1
+        raw = res.get("answers") or {}
+        per_case: Dict[int, Dict[str, Any]] = defaultdict(dict)
+        for qid, ans in raw.items():
+            idx, q = keymap.get(qid, (0, qid))
+            per_case[idx][q] = ans
+        for idx, c in enumerate(group):
+            answers = {q: _answer(a) for q, a in per_case.get(idx, {}).items()}
+            out.append({**{k: v for k, v in c.items() if k != "state"}, "answers": answers, "raw": per_case.get(idx, {}),
+                        "latency_ms": ms, "usage": res.get("usage", {}) if idx == 0 else {}, "request": gi})
+        print(f"\r  request {gi}/{len(groups)} · {ms} ms · usage {res.get('usage')}", end="", flush=True)
     print()
     return out
 
@@ -303,6 +359,15 @@ def report(results: List[Dict], judge_name: str, repo: str, min_conf: float) -> 
                 for r in results if agreement(r["suite"], r) is False and min((v[1] for v in r["answers"].values()), default=0) >= min_conf]
     if dis_refs:
         lines += ["## Disagreements (references only)", ""] + [f"- {x}" for x in dis_refs[:60]] + [""]
+    claims = [r for r in results if r["suite"] == "tool-claims" and r.get("raw")]
+    if claims:
+        lines += ["## Documented claims, as the judge saw them", "",
+                  "| claim | feature | new / existing | answer | implemented | contradicted | cannot tell | confidence | latency |", "|---|---|---|---|---|---|---|---|---|"]
+        for r in sorted(claims, key=lambda r: r["ref"]):
+            a = r["raw"].get("claim", {}); pr = a.get("probabilities") or {}
+            pc = lambda k: f"{100 * float(pr.get(k, 0)):.0f}%"
+            lines.append(f"| {r['ref']} | {r['feature']} | {'new' if r['new'] else 'existing'} | **{a.get('choice', '?')}** | {pc('implemented')} | {pc('contradicted')} | {pc('cannot_tell')} | {100 * float(a.get('confidence', 0)):.0f}% sure | {r.get('latency_ms', 0) / 1000:.1f} s |")
+        lines.append("")
     usage = sum(int((r.get("usage") or {}).get("input_tokens", 0)) for r in results)
     lines += [f"Input tokens judged: {usage:,} (≈ ${usage / 1e6 * 0.042:.3f} at the published rate).", "",
               "A high agreement rate is not proof cosmos is right: judge and tool can be wrong together. A low rate on a suite is a real signal. "
@@ -313,7 +378,10 @@ def report(results: List[Dict], judge_name: str, repo: str, min_conf: float) -> 
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--repo", default=".", help="a repository where cosmos has run")
-    ap.add_argument("--judge", choices=["typesafe", "cloudflare"], default="typesafe")
+    ap.add_argument("--judge", choices=["typesafe", "cloudflare", "gateway"], default="typesafe", help="gateway = jev-ai.pro (JEV_AI_PRO_KEY), an independently operated reseller")
+    ap.add_argument("--suite", action="append", help="run only these suites (repeatable)")
+    ap.add_argument("--batch", type=int, default=1, help="cases per request (saves credits on metered gateways; keep small)")
+    ap.add_argument("--max-requests", type=int, default=0, help="stop after this many requests (0 = no limit)")
     ap.add_argument("--sample", type=int, default=40, help="cases per suite")
     ap.add_argument("--seed", type=int, default=7)
     ap.add_argument("--min-conf", type=float, default=0.6)
@@ -323,6 +391,8 @@ def main() -> int:
     a = ap.parse_args()
     root = Path(a.repo).resolve()
     cases = build_cases(root, a.sample, a.seed)
+    if a.suite:
+        cases = [c for c in cases if c["suite"] in set(a.suite)]
     est_tokens = sum(len(json.dumps(c["state"], ensure_ascii=False)) // 4 + 120 for c in cases)
     by = Counter((c["suite"], "new" if c["new"] else "existing") for c in cases)
     print(f"{len(cases)} cases from {root.name}:")
@@ -333,7 +403,12 @@ def main() -> int:
         Path(a.export).write_text("\n".join(json.dumps(c, ensure_ascii=False) for c in cases) + "\n"); print(f"wrote {a.export}")
     if a.dry_run or a.export:
         return 0
-    if a.judge == "typesafe":
+    if a.judge == "gateway":
+        key = os.environ.get("JEV_AI_PRO_KEY")
+        if not key:
+            print("JEV_AI_PRO_KEY is not set."); return 2
+        judge = GatewayJudge(key)
+    elif a.judge == "typesafe":
         key = os.environ.get("TYPESAFE_API_KEY")
         if not key:
             print("TYPESAFE_API_KEY is not set. Get a key at typesafe.ai (waitlist) or use --judge cloudflare with a Workers AI token."); return 2
@@ -343,7 +418,7 @@ def main() -> int:
         if not (acct and tok):
             print("CLOUDFLARE_ACCOUNT_ID and CLOUDFLARE_API_TOKEN are not set."); return 2
         judge = CloudflareJudge(acct, tok)
-    results = run(cases, judge, a.min_conf)
+    results = run(cases, judge, a.min_conf, batch=a.batch, max_requests=a.max_requests)
     (HERE / "results.jsonl").write_text("\n".join(json.dumps(r, ensure_ascii=False) for r in results) + "\n")
     text = report(results, judge.name, root.name, a.min_conf)
     Path(a.out).write_text(text + "\n")
