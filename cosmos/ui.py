@@ -892,7 +892,7 @@ cosmos flares import &lt;findings.json&gt; --prefix &lt;ID-PREFIX&gt; --source &
 cosmos ui             <span style="color:var(--dim)"># look while the first dream finishes</span>
 cosmos charter edit
 git checkout -b cosmos/init origin/&lt;base-branch&gt;
-git add .cosmos .claude/settings.json .claude/commands .mcp.json CLAUDE.md AGENTS.md GEMINI.md .gitignore
+git add .claude/settings.json .claude/commands .mcp.json CLAUDE.md AGENTS.md GEMINI.md .gitignore   # the ledger is on the cosmos branch
 git commit -m "cosmos: charter, ledger, atlas, findings" &amp;&amp; git push -u origin cosmos/init</pre>
   <p><b>Already-open sessions</b> keep running without cosmos until restarted — hooks are read at session start: <code>claude --resume &lt;session-id&gt;</code>. Transcripts live in <code>~/.claude/projects/&lt;repo path, slashes → dashes&gt;/</code> (Claude Code), <code>~/.codex/sessions/</code> (Codex), <code>~/.gemini/</code> (Gemini). Transcripts are read, never stored; secrets are redacted.</p>`],
  ['start','3 · Getting started (a new repo)',`

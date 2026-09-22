@@ -21,19 +21,10 @@ def managed_block(mems: Dict[str, Memory], k: int, cfg: Optional[Config] = None)
              "3. **Atlas** `.cosmos/ledger/atlas/` — architecture diagrams generated from the repo. Read `containers.md` before structural changes.",
              "4. **Gate** — before you stop: run the tests for files you touched, cite `file:line` for each change, address open flares on those files, self-review against the Charter, and record what the team learned (cosmos_remember kind=fact; cosmos_flare for bugs found - fixed or open - without asking).",
              "Explicit rules outrank inferred facts.", ""]
-    if cfg is not None:
-        from .charter import rules
-        rs = rules(mems)
-        if rs:
-            lines.append("Explicit team rules:")
-            lines += [f"- [{m.category}] {m.text}" for m in rs[:10]]
-            lines.append("")
-    ts = [m for m in top(mems, k) if m.source != "explicit"]
-    if ts:
-        lines.append("Key facts:")
-        for m in ts:
-            lines.append(f"- **{m.category}**" + (f" · {m.lane}" if m.lane else "") + f": {m.text}")
-        lines.append("")
+    lines.append("The rules are in `.cosmos/charter.md` and the facts, by lane, in `.cosmos/ledger/_index.md` (a git worktree of the "
+                 "`cosmos` branch — never part of a feature branch). Claude Code receives the relevant ones through hooks; any other agent "
+                 "reads those two files or calls `cosmos_recall` before changing code it did not write.")
+    lines.append("")
     lines.append("`cosmos why <id>` explains a fact · `remember: …` adds a rule · `flare: …` files a flare · `cosmos horizon \"…\"` maps a feature before coding")
     lines.append(END)
     return "\n".join(lines)

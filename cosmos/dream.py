@@ -341,6 +341,11 @@ def dream(cfg: Config, use_llm: Optional[bool] = None, verbose: bool = False, re
     state.mark_dreamed(seen_ids)
     state.save()
     _persist_run(cfg, report, started)
+    try:
+        from .sync import sync_background
+        sync_background(cfg, "cosmos: dream — " + report.summary()[:100])
+    except Exception:
+        pass
     return report
 
 

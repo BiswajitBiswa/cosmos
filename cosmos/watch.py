@@ -132,6 +132,13 @@ def tick(cfg: Config, agents: Optional[List[str]] = None, verbose: bool = False)
     live = {k: v for k, v in live.items() if _ts(v.get("last", "")) >= cutoff}
     cfg.paths.state.mkdir(parents=True, exist_ok=True)
     _live_path(cfg).write_text(json.dumps(live, indent=1))
+    try:   # the ledger branch stays committed and pushed while people work
+        from .sync import is_branch_mode, sync_background
+        if is_branch_mode(cfg) and time.time() - float(state.data.get("last_sync", 0)) > 600:
+            sync_background(cfg, "cosmos: journal and observations")
+            state.data["last_sync"] = time.time(); state.save()
+    except Exception:
+        pass
     dreamed = False
     pend = pending_count(cfg)
     if should_auto_dream(cfg, pend) and auto_dream(cfg):

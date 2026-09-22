@@ -1201,3 +1201,50 @@ class TestReviewFixes(unittest.TestCase):
                 {"type": "text", "text": "Added src/retry.ts:1."}]}}]
             res = evaluate(r.cfg, {"transcript_path": str(r.transcript("big.jsonl", big)), "session_id": "s"})
             self.assertFalse(res["small"]); self.assertTrue(res["block"]); self.assertIn("Record what the team learned", res["reasons"][0])
+
+
+class TestLedgerBranch(unittest.TestCase):
+    """.cosmos/ is a worktree of the cosmos branch: feature branches never carry ledger changes."""
+
+    def test_attach_on_a_repo_with_no_commits_then_commit_and_status(self):
+        from cosmos import sync
+        with tempfile.TemporaryDirectory() as d:
+            root = Path(d); subprocess.run(["git", "init", "-q"], cwd=root, check=True)
+            ok, msg = sync.attach(root); self.assertTrue(ok, msg)
+            self.assertTrue((root / ".cosmos" / ".git").is_file(), "worktree, not a plain directory")
+            self.assertTrue(sync.has_local_branch(root))
+            self.assertTrue(sync.attach(root)[0], "idempotent")
+            (root / ".cosmos" / "ledger").mkdir(); (root / ".cosmos" / "ledger" / "x.md").write_text("fact\n")
+            self.assertTrue(sync.commit(root, "cosmos: test"))
+            self.assertFalse(sync.commit(root, "cosmos: nothing"))
+            log = subprocess.run(["git", "log", "--oneline", "cosmos"], cwd=root, capture_output=True, text=True).stdout
+            self.assertIn("cosmos: test", log); self.assertIn("cosmos: ledger branch", log)
+            self.assertIn(".cosmos/", (root / ".gitignore").read_text())
+            self.assertEqual(subprocess.run(["git", "status", "--porcelain"], cwd=root, capture_output=True, text=True).stdout.strip(), "?? .gitignore", "the main tree sees the new .gitignore and nothing of .cosmos")
+
+    def test_migrate_a_repo_that_tracked_cosmos_in_its_branch(self):
+        from cosmos import sync
+        with tempfile.TemporaryDirectory() as d:
+            root = Path(d); subprocess.run(["git", "init", "-q"], cwd=root, check=True)
+            (root / "src").mkdir(); (root / "src" / "a.py").write_text("x")
+            (root / ".cosmos" / "ledger").mkdir(parents=True); (root / ".cosmos" / "charter.md").write_text("# Charter\n"); (root / ".cosmos" / "ledger" / "mem_1.md").write_text("fact")
+            (root / ".gitignore").write_text(".cosmos/state/\n")
+            subprocess.run(["git", "add", "-A"], cwd=root, check=True)
+            subprocess.run(["git", "-c", "user.email=t@t", "-c", "user.name=t", "commit", "-q", "-m", "feature with cosmos inside"], cwd=root, check=True)
+            ok, msg = sync.migrate(root); self.assertTrue(ok, msg)
+            self.assertEqual((root / ".cosmos" / "charter.md").read_text(), "# Charter\n", "content kept")
+            self.assertTrue((root / ".cosmos" / ".git").is_file())
+            staged = subprocess.run(["git", "diff", "--cached", "--name-status"], cwd=root, capture_output=True, text=True).stdout
+            self.assertIn("D\t.cosmos/charter.md", staged, "removal from the feature branch is staged, nothing else")
+            self.assertNotIn("src/a.py", staged)
+            self.assertIn(".cosmos/", (root / ".gitignore").read_text()); self.assertNotIn(".cosmos/state/", (root / ".gitignore").read_text())
+            shown = subprocess.run(["git", "show", "cosmos:charter.md"], cwd=root, capture_output=True, text=True).stdout
+            self.assertEqual(shown, "# Charter\n", "the ledger is on the cosmos branch")
+
+    def test_hook_attaches_a_fresh_clone_and_block_is_static(self):
+        from cosmos.wrapper import HOOK_CMD
+        from cosmos.render import managed_block
+        self.assertIn("worktree add -q --track -B cosmos", HOOK_CMD)
+        self.assertIn("origin/cosmos", HOOK_CMD)
+        b1 = managed_block({}, 10); b2 = managed_block({"m": Memory(id="mem_x", text="A volatile fact", category="decision")}, 10, None)
+        self.assertEqual(b1, b2, "the block in CLAUDE.md never changes with the ledger")

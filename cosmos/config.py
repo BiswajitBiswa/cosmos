@@ -17,6 +17,7 @@ DEFAULT_CONFIG: Dict[str, Any] = {
     "privacy": {"redact_secrets": True, "author": "git"},  # author: git | anonymous
     "retrieval": {"session_start_max": 10, "prompt_max": 6},
     "watch": {"auto": True, "interval": 30},
+    "sync": {"auto_push": True},   # the cosmos branch is pushed by dreams and the watcher; false = commit locally only
     "dream": {"llm": "auto", "auto_memory": True, "read_budget": 30, "staleness_days": {"dependency": 45, "workflow": 120, "architecture": 240, "default": 180}},
     "llm": {"provider": "auto"},   # auto: Anthropic API key if present, else your Claude Code login (claude -p), else heuristics
     "render": {"claude_md": True, "agents_md": True},
