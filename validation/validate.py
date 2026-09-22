@@ -237,7 +237,7 @@ def _ssl_context():
 def _post(req: urllib.request.Request, tries: int = 4) -> Dict[str, Any]:
     ctx = _ssl_context()
     if not req.has_header("User-agent"):   # some gateways sit behind a CDN that rejects Python's default agent (Cloudflare 1010)
-        req.add_header("User-Agent", "cosmos-validation/0.1 (+https://github.com/BiswajitBiswa/cosmos)")
+        req.add_header("User-Agent", "cosmos-validation/0.1")
     for attempt in range(tries):
         try:
             with urllib.request.urlopen(req, timeout=60, context=ctx) as r:
