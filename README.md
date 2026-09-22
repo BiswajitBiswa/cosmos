@@ -136,7 +136,7 @@ git clone <repo> && claude
 |---|---|
 | **what** | A check that runs when the AI says it is done. If the turn changed code but ran no tests, gave no `file:line` references, or ignored an open finding on a file it touched, the AI is handed the exact list and keeps going. |
 | **you do** | Nothing. Tune the rules in the Charter if you want. |
-| **you get** | “Did you test? Point precisely. Review your own change.” stops being something a person says on every call, and the agent writes down what it learned while it still has the full context. A turn is held at most once; documentation edits are never held. Bugs found are filed as flares without asking. |
+| **you get** | “Did you test? Point precisely. Review your own change.” stops being something a person says on every call, and the agent writes down what it learned while it still has the full context. Proportional: a change under 400 characters in one file is held only for its `file:line` and open flares. A turn is held at most once; documentation edits are never held. Bugs found are filed as flares without asking. |
 | **command** | `cosmos gate` · `cosmos gate --transcript FILE` |
 
 ### <img src="docs/assets/icon-flares.svg" width="28" alt=""> Flares · QA that follows the code

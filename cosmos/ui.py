@@ -1031,7 +1031,23 @@ cosmos obsidian --vault ~/Obsidian/Team  # link several repos' ledgers into one 
   ledger/               Obsidian vault, one note per fact — committed
   observations/        sanitized JSONL, day-partitioned — committed (so CI can dream)
   state/               per-machine offsets, dream runs, hook.log, slack-posted.json — gitignored</pre>
-  <p><b>Privacy:</b> hooks always exit 0 and never block a session; transcripts are never stored; API keys, tokens (incl. Slack xox*/xapp-), passwords, private keys and credentials in URLs are redacted before persistence; nothing is sent anywhere unless you run <code>audit slack --send</code> or enable an LLM provider.</p>`]];
+  <p><b>Privacy:</b> hooks always exit 0 and never block a session; transcripts are never stored; API keys, tokens (incl. Slack xox*/xapp-), passwords, private keys and credentials in URLs are redacted before persistence; nothing is sent anywhere unless you run <code>audit slack --send</code> or enable an LLM provider.</p>`]
+ ['byitself','11 · What happens by itself',`
+  <p>After <code>cosmos init</code> there are no steps. These run on their own:</p>
+  <table><tr><th>what</th><th>when</th><th>where it lands</th></tr>
+  <tr><td><b>Journal</b> — one line per agent turn: the ask, files edited, commits, tests ran</td><td>every turn (hooks) or every 30s (watcher)</td><td><code>.cosmos/ledger/journal/&lt;date&gt;.md</code></td></tr>
+  <tr><td><b>Handoff</b> — the agent's final message on an editing turn, kept per branch; <code>cosmos_handoff(learned, open, next)</code> when stopping mid-work</td><td>every editing turn</td><td><code>ledger/journal/handoffs/&lt;branch&gt;.md</code>, shown at the next session start on that branch</td></tr>
+  <tr><td><b>Team sources</b> — every commit by anyone (git history, all branches) becomes a journal line; commit bodies and pull-request review comments (GitHub CLI, when logged in) are offered to the model as candidate rules and facts</td><td>each dream</td><td>journal · candidates → ledger</td></tr>
+  <tr><td><b>Your own Claude Code notes</b> — new or changed auto-memory notes (except personal ones) are offered to the team ledger</td><td>each dream</td><td>ledger</td></tr>
+  <tr><td><b>Dreams</b> — the model reads the marked session ranges in context, curates, reconciles, verifies doubtful facts against today's code</td><td>25 observations waiting, hourly while a backlog exists, or 6h since the last</td><td><code>.cosmos/ledger/</code>, committed and pushed on the <code>cosmos</code> branch</td></tr>
+  <tr><td><b>Freshness</b> — a fact naming an identifier that left the code goes to Verdicts; evidence-based doubts clear themselves when the evidence returns; never injected while doubtful</td><td>each dream</td><td>Verdicts</td></tr>
+  <tr><td><b>Gate</b> — proportional: a change under 400 characters in one file is held only for a <code>file:line</code> citation and open flares; larger changes also for tests and for recording what was learned</td><td>when an editing turn ends</td><td>the turn continues once</td></tr>
+  <tr><td><b>Recall before an edit</b> — open flares, constraints and rules attached to the file the agent is about to change</td><td>once per file per session</td><td>the agent's context (≈30 tokens per fact; full note via <code>cosmos_why</code>)</td></tr>
+  <tr><td><b>Recall, measured</b> — recall@5 over the ledger: would the right fact reach an agent working on that file or asking the question the model wrote for it</td><td>each dream · <code>cosmos eval</code></td><td>Dreams page</td></tr>
+  <tr><td><b>Watcher</b> — follows Claude Code, Codex and Gemini session files for every worktree; live view; exits after two idle hours</td><td>started by init, by session starts and by the console</td><td>Activity · Live now</td></tr>
+  <tr><td><b>Ledger branch</b> — <code>.cosmos/</code> is a worktree of the <code>cosmos</code> branch, ignored by your branches; a fresh clone attaches it on the first session start</td><td>init · dreams · watcher</td><td>never in a feature branch</td></tr>
+  </table>
+  <p>What cosmos costs a session is shown on Activity as tokens injected today. Everything above can be switched in <code>config.json</code> (<code>dream.auto</code>, <code>watch.auto</code>, <code>sources.git_log</code>, <code>sources.github_reviews</code>, <code>sync.auto_push</code>) or in the Charter's gate line (<code>reflect</code>, <code>small_change_chars</code>).</p>`],];
  $('#page').innerHTML=`<div class="docs"><div class="toc">${SECTIONS.map(([id,t])=>`<a href="#doc-${id}">${t.replace(/^\d+ · /,'')}</a>`).join('')}</div><div class="doc card">${SECTIONS.map(([id,t,b])=>`<h2 id="doc-${id}">${t}</h2>${b}`).join('')}</div></div>`;
  document.querySelectorAll('.toc a').forEach(a=>a.onclick=e=>{e.preventDefault();document.querySelector(a.getAttribute('href')).scrollIntoView({behavior:'smooth',block:'start'})});
 }
