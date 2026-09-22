@@ -144,11 +144,13 @@ def _items_to_observations(items: List[Dict], turns: List[Turn], w: Dict, cfg: C
         text, fired = redact(text)
         if fired:
             continue
+        from .lanes import resolve_evidence
         files = []
         for f in it.get("files") or []:
             f = str(f).strip().lstrip("./")
-            if f in seen_files or (root / f).exists() or f in excerpt:
-                files.append(f)
+            r = f if f in seen_files else resolve_evidence(root, f)
+            if r and r not in files:
+                files.append(r)
         cat = it.get("category") if it.get("category") in CATEGORIES else "domain"
         if it.get("kind") == "rejected":
             cat = "rejected"

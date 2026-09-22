@@ -362,7 +362,12 @@ def dream(cfg: Config, use_llm: Optional[bool] = None, verbose: bool = False, re
                   if m.status in ("active", "stale-candidate") and m.source != "explicit" and m.files and cfg.get("dream.verify_identifiers", True)}
     all_idents = sorted({i for v in candidates.values() for i in v})
     present = _present_in_repo(root, all_idents) if all_idents else set()
+    from .lanes import resolve_evidence
     for m in mems.values():
+        if m.status in ("active", "stale-candidate") and m.files and _files_exist(root, m.files) is False:
+            fixed = [r for r in (resolve_evidence(root, f) for f in m.files) if r]
+            if fixed:                                  # the path was partial, or points into a sibling repo
+                m.files = list(dict.fromkeys(fixed))[:8]
         if m.status == "stale-candidate" and (m.reason or "").startswith("Stale candidate since") and m.files \
                 and ("evidence files" in (m.reason or "") or "no longer appears" in (m.reason or "")):
             # evidence-based doubt only: an age-based doubt is not answered by the files merely existing

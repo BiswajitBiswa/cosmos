@@ -1299,3 +1299,32 @@ class TestFreshness(unittest.TestCase):
                 dm.get_provider = old
             self.assertEqual(rep.retired, 1)
             self.assertEqual(Ledger(r.cfg.paths).load()["mem_v2"].status, "forgotten")
+
+
+class TestEvidencePaths(unittest.TestCase):
+    def test_cited_paths_resolve_or_are_dropped(self):
+        from cosmos.lanes import resolve_evidence, _INDEX_CACHE
+        with Repo() as r:
+            _INDEX_CACHE.clear()
+            (r.root / "webserver" / "app" / "services").mkdir(parents=True); (r.root / "webserver" / "app" / "services" / "agent_router.py").write_text("x")
+            sib = r.root.parent / "frontend-x"; (sib / "src").mkdir(parents=True); (sib / "src" / "App.tsx").write_text("x")
+            try:
+                self.assertEqual(resolve_evidence(r.root, "src/redis-lock.ts"), "src/redis-lock.ts")
+                self.assertEqual(resolve_evidence(r.root, "agent_router.py"), "webserver/app/services/agent_router.py", "partial path → unique tree match")
+                self.assertEqual(resolve_evidence(r.root, "frontend-x/src/App.tsx"), "../frontend-x/src/App.tsx", "a sibling repo cited without ../")
+                self.assertEqual(resolve_evidence(r.root, "../frontend-x/src/App.tsx"), "../frontend-x/src/App.tsx")
+                self.assertEqual(resolve_evidence(r.root, "nowhere/at/all.py"), "", "made up → dropped")
+            finally:
+                import shutil; shutil.rmtree(sib)
+
+    def test_a_doubt_from_a_partial_path_repairs_itself(self):
+        from cosmos.lanes import _INDEX_CACHE
+        with Repo() as r:
+            _INDEX_CACHE.clear()
+            (r.root / "webserver").mkdir(); (r.root / "webserver" / "agent_router.py").write_text("ROUTER = 1\n")
+            m = Memory(id="mem_p1", text="agent_router is dead code.", category="architecture", files=["agent_router.py"], status="stale-candidate",
+                       reason="Stale candidate since 2026-09-01: none of the evidence files exist anymore")
+            Ledger(r.cfg.paths).save(m)
+            rep = dream(r.cfg, use_llm=False)
+            got = Ledger(r.cfg.paths).load()["mem_p1"]
+            self.assertEqual((got.status, got.files), ("active", ["webserver/agent_router.py"]))

@@ -71,6 +71,36 @@ def _tree_index(root) -> Dict[str, List[str]]:
     return idx
 
 
+_INDEX_CACHE: Dict[str, Dict[str, List[str]]] = {}
+
+
+def resolve_evidence(root, fragment: str) -> str:
+    """Best effort from a cited path to evidence that exists: repo-relative as given, a unique tree match for a
+    partial path, a sibling repository (`../name/...`, also when cited as `name/...`), or "" when nothing matches."""
+    from pathlib import Path
+    frag = str(fragment).strip().lstrip("./")
+    if not frag:
+        return ""
+    if (Path(root) / frag).exists():
+        return frag
+    if frag.startswith("../") and (Path(root) / frag).resolve().exists():
+        return frag
+    key = str(root)
+    if key not in _INDEX_CACHE:
+        _INDEX_CACHE[key] = _tree_index(root)
+    r = resolve_path(frag, _INDEX_CACHE[key])
+    if r != frag and (Path(root) / r).exists():
+        return r
+    parent = Path(root).resolve().parent
+    if (parent / frag).exists() and frag.split("/")[0] != Path(root).resolve().name:
+        return "../" + frag                       # cited as `frontend/src/x.ts` from the backend repo
+    from .transcript import worktrees
+    for wt in worktrees(Path(root)):
+        if (wt / frag).exists():
+            return frag                           # exists on another worktree of this repo
+    return ""
+
+
 def resolve_path(fragment: str, index: Dict[str, List[str]]) -> str:
     """`crud/base.py` → `packages/core/crud/base.py` when exactly one tree path ends with it; else unchanged."""
     frag = fragment.strip().lstrip("./")
