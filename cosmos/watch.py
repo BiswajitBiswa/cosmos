@@ -33,7 +33,8 @@ def load_live(cfg: Config) -> Dict[str, Dict[str, Any]]:
 def _summarise(turns, sid: str, agent: str, prev: Optional[Dict[str, Any]]) -> Dict[str, Any]:
     from .journal import commits_in
     from .transcript import Turn
-    asks = [" ".join(t.text.split())[:200] for t in turns if t.role == "user" and t.text.strip() and not t.text.lstrip().startswith(("<", "/"))]
+    asks = [" ".join(t.text.split())[:200] for t in turns if t.role == "user" and t.text.strip()
+            and not t.text.lstrip().startswith(("<", "/", "Stop hook feedback", "[Request interrupted", "Hook "))]
     files = list(dict.fromkeys(f for t in turns for f in (t.files or [])))
     cmds = [c for t in turns for c in (t.commands or [])]
     last_ts = next((t.timestamp for t in reversed(turns) if t.timestamp), "") or now_iso()
@@ -115,6 +116,8 @@ def tick(cfg: Config, agents: Optional[List[str]] = None, verbose: bool = False)
             for t in turns:
                 t.files = [r for r in (relativize(f, root) for f in t.files) if not r.startswith(("/", "external/"))]
             live[key] = _summarise(turns, sid, agent, live.get(key))
+        else:
+            _recent_tail(cfg, p, sid, agent, live)   # only system lines were appended (hook summaries): still live
         captured += capture(cfg, {"transcript_path": str(p), "session_id": sid, "hook_event_name": "watch", "cwd": str(root)}, agent)
         state = State(cfg.paths)          # capture saved offsets; reload before the next job
     # forget sessions silent for an hour

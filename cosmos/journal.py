@@ -52,7 +52,7 @@ def _ask(turns: List[Turn]) -> str:
     for t in turns:
         if t.role == "user":
             text = " ".join(re.sub(r"\[Image: source: [^\]]*\]", " ", t.text).split())   # pasted screenshots are not the ask
-            if len(text) >= 4 and not text.startswith(("/", "<")):
+            if len(text) >= 4 and not text.startswith(("/", "<", "Stop hook feedback", "[Request interrupted", "Hook ")):
                 return text[:240]
     return ""
 
