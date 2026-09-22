@@ -177,6 +177,8 @@ def should_auto_dream(cfg: Config, pending: int, now: Optional[float] = None) ->
 def auto_dream(cfg: Config) -> bool:
     """Start `cosmos dream --auto` detached so the hook returns in milliseconds. One at a time (lock file)."""
     import os, subprocess, time
+    if os.environ.get("COSMOS_NO_BACKGROUND"):
+        return False
     lock = cfg.paths.state / "dream.lock"
     try:
         if lock.exists() and time.time() - lock.stat().st_mtime < 1800:
@@ -226,6 +228,71 @@ def prompt_context(cfg: Config, event: Dict[str, Any]) -> str:
     mems = Ledger(cfg.paths).load()
     hits = retrieve(mems, prompt, k=int(cfg.get("retrieval.prompt_max", 6)))
     return format_for_agent(hits, "Relevant team memory for this request:")
+
+
+def _pid_alive(pid: int) -> bool:
+    import os
+    try:
+        os.kill(pid, 0)
+        return True
+    except Exception:
+        return False
+
+
+def watcher_running(cfg: Config) -> bool:
+    lock = cfg.paths.state / "watch.lock"
+    try:
+        return lock.exists() and _pid_alive(int(lock.read_text().split()[0]))
+    except Exception:
+        return False
+
+
+def ensure_watcher(cfg: Config) -> bool:
+    """Start the repo's watcher in the background if none is running. It exits by itself after two idle hours,
+    so nothing is left behind; the next session start brings it back."""
+    import os, subprocess
+    if os.environ.get("COSMOS_NO_BACKGROUND") or not cfg.get("watch.auto", True) or watcher_running(cfg):
+        return False
+    try:
+        cfg.paths.state.mkdir(parents=True, exist_ok=True)
+        wrapper = cfg.paths.cosmos / "cosmosw"
+        cmd = [sys.executable, str(wrapper), "watch", "--daemon"] if wrapper.exists() else [sys.executable, "-m", "cosmos", "watch", "--daemon"]
+        log = (cfg.paths.state / "watch.log").open("a")
+        subprocess.Popen(cmd, cwd=str(cfg.paths.root), stdin=subprocess.DEVNULL, stdout=log, stderr=subprocess.STDOUT, start_new_session=True,
+                         env={**os.environ, "COSMOS_WATCH_DAEMON": "1"})
+        return True
+    except Exception:
+        return False
+
+
+def _vendored_fingerprint(pkg_dir: Path) -> str:
+    h = hashlib.sha1()
+    for name in ("__init__.py", "hooks.py", "dream.py", "ui.py", "reader.py", "watch.py", "gate.py"):
+        p = pkg_dir / name
+        if p.exists():
+            h.update(p.read_bytes())
+    return h.hexdigest()[:12]
+
+
+def auto_refresh(cfg: Config) -> bool:
+    """When this machine runs a newer cosmos than the copy committed in .cosmos/vendor, refresh the vendored copy and
+    the hook entries, so teammates and worktrees get the new behaviour on the next pull. Never touches a repo whose
+    installed copy IS the vendored one."""
+    try:
+        here = Path(__file__).resolve().parent
+        vend = cfg.paths.cosmos / "vendor" / "cosmos"
+        if not vend.exists() or here == vend.resolve() or ".cosmos" in here.parts:
+            return False
+        if _vendored_fingerprint(here) == _vendored_fingerprint(vend):
+            return False
+        from .wrapper import vendor, write_wrapper
+        write_wrapper(cfg.paths.cosmos)
+        vendor(cfg.paths.cosmos)
+        install_hooks(cfg.paths.claude_settings)
+        _log(cfg, "vendored copy and hooks refreshed from the installed cosmos")
+        return True
+    except Exception:
+        return False
 
 
 def file_context(cfg: Config, event: Dict[str, Any]) -> str:
@@ -279,6 +346,9 @@ def handle(stdin_text: str) -> int:
             out = session_start(cfg)
             if out:
                 print(out)
+            auto_refresh(cfg)
+            if ensure_watcher(cfg):
+                _log(cfg, "watcher started")
         elif name == "UserPromptSubmit":
             out = prompt_context(cfg, event)
             if out:

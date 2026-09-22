@@ -11,9 +11,8 @@
 cosmos brings your people, agents and context together: context that compounds, one coding style for every AI, an architecture map that cannot go stale, and a gate for the review checklist. Committed to git; nothing to run.
 
 ```bash
-# first person on the repo · once
-pip install cosmos-dev
-cosmos init
+# first person on the repo · once · the only command
+pip install cosmos-dev && cosmos init
 
 # everyone after that
 git clone <repo> && claude
@@ -186,26 +185,18 @@ git clone <repo> && claude
 
 ## Getting started
 
-**One person does steps 1 to 3 once. Everyone else does step 4. Step 5 is whenever someone feels like it, or a nightly job.** The same steps are in the console under Docs.
+**One person runs one command once. Everyone else clones.** Nothing else is a step: capture, reading, dreams, the watcher and the hook refresh happen by themselves.
 
-**1 · Set up the repository.** Creates `.cosmos/` with the Charter, an empty Ledger, the first Atlas and the `/atlas` prompt; wires hooks, MCP config and the instruction files every agent reads.
+**1 · `cosmos init`, once.** Creates `.cosmos/` with the Charter, the Ledger, the first Atlas and the `/atlas` prompt; wires hooks at repo and user level, so every worktree is covered; writes MCP configs and the instruction files of every agent; reads the sessions this repo already had, writes their journal, marks the recent ones for the model, and starts the first dream and the watcher in the background.
 
 ```bash
 pip install cosmos-dev
 cd <your-repo>
 cosmos init
-cosmos connect all      # MCP + instruction files for every agent
+cosmos flares import <findings.json> --prefix <ID-PREFIX>   # only if you have an audit document
 ```
 
-**2 · Seed it from what already exists.** Read the sessions the team already had (Claude Code, Codex, Gemini), import audit findings if there are any, consolidate, review.
-
-```bash
-cosmos capture --agent all
-cosmos flares import <findings.json> --prefix <ID-PREFIX>   # optional
-cosmos dream && cosmos review
-```
-
-**3 · Agree the Charter, then commit.** Edit `.cosmos/charter.md` in a pull request; that is the team agreeing on one style. Commit and the memory becomes the team's.
+**2 · Agree the Charter, then commit.** Edit `.cosmos/charter.md` in a pull request; that is the team agreeing on one style. Commit and the memory becomes the team's.
 
 ```bash
 cosmos charter edit
@@ -213,20 +204,14 @@ git add .cosmos .claude/settings.json .claude/commands .mcp.json CLAUDE.md AGENT
 git commit -m "cosmos: charter, ledger, atlas" && git push
 ```
 
-**4 · Everyone else clones and opens their agent.** No install, no setup. Claude Code, Codex, Cursor, Gemini CLI, Copilot, Cline or Cowork all read the same Charter, facts and tools; a committed wrapper runs cosmos from the repository. Sessions that were already open pick the hooks up after a restart.
+**3 · Everyone else clones and opens their agent.** No install, no setup. Claude Code, Codex, Cursor, Gemini CLI, Copilot, Cline or Cowork all read the same Charter, facts and tools; a committed wrapper runs cosmos from the repository. Sessions that were already open pick the hooks up after a restart.
 
 ```bash
 git clone <repo> && cd <repo>
 # open your agent: claude · codex · cursor . · gemini · …
 ```
 
-**5 · Keep it in order.** Map features before coding, dream now and then, glance at Verdicts, rebuild the Atlas when it reports drift. Everyone gets it on their next `git pull`.
-
-```bash
-cosmos horizon "<feature in one sentence>"
-cosmos dream && cosmos review && cosmos atlas --check
-git add .cosmos .claude/settings.json .claude/commands .mcp.json CLAUDE.md AGENTS.md GEMINI.md .gitignore && git commit -m "cosmos: dream" && git push
-```
+**4 · Look, now and then.** `cosmos ui` shows the live sessions, the ledger, the lanes, the flares and what waits for a human on Verdicts. Dreams run by themselves; commit `.cosmos` with your normal work and everyone gets it on the next `git pull`. Map a feature before coding with `cosmos horizon "<feature in one sentence>"` or on the Horizon page.
 
 > **Want a fact or rule kept for certain?** Type `remember: never modify production schemas by hand` or `flare: /transitions has no role gate` in any agent, or call `cosmos_remember` over MCP. Explicit rules always outrank inferred ones.
 

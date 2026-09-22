@@ -141,18 +141,40 @@ def tick(cfg: Config, agents: Optional[List[str]] = None, verbose: bool = False)
     return {"sessions": len(jobs), "captured": captured, "live": live, "pending": pend, "dream_started": dreamed}
 
 
-def run(cfg: Config, interval: int = 30, once: bool = False, agents: Optional[List[str]] = None, verbose: bool = True) -> int:
-    while True:
-        try:
-            tick(cfg, agents, verbose)
-        except KeyboardInterrupt:
-            return 0
-        except Exception as e:      # the watcher never dies on one bad file
-            if verbose:
-                print(f"{now_iso()} watch: error {str(e)[:160]}", flush=True)
-        if once:
-            return 0
-        try:
-            time.sleep(max(5, interval))
-        except KeyboardInterrupt:
-            return 0
+def run(cfg: Config, interval: int = 30, once: bool = False, agents: Optional[List[str]] = None, verbose: bool = True,
+        daemon: bool = False, idle_minutes: int = 120) -> int:
+    """Foreground loop, or (daemon=True) a background watcher that holds state/watch.lock and exits after
+    `idle_minutes` without any session activity, so nothing lingers on the machine."""
+    import os
+    lock = cfg.paths.state / "watch.lock"
+    if daemon:
+        cfg.paths.state.mkdir(parents=True, exist_ok=True)
+        lock.write_text(f"{os.getpid()} {now_iso()}")
+    last_activity = time.time()
+    try:
+        while True:
+            try:
+                res = tick(cfg, agents, verbose)
+                if res.get("captured") or res.get("live"):
+                    last_activity = time.time()
+            except KeyboardInterrupt:
+                return 0
+            except Exception as e:      # the watcher never dies on one bad file
+                if verbose:
+                    print(f"{now_iso()} watch: error {str(e)[:160]}", flush=True)
+            if once:
+                return 0
+            if daemon and time.time() - last_activity > idle_minutes * 60:
+                if verbose:
+                    print(f"{now_iso()} watch: idle for {idle_minutes} min, exiting", flush=True)
+                return 0
+            try:
+                time.sleep(max(5, interval))
+            except KeyboardInterrupt:
+                return 0
+    finally:
+        if daemon:
+            try:
+                lock.unlink()
+            except Exception:
+                pass

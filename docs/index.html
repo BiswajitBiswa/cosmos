@@ -249,28 +249,21 @@ a{color:var(--warm2)}
 </div></section>
 
 <section id="start"><div class="wrap">
-  <div class="head"><div class="eyebrow">steps to follow</div><h2>Getting started</h2><p>One person does steps 1 to 3 once. Everyone else does step 4. Step 5 is whenever someone feels like it, or a nightly job. The same steps are in the console under Docs.</p></div>
+  <div class="head"><div class="eyebrow">steps to follow</div><h2>Getting started</h2><p>One person runs one command once. Everyone else clones. Capture, reading, dreams, the watcher and hook refreshes happen by themselves.</p></div>
   <div class="steps">
-<div class="step"><div class="num">1</div><div><b>Set up the repository</b><p>Creates <code>.cosmos/</code> with the Charter, an empty Ledger, the first Atlas and the <code>/atlas</code> prompt; wires hooks, MCP config and the instruction files every agent reads (<code>CLAUDE.md</code>, <code>AGENTS.md</code>, <code>GEMINI.md</code>).</p>
+<div class="step"><div class="num">1</div><div><b><code>cosmos init</code>, once</b><p>Creates <code>.cosmos/</code> with the Charter, the Ledger, the first Atlas and the <code>/atlas</code> prompt; wires hooks at repo and user level (every worktree is covered), MCP configs and the instruction files of every agent; reads the sessions this repo already had, writes their journal, marks the recent ones for the model, and starts the first dream and the watcher in the background.</p>
 <pre>pip install cosmos-dev
 cd &lt;your-repo&gt;
 cosmos init
-cosmos connect all      # MCP + instruction files for every agent</pre></div></div>
-<div class="step"><div class="num">2</div><div><b>Seed it from what already exists</b><p>Read the sessions the team already had (Claude Code, Codex, Gemini), import audit findings if there are any, consolidate, review.</p>
-<pre>cosmos capture --agent all
-cosmos flares import &lt;findings.json&gt; --prefix &lt;ID-PREFIX&gt;   # optional
-cosmos dream &amp;&amp; cosmos review</pre></div></div>
-<div class="step"><div class="num">3</div><div><b>Agree the Charter, then commit</b><p>Edit <code>.cosmos/charter.md</code> in a pull request — that is the team agreeing on one style. Commit and the memory becomes the team's.</p>
+cosmos flares import &lt;findings.json&gt; --prefix &lt;ID-PREFIX&gt;   # only if you have an audit document</pre></div></div>
+<div class="step"><div class="num">2</div><div><b>Agree the Charter, then commit</b><p>Edit <code>.cosmos/charter.md</code> in a pull request — that is the team agreeing on one style. Commit and the memory becomes the team's.</p>
 <pre>cosmos charter edit
 git add .cosmos .claude/settings.json .claude/commands .mcp.json CLAUDE.md AGENTS.md GEMINI.md .gitignore
 git commit -m "cosmos: charter, ledger, atlas" &amp;&amp; git push</pre></div></div>
-<div class="step"><div class="num">4</div><div><b>Everyone else clones and opens their agent</b><p>No install, no setup — Claude Code, Codex, Cursor, Gemini CLI, Copilot, Cline or Cowork all read the same Charter, facts and tools. A committed wrapper runs cosmos from the repository. Sessions that were already open pick the hooks up after a restart.</p>
+<div class="step"><div class="num">3</div><div><b>Everyone else clones and opens their agent</b><p>No install, no setup — Claude Code, Codex, Cursor, Gemini CLI, Copilot, Cline or Cowork all read the same Charter, facts and tools. A committed wrapper runs cosmos from the repository. Sessions that were already open pick the hooks up after a restart.</p>
 <pre>git clone &lt;repo&gt; &amp;&amp; cd &lt;repo&gt;
 # open your agent: claude · codex · cursor . · gemini · …</pre></div></div>
-<div class="step"><div class="num">5</div><div><b>Keep it in order</b><p>Map features before coding, dream now and then, glance at Verdicts, rebuild the Atlas when it reports drift. Everyone gets it on their next <code>git pull</code>.</p>
-<pre>cosmos horizon "&lt;feature in one sentence&gt;"
-cosmos dream &amp;&amp; cosmos review &amp;&amp; cosmos atlas --check
-git add .cosmos .claude/settings.json .claude/commands .mcp.json CLAUDE.md AGENTS.md GEMINI.md .gitignore &amp;&amp; git commit -m "cosmos: dream" &amp;&amp; git push</pre></div></div>
+<div class="step"><div class="num">4</div><div><b>Look, now and then</b><p><code>cosmos ui</code> shows the live sessions, the ledger, the lanes, the flares and what waits for a human on Verdicts. Dreams run by themselves; commit <code>.cosmos</code> with your normal work and everyone gets it on the next <code>git pull</code>. Map a feature before coding with <code>cosmos horizon "…"</code> or on the Horizon page.</p></div></div>
   </div>
   <div class="remember"><b>Want a fact or rule kept for certain?</b> Type <code>remember: never modify production schemas by hand</code> or <code>flare: /transitions has no role gate</code> in any agent, or call <code>cosmos_remember</code> over MCP. Explicit rules always outrank inferred ones.</div>
   <div class="head" style="margin-top:96px"><div class="eyebrow">already have a codebase?</div><h2>Link an existing project and its past sessions</h2><p>Most projects already have months of history: AI sessions on several machines, an audit document, branches nobody has drawn. Bring all of it into one folder.</p></div>

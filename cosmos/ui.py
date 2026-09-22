@@ -245,6 +245,19 @@ def serve(cfg: Config, port: int = 7331, open_browser: bool = True, strict_port:
     import errno
     _Handler.cfg = cfg
     _Handler.html = write_html(cfg).read_text()
+    import threading
+    from .hooks import watcher_running
+    from .watch import tick
+    if not watcher_running(cfg):
+        def _bg():
+            import time as _t
+            while True:
+                try:
+                    tick(cfg)
+                except Exception:
+                    pass
+                _t.sleep(int(cfg.get("watch.interval", 30)))
+        threading.Thread(target=_bg, daemon=True, name="cosmos-watch").start()
     srv = None
     for p in range(port, port + 20):
         try:

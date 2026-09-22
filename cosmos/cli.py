@@ -73,19 +73,38 @@ def cmd_init(a) -> int:
     cmd_dir = root / ".claude" / "commands"; cmd_dir.mkdir(parents=True, exist_ok=True)
     (cmd_dir / "atlas.md").write_text(COMMAND_MD)
     inv = build_atlas(cfg)
+    from .adapters import AGENTS
     from .connect import connect as _connect
-    _connect(cfg, ["claude"])
+    _connect(cfg, list(AGENTS))                       # every agent's instruction file + MCP config, not only Claude's
     render_all(cfg, Ledger(cfg.paths).load())
+    # user-level hooks: any checkout or worktree of any cosmos repo on this machine is covered, whatever the branch has
+    import os
+    user_hooks = False if (a.no_user_hooks or os.environ.get("COSMOS_NO_BACKGROUND")) else install_hooks(Path.home() / ".claude" / "settings.json", command)
+    # seed from what already exists: the journal of past work, and the recent history marked for the model
+    seeded = ""
+    if not a.no_seed:
+        from .adapters import find_claude_sessions
+        from .hooks import auto_dream, backfill_journal, capture, ensure_watcher
+        sessions = find_claude_sessions(root)
+        j = sum(backfill_journal(cfg, p, sid) for p, sid in sessions)
+        n = sum(capture(cfg, {"transcript_path": str(p), "session_id": sid, "hook_event_name": "manual", "cwd": str(root), "since_days": 14}) for p, sid in sessions)
+        if sessions:
+            seeded = f"{len(sessions)} past session(s) found · {j} journal entries · recent history marked for the model"
+            auto_dream(cfg)                            # first dream starts now, in the background
+        ensure_watcher(cfg)
     print(col("✓", "g"), "cosmos", "initialized" if fresh else "already initialized", "in", root)
     print(col("✓", "g"), f".cosmos/charter.md (team working agreement + Gate rules) · /atlas command for Claude Code")
     print(col("✓", "g"), f"atlas built: {len(inv['apps'])} apps · {len(inv['services'])} services · {len(inv['stores'])} stores · {len(inv['k8s'])} k8s objects · {sum(len(a['endpoints']) for a in inv['api'])} endpoints")
     print(col("✓", "g"), ".cosmos/  (config.json, ledger/, observations/, state/)")
     print(col("✓", "g"), f".claude/settings.json hooks {'installed' if hooks_changed else 'present'} → `{command}`")
     print(col("✓", "g"), ".cosmos/cosmosw wrapper" + ("" if a.no_vendor else " + vendored copy → teammates need no install: git clone && claude"))
-    print(col("✓", "g"), "CLAUDE.md / AGENTS.md / GEMINI.md block written · .mcp.json → `cosmos mcp` (run `cosmos connect all` for Cursor, Copilot, Cline, Codex)")
-    print(col("✓", "g"), "ledger is an Obsidian vault  →  cosmos obsidian --open")
+    print(col("✓", "g"), "instruction files for every agent (CLAUDE.md, AGENTS.md, GEMINI.md, Cursor, Copilot, Cline, Windsurf) · MCP configs → `cosmos mcp`")
+    print(col("✓", "g"), f"user-level hooks {'installed' if user_hooks else 'present'} in ~/.claude/settings.json → every worktree and checkout is covered")
+    if seeded:
+        print(col("✓", "g"), seeded + " · first dream running in the background")
+    print(col("✓", "g"), "watcher running in the background: follows Claude Code, Codex and Gemini sessions here; dreams start themselves")
     print()
-    print("Now just work with Claude Code. Later:  cosmos dream  ·  cosmos ui  ·  cosmos lanes  ·  cosmos horizon \"feature\"")
+    print("That is all. Work with your agent. Look at it with:  cosmos ui")
     return 0
 
 
@@ -168,9 +187,9 @@ def cmd_watch(a) -> int:
     from .watch import run
     cfg = load_config(); _require(cfg)
     agents = ["claude", "codex", "gemini"] if a.agent == "all" else [a.agent]
-    if not a.once:
+    if not a.once and not a.daemon:
         print(col("cosmos watch", "B"), f"· {cfg.paths.root.name} · every {a.interval}s · Ctrl-C to stop", flush=True)
-    return run(cfg, interval=a.interval, once=a.once, agents=agents, verbose=True)
+    return run(cfg, interval=a.interval, once=a.once, agents=agents, verbose=True, daemon=a.daemon, idle_minutes=a.idle)
 
 
 def cmd_hooks(a) -> int:
@@ -740,13 +759,13 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--version", action="version", version=f"cosmos {__version__}")
     sp = p.add_subparsers(dest="cmd", required=True)
 
-    s = sp.add_parser("init", help="set up .cosmos/, hooks, CLAUDE.md/AGENTS.md block, Obsidian vault"); s.add_argument("path", nargs="?"); s.add_argument("--command", help="hook command override"); s.add_argument("--no-vendor", action="store_true", help="don't vendor cosmos into .cosmos/vendor (teammates must pip install)"); s.set_defaults(fn=cmd_init)
+    s = sp.add_parser("init", help="set up .cosmos/, hooks, CLAUDE.md/AGENTS.md block, Obsidian vault"); s.add_argument("path", nargs="?"); s.add_argument("--command", help="hook command override"); s.add_argument("--no-vendor", action="store_true", help="don't vendor cosmos into .cosmos/vendor (teammates must pip install)"); s.add_argument("--no-user-hooks", action="store_true", help="do not touch ~/.claude/settings.json"); s.add_argument("--no-seed", action="store_true", help="do not read past sessions or start the first dream"); s.set_defaults(fn=cmd_init)
     s = sp.add_parser("status", help="quick status"); s.add_argument("--json", action="store_true"); s.set_defaults(fn=cmd_status)
     s = sp.add_parser("hook", help="(internal) Claude Code hook entrypoint, reads event JSON on stdin"); s.set_defaults(fn=cmd_hook)
     s = sp.add_parser("capture", help="capture from session logs: Claude Code, Codex, Gemini/Antigravity"); s.add_argument("--transcript"); s.add_argument("--agent", default="all", choices=["all", "claude", "codex", "gemini"]); s.add_argument("-v", "--verbose", action="store_true"); s.add_argument("--rebuild-journal", action="store_true", help="re-read whole transcripts and write the journal for work done before cosmos was installed"); s.add_argument("--days", type=int, default=14, help="when reading whole transcripts, only turns from the last N days are read by the model (default 14)"); s.add_argument("--reread", action="store_true", help="start again from the beginning of every transcript (with --days, the model reads only recent turns)"); s.set_defaults(fn=cmd_capture)
     s = sp.add_parser("mcp", help="run the MCP server (stdio) — one point of contact for every agent"); s.set_defaults(fn=cmd_mcp)
     s = sp.add_parser("connect", help="wire agents to cosmos: instruction files + MCP configs"); s.add_argument("agents", nargs="*", default=["all"], choices=["all", "claude", "codex", "gemini", "cursor", "copilot", "cline", "windsurf"]); s.add_argument("--write-user", action="store_true", help="also write ~/.codex/config.toml"); s.set_defaults(fn=cmd_connect)
-    s = sp.add_parser("watch", help="follow every agent's sessions on this machine (all worktrees, subagents; hooks not required)"); s.add_argument("--interval", type=int, default=30); s.add_argument("--once", action="store_true"); s.add_argument("--agent", choices=["all", "claude", "codex", "gemini"], default="all"); s.set_defaults(fn=cmd_watch)
+    s = sp.add_parser("watch", help="follow every agent's sessions on this machine (all worktrees, subagents; hooks not required)"); s.add_argument("--interval", type=int, default=30); s.add_argument("--once", action="store_true"); s.add_argument("--agent", choices=["all", "claude", "codex", "gemini"], default="all"); s.add_argument("--daemon", action="store_true", help=argparse.SUPPRESS); s.add_argument("--idle", type=int, default=120, help=argparse.SUPPRESS); s.set_defaults(fn=cmd_watch)
     s = sp.add_parser("hooks", help="install the Claude Code hooks at user level (~/.claude/settings.json) so any checkout or worktree is covered"); s.add_argument("--user", action="store_true", help="(default) user level"); s.set_defaults(fn=cmd_hooks)
     s = sp.add_parser("dream", help="consolidate observations into the ledger"); s.add_argument("--llm", action="store_true", help="force LLM refinement"); s.add_argument("--no-llm", action="store_true"); s.add_argument("--auto", action="store_true", help=argparse.SUPPRESS); s.add_argument("--recurate", action="store_true", help="ask the model to re-judge every existing fact against the current bar (keep · rewrite · retire)"); s.set_defaults(fn=cmd_dream)
     for name in ("ui", "ledger"):

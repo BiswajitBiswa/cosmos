@@ -10,7 +10,8 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
-os.environ["COSMOS_LLM_PROVIDER"] = "none"   # tests never call a real model; LLM paths use fakes
+os.environ["COSMOS_LLM_PROVIDER"] = "none"
+os.environ["COSMOS_NO_BACKGROUND"] = "1"   # tests never spawn watchers/dreams or touch ~/.claude   # tests never call a real model; LLM paths use fakes
 
 from cosmos import extract, privacy, retrieve  # noqa: E402
 from cosmos.config import load_config  # noqa: E402
