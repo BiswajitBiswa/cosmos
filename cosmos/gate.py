@@ -94,6 +94,6 @@ def evaluate(cfg: Config, event: Dict[str, Any]) -> Dict[str, Any]:
 
 
 def message(res: Dict[str, Any]) -> str:
-    lines = ["GATE (.cosmos/charter.md) — before you stop:"]
+    lines = ["cosm◎s · GATE (.cosmos/charter.md) — before you stop:"]
     lines += [f"{i}. {r}" for i, r in enumerate(res["reasons"], 1)]
     return "\n".join(lines)

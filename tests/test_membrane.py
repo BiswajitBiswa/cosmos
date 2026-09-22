@@ -633,7 +633,7 @@ class TestMultiAgent(unittest.TestCase):
             self.assertEqual(res[1]["result"]["serverInfo"]["name"], "cosmos")
             self.assertIn("cosmos_recall", [t["name"] for t in res[2]["result"]["tools"]])
             self.assertIn("Redis is used for locks", res[3]["result"]["content"][0]["text"])
-            self.assertIn("Remembered", res[4]["result"]["content"][0]["text"])
+            self.assertIn("remembered", res[4]["result"]["content"][0]["text"])
             self.assertIn("## How we test", res[5]["result"]["content"][0]["text"])
             self.assertIn("Filed QA-", res[6]["result"]["content"][0]["text"])
             mems = Ledger(r.cfg.paths).load()
@@ -1224,7 +1224,7 @@ class TestReviewFixes(unittest.TestCase):
         from cosmos.mcp import call_tool
         with Repo() as r:
             out = call_tool(r.cfg, "cosmos_remember", {"fact": "Universe erase treats an empty s3_key as nothing to delete.", "lane": "universe"})
-            self.assertIn("Remembered", out["content"][0]["text"], "`fact` is accepted as the text")
+            self.assertIn("remembered", out["content"][0]["text"], "`fact` is accepted as the text")
             out = call_tool(r.cfg, "cosmos_remember", {"lane": "universe", "category": "constraint"})
             self.assertIn("needs `text` (got: category, lane)", out["content"][0]["text"])
             out = call_tool(r.cfg, "cosmos_flare", {"text": "GET /transitions has no role gate", "severity": "HIGH"})

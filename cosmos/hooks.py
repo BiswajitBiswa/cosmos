@@ -217,8 +217,8 @@ def session_start(cfg: Config) -> str:
     parts = []
     ch = summary(cfg, mems)
     if ch:
-        parts.append("Cosmos · CHARTER (the team's working agreement — follow it over personal style):\n" + ch)
-    facts = format_for_agent(top(mems, k), "Cosmos · LEDGER (highest-signal team facts, grouped by lane in .cosmos/ledger/_index.md):")
+        parts.append("cosm◎s · CHARTER (the team's working agreement — follow it over personal style):\n" + ch)
+    facts = format_for_agent(top(mems, k), "cosm◎s · LEDGER (highest-signal team facts, grouped by lane in .cosmos/ledger/_index.md):")
     if facts:
         parts.append(facts)
     from .handoff import latest as latest_handoff
@@ -228,7 +228,7 @@ def session_start(cfg: Config) -> str:
     at = check(cfg)
     if at.get("exists"):
         drift = f" ⚠ {len(at['drift'])+len(at['missing'])} source file(s) changed since — run `cosmos atlas`" if (at["drift"] or at["missing"]) else ""
-        parts.append(f"Cosmos · ATLAS: architecture diagrams in .cosmos/ledger/atlas/ (generated {at['generated']} at {at['commit']}){drift}. Consult containers.md before structural changes.")
+        parts.append(f"cosm◎s · ATLAS: architecture diagrams in .cosmos/ledger/atlas/ (generated {at['generated']} at {at['commit']}){drift}. Consult containers.md before structural changes.")
     return "\n\n".join(parts)
 
 
@@ -241,7 +241,7 @@ def prompt_context(cfg: Config, event: Dict[str, Any]) -> str:
             return ""   # explicit memory instruction; capture handles it on Stop
     mems = Ledger(cfg.paths).load()
     hits = retrieve(mems, prompt, k=int(cfg.get("retrieval.prompt_max", 6)))
-    return format_for_agent(hits, "Relevant team memory for this request:")
+    return format_for_agent(hits, "cosm◎s · what the team knows about this request:")
 
 
 def _pid_alive(pid: int) -> bool:
@@ -336,7 +336,7 @@ def file_context(cfg: Config, event: Dict[str, Any]) -> str:
     if len(shown) > 400:
         del shown[:200]
     state.save()
-    lines = [f"cosmos · before you change `{rel}`:"]
+    lines = [f"cosm◎s · before you change `{rel}`:"]
     lines += [f"- open flare {m.meta.get('audit_id')} [{m.meta.get('severity')}]: {m.text}" for m in flares[:3]]
     lines += [f"- {m.category}: {m.text}" for m in facts[:4]]
     if flares:

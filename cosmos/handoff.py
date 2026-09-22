@@ -111,4 +111,4 @@ def latest(cfg: Config, branch: str = "", max_age_days: int = 14) -> str:
         when = fm.get("at", "")[:10]
     who = fm.get("by", "someone")
     kind = "handoff" if fm.get("how") == "explicit" else "last turn"
-    return f"Cosmos · WHERE `{branch}` WAS LEFT ({kind} by {who}, {when}):\n{body}"
+    return f"cosm◎s · WHERE `{branch}` WAS LEFT ({kind} by {who}, {when}):\n{body}"

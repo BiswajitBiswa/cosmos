@@ -17,6 +17,8 @@ from .store import Ledger, Memory, make_id, today
 
 PROTOCOL = "2025-06-18"
 
+ICON = "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA2NCA2NCI+PHJlY3Qgd2lkdGg9IjY0IiBoZWlnaHQ9IjY0IiByeD0iMTIiIGZpbGw9IiMwNTA1MDYiLz48bGluZSB4MT0iMzIiIHkxPSI2IiB4Mj0iMzIiIHkyPSI1OCIgc3Ryb2tlPSIjRUNFQUU0IiBzdHJva2Utd2lkdGg9IjEuNSIvPjxjaXJjbGUgY3g9IjMyIiBjeT0iMzIiIHI9IjE1IiBmaWxsPSIjMDUwNTA2IiBzdHJva2U9IiNFQ0VBRTQiIHN0cm9rZS13aWR0aD0iMS42Ii8+PGNpcmNsZSBjeD0iMzIiIGN5PSIzMiIgcj0iOSIgZmlsbD0ibm9uZSIgc3Ryb2tlPSIjRThDRkEwIiBzdHJva2Utd2lkdGg9IjEuNiIvPjwvc3ZnPgo="
+
 TOOLS: List[Dict[str, Any]] = [
     {"name": "cosmos_recall", "description": "Team facts, rules and open findings relevant to a task. Call before changing code you did not write. Pass the files you are about to touch.",
      "inputSchema": {"type": "object", "properties": {"query": {"type": "string", "description": "what you are about to do"}, "files": {"type": "array", "items": {"type": "string"}}, "k": {"type": "integer", "default": 8}}, "required": ["query"]}},
@@ -46,7 +48,7 @@ def call_tool(cfg: Config, name: str, args: Dict[str, Any]) -> Dict[str, Any]:
         from .charter import rules
         hits = retrieve(mems, str(args.get("query", "")), paths=args.get("files") or [], k=int(args.get("k", 8)))
         rs = [m for m in rules(mems) if m not in hits][:5]
-        out = format_for_agent(hits, "Relevant team memory:") or "No recorded facts match yet."
+        out = format_for_agent(hits, "cosm◎s · what the team knows:") or "cosm◎s · no recorded facts match yet."
         if rs:
             out += "\n\nExplicit team rules:\n" + "\n".join(f"- {m.text}" for m in rs)
         return _txt(out)
@@ -69,7 +71,7 @@ def call_tool(cfg: Config, name: str, args: Dict[str, Any]) -> Dict[str, Any]:
         m.status, m.updated, m.last_verified = "active", today(), today()
         mems[mid] = m
         Ledger(cfg.paths).save_all(mems.values()); render_all(cfg, mems)
-        return _txt(f"Remembered {mid} ({'rule' if rule else 'fact'}): {text}")
+        return _txt(f"cosm◎s · remembered {mid} ({'rule' if rule else 'fact'}): {text}")
     if name in ("cosmos_flare", "cosmos_finding"):
         from .audit import import_findings
         import tempfile, os
@@ -89,11 +91,11 @@ def call_tool(cfg: Config, name: str, args: Dict[str, Any]) -> Dict[str, Any]:
             os.unlink(tmp)
         render_all(cfg, Ledger(cfg.paths).load())
         m = (new or upd)[0]
-        return _txt(f"Filed {m.meta['audit_id']} [{m.meta['severity']}] {m.text}")
+        return _txt(f"cosm◎s · filed {m.meta['audit_id']} [{m.meta['severity']}] {m.text}")
     if name == "cosmos_handoff":
         from .handoff import record_explicit
         p = record_explicit(cfg, str(args.get("learned", "")), str(args.get("open", "")), str(args.get("next", "")), str(args.get("branch", "")))
-        return _txt(f"Handoff recorded for this branch ({p.name}); the next session here opens with it.")
+        return _txt(f"cosm◎s · handoff recorded for this branch ({p.name}); the next session here opens with it.")
     if name == "cosmos_charter":
         from .charter import body, rules
         rs = rules(mems)
@@ -149,12 +151,12 @@ def serve(cfg: Config) -> None:
         try:
             if method == "initialize":
                 resp = {"protocolVersion": params.get("protocolVersion", PROTOCOL), "capabilities": {"tools": {"listChanged": False}},
-                        "serverInfo": {"name": "cosmos", "version": __version__},
+                        "serverInfo": {"name": "cosmos", "title": "cosm◎s", "version": __version__, "icons": [{"src": ICON, "mimeType": "image/svg+xml", "sizes": ["any"]}]},
                         "instructions": "cosmos is this repository's shared engineering memory, charter and architecture. Call cosmos_charter once at the start, cosmos_recall before editing files you did not write, cosmos_remember for durable decisions, cosmos_flare for bugs worth tracking."}
             elif method == "ping":
                 resp = {}
             elif method == "tools/list":
-                resp = {"tools": TOOLS}
+                resp = {"tools": [dict(t, icons=[{"src": ICON, "mimeType": "image/svg+xml", "sizes": ["any"]}]) for t in TOOLS]}
             elif method == "tools/call":
                 resp = call_tool(cfg, str(params.get("name")), params.get("arguments") or {})
             elif method.startswith("notifications/"):
