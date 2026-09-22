@@ -4,15 +4,16 @@ cosmos is usually added to a project that already has months of history: AI sess
 
 ## 1. Initialise in the repository
 ```bash
-cd <your-repo> && cosmos init && cosmos connect all
+cd <your-repo> && cosmos init   # also reads past sessions, writes the journal, starts the first dream and the watcher
 ```
 
 ## 2. Link past sessions
 ```bash
 cosmos capture --agent claude --transcript <path-to-session>.jsonl -v   # one session
 cosmos capture --agent codex  --transcript <path-to-rollout>.jsonl -v   # a Codex session
-cosmos capture --agent all -v                    # every session, subagents included
-cosmos capture --agent claude --rebuild-journal  # work log from before cosmos: asks, files, commits, per day
+# (optional) force it by hand:
+cosmos capture --agent all -v
+cosmos capture --agent claude --rebuild-journal
 ```
 
 ## 3. Bring in an existing audit
@@ -23,7 +24,7 @@ cosmos flares slack --seed-state <legacy .slack-posted.json> --prefix <ID-PREFIX
 
 ## 4. Consolidate and look
 ```bash
-cosmos dream && cosmos review && cosmos lanes && cosmos ui
+cosmos ui                          # dreams run by themselves; force one with: cosmos dream
 ```
 
 ## 5. Architecture

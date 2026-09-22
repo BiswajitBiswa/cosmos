@@ -217,18 +217,16 @@ git clone <repo> && cd <repo>
 
 ## Already have a codebase?
 
-**Link an existing project and its past sessions.** Most projects already have months of history: AI sessions on several machines, an audit document, branches nobody has drawn. Bring all of it into one folder. Full guide: [docs/link-existing-codebase.md](docs/link-existing-codebase.md).
+**Link an existing project and its past sessions.** Most projects already have months of history: AI sessions on several machines, an audit document, branches nobody has drawn. `cosmos init` brings the sessions in by itself; the rest is agreeing the Charter and committing. Full guide: [docs/link-existing-codebase.md](docs/link-existing-codebase.md).
 
 | | step | command |
 |---|---|---|
-| 1 | Initialise in the repository | `cd <your-repo> && cosmos init && cosmos connect all` |
-| 2 | Link past sessions | `cosmos capture --agent all -v` reads every session, subagents included · `cosmos capture --agent claude --rebuild-journal` recovers the work log (commits, files, asks) from before cosmos was installed · one file: `cosmos capture --agent claude --transcript <path-to-session>.jsonl -v` |
-| 3 | Bring in an existing audit | `cosmos flares import <findings.json> --prefix <ID-PREFIX> --source <report-name>` · `cosmos flares slack --seed-state <legacy .slack-posted.json> --prefix <ID-PREFIX> --status` |
-| 4 | Consolidate and look | `cosmos dream && cosmos review && cosmos lanes && cosmos ui` |
-| 5 | Architecture | `cosmos atlas` for the deterministic pass; `/atlas` in Claude Code, or paste `.claude/commands/atlas.md` into any agent, for the deep pass |
-| 6 | Agree the Charter, commit on a branch off your base branch | `cosmos charter edit` · `git checkout -b cosmos/init origin/<base-branch>` · add `.cosmos .claude/settings.json .claude/commands .mcp.json CLAUDE.md AGENTS.md GEMINI.md .gitignore` · commit · `git push -u origin cosmos/init` |
-| 7 | Restart sessions that were already open | hooks and MCP servers are read when a session starts |
-| 8 | Teammates | `git pull`, then open your agent |
+| 1 | Initialise. This also reads every past session (all worktrees, subagents), writes their journal, marks recent history for the model, starts the first dream and the watcher | `cd <your-repo> && cosmos init` |
+| 2 | Bring in an existing audit, if there is one | `cosmos flares import <findings.json> --prefix <ID-PREFIX> --source <report-name>` |
+| 3 | Look while the first dream finishes in the background | `cosmos ui` |
+| 4 | Agree the Charter, commit on a branch off your base branch | `cosmos charter edit` · `git checkout -b cosmos/init origin/<base-branch>` · add `.cosmos .claude/settings.json .claude/commands .mcp.json CLAUDE.md AGENTS.md GEMINI.md .gitignore` · commit · `git push -u origin cosmos/init` |
+| 5 | Restart sessions that were already open | hooks are read when a session starts |
+| 6 | Teammates | `git pull`, then open their agent |
 
 Transcripts live in `~/.claude/projects/<repo path, slashes → dashes>/` (Claude Code), `~/.codex/sessions/` (Codex), `~/.gemini/` (Gemini). They are read, never stored; secrets are redacted. `.claude/settings.local.json` is personal and untouched; `.cosmos/state/` is gitignored.
 

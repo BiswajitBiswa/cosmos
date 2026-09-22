@@ -266,30 +266,22 @@ git commit -m "cosmos: charter, ledger, atlas" &amp;&amp; git push</pre></div></
 <div class="step"><div class="num">4</div><div><b>Look, now and then</b><p><code>cosmos ui</code> shows the live sessions, the ledger, the lanes, the flares and what waits for a human on Verdicts. Dreams run by themselves; commit <code>.cosmos</code> with your normal work and everyone gets it on the next <code>git pull</code>. Map a feature before coding with <code>cosmos horizon "…"</code> or on the Horizon page.</p></div></div>
   </div>
   <div class="remember"><b>Want a fact or rule kept for certain?</b> Type <code>remember: never modify production schemas by hand</code> or <code>flare: /transitions has no role gate</code> in any agent, or call <code>cosmos_remember</code> over MCP. Explicit rules always outrank inferred ones.</div>
-  <div class="head" style="margin-top:96px"><div class="eyebrow">already have a codebase?</div><h2>Link an existing project and its past sessions</h2><p>Most projects already have months of history: AI sessions on several machines, an audit document, branches nobody has drawn. Bring all of it into one folder.</p></div>
+  <div class="head" style="margin-top:96px"><div class="eyebrow">already have a codebase?</div><h2>Link an existing project and its past sessions</h2><p>Most projects already have months of history: AI sessions on several machines, an audit document, branches nobody has drawn. <code>cosmos init</code> brings the sessions in by itself; the rest is agreeing the Charter and committing.</p></div>
   <div class="steps">
-<div class="step"><div class="num">1</div><div><b>Initialise in the repository</b>
-<pre>cd &lt;your-repo&gt; &amp;&amp; cosmos init &amp;&amp; cosmos connect all</pre></div></div>
-<div class="step"><div class="num">2</div><div><b>Link past sessions</b>
-<pre>cosmos capture --agent all -v                    # every session on this repo, subagents included
-cosmos capture --agent claude --rebuild-journal  # the work log (asks, files, commits) from before cosmos existed
-cosmos capture --agent claude --transcript &lt;path-to-session&gt;.jsonl -v   # one file</pre></div></div>
-<div class="step"><div class="num">3</div><div><b>Bring in an existing audit</b>
-<pre>cosmos flares import &lt;findings.json&gt; --prefix &lt;ID-PREFIX&gt; --source &lt;report-name&gt;
-cosmos flares slack --seed-state &lt;legacy .slack-posted.json&gt; --prefix &lt;ID-PREFIX&gt; --status</pre></div></div>
-<div class="step"><div class="num">4</div><div><b>Consolidate and look</b>
-<pre>cosmos dream &amp;&amp; cosmos review &amp;&amp; cosmos lanes &amp;&amp; cosmos ui</pre></div></div>
-<div class="step"><div class="num">5</div><div><b>Architecture</b>
-<pre>cosmos atlas                       # deterministic pass
-# deep pass: /atlas in Claude Code, or paste .claude/commands/atlas.md into any agent</pre></div></div>
-<div class="step"><div class="num">6</div><div><b>Agree the Charter, commit on a branch off your base branch</b>
+<div class="step"><div class="num">1</div><div><b>Initialise</b><p>Reads every past session (all worktrees, subagents), writes their journal, marks recent history for the model, starts the first dream and the watcher.</p>
+<pre>cd &lt;your-repo&gt; &amp;&amp; cosmos init</pre></div></div>
+<div class="step"><div class="num">2</div><div><b>Bring in an existing audit, if there is one</b>
+<pre>cosmos flares import &lt;findings.json&gt; --prefix &lt;ID-PREFIX&gt; --source &lt;report-name&gt;</pre></div></div>
+<div class="step"><div class="num">3</div><div><b>Look while the first dream finishes in the background</b>
+<pre>cosmos ui</pre></div></div>
+<div class="step"><div class="num">4</div><div><b>Agree the Charter, commit on a branch off your base branch</b>
 <pre>cosmos charter edit
 git checkout -b cosmos/init origin/&lt;base-branch&gt;
 git add .cosmos .claude/settings.json .claude/commands .mcp.json CLAUDE.md AGENTS.md GEMINI.md .gitignore
-git commit -m "cosmos: charter, ledger, atlas, findings" &amp;&amp; git push -u origin cosmos/init</pre></div></div>
-<div class="step"><div class="num">7</div><div><b>Restart sessions that were already open</b>
-<pre># hooks and MCP servers are read when a session starts — restart or resume the session in your agent</pre></div></div>
-<div class="step"><div class="num">8</div><div><b>Teammates</b>
+git commit -m "cosmos: charter, ledger, atlas, flares" &amp;&amp; git push -u origin cosmos/init</pre></div></div>
+<div class="step"><div class="num">5</div><div><b>Restart sessions that were already open</b>
+<pre># hooks are read when a session starts — restart or resume the session in your agent</pre></div></div>
+<div class="step"><div class="num">6</div><div><b>Teammates</b>
 <pre>git pull   # then open your agent</pre></div></div>
   </div>
   <p class="small" style="color:var(--mut);margin-top:28px;max-width:70ch">Transcripts live in <code>~/.claude/projects/&lt;repo path, slashes → dashes&gt;/</code> (Claude Code), <code>~/.codex/sessions/</code> (Codex), <code>~/.gemini/</code> (Gemini). They are read, never stored; secrets are redacted. <code>.claude/settings.local.json</code> is personal and untouched; <code>.cosmos/state/</code> is gitignored.</p>
