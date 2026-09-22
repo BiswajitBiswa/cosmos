@@ -70,6 +70,25 @@ Q_JOURNAL = {"type": "noul", "instructions": "Is the JOURNAL LINE an accurate on
              "criteria": {"true": "it matches the turn", "false": "it misstates or invents something"}}
 
 
+def _source_of(path: Path, name: str) -> str:
+    """Source of a top-level function, class or assignment in a Python file, with line numbers."""
+    import ast
+    try:
+        text = path.read_text(errors="ignore"); tree = ast.parse(text)
+    except Exception:
+        return ""
+    lines = text.splitlines()
+    for node in tree.body:
+        names = []
+        if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)):
+            names = [node.name]
+        elif isinstance(node, ast.Assign):
+            names = [t.id for t in node.targets if isinstance(t, ast.Name)]
+        if name in names:
+            return "\n".join(f"{i+1}: {lines[i]}" for i in range(node.lineno - 1, node.end_lineno))
+    return ""
+
+
 def _cut(s: str, n: int) -> str:
     s = " ".join(str(s).split())
     return s if len(s) <= n else s[:n] + " …"
@@ -165,7 +184,20 @@ def build_cases(root: Path, sample: int, seed: int) -> List[Dict[str, Any]]:
     src_root = HERE.parent
     for c in claims:
         excerpt = []
-        for f in c["files"]:
+        for spec in c.get("functions", []):            # whole functions or module constants, parsed, never cut mid-logic
+            mod, _, name = spec.partition(":")
+            got = _source_of(src_root / mod, name)
+            if got:
+                excerpt.append(f"[{mod} · {name}]\n{got}")
+        for f, marker, before, after in c.get("windows", []):   # a marked stretch of a long function or a non-Python file
+            p = src_root / f
+            if p.exists():
+                lines = p.read_text(errors="ignore").splitlines()
+                hit = next((i for i, l in enumerate(lines) if marker in l), None)
+                if hit is not None:
+                    lo, hi = max(0, hit - before), min(len(lines), hit + after)
+                    excerpt.append(f"[{f} · around '{marker}']\n" + "\n".join(f"{j+1}: {lines[j]}" for j in range(lo, hi)))
+        for f in ([] if c.get("functions") or c.get("windows") else c["files"]):
             p = src_root / f
             if not p.exists():
                 continue
@@ -380,6 +412,8 @@ def main() -> int:
     ap.add_argument("--repo", default=".", help="a repository where cosmos has run")
     ap.add_argument("--judge", choices=["typesafe", "cloudflare", "gateway"], default="typesafe", help="gateway = jev-ai.pro (JEV_AI_PRO_KEY), an independently operated reseller")
     ap.add_argument("--suite", action="append", help="run only these suites (repeatable)")
+    ap.add_argument("--only", help="comma-separated case refs to run (e.g. claim ids)")
+    ap.add_argument("--merge", action="store_true", help="merge into the existing results.jsonl instead of replacing it (re-run cases replace their old rows)")
     ap.add_argument("--batch", type=int, default=1, help="cases per request (saves credits on metered gateways; keep small)")
     ap.add_argument("--max-requests", type=int, default=0, help="stop after this many requests (0 = no limit)")
     ap.add_argument("--sample", type=int, default=40, help="cases per suite")
@@ -393,6 +427,9 @@ def main() -> int:
     cases = build_cases(root, a.sample, a.seed)
     if a.suite:
         cases = [c for c in cases if c["suite"] in set(a.suite)]
+    if a.only:
+        want = {x.strip() for x in a.only.split(",") if x.strip()}
+        cases = [c for c in cases if c["ref"] in want]
     est_tokens = sum(len(json.dumps(c["state"], ensure_ascii=False)) // 4 + 120 for c in cases)
     by = Counter((c["suite"], "new" if c["new"] else "existing") for c in cases)
     print(f"{len(cases)} cases from {root.name}:")
@@ -419,6 +456,10 @@ def main() -> int:
             print("CLOUDFLARE_ACCOUNT_ID and CLOUDFLARE_API_TOKEN are not set."); return 2
         judge = CloudflareJudge(acct, tok)
     results = run(cases, judge, a.min_conf, batch=a.batch, max_requests=a.max_requests)
+    if a.merge and (HERE / "results.jsonl").exists():
+        done = {r["ref"] for r in results}
+        old = [json.loads(l) for l in (HERE / "results.jsonl").read_text().splitlines() if l.strip()]
+        results = [r for r in old if r["ref"] not in done] + results
     (HERE / "results.jsonl").write_text("\n".join(json.dumps(r, ensure_ascii=False) for r in results) + "\n")
     text = report(results, judge.name, root.name, a.min_conf)
     Path(a.out).write_text(text + "\n")
