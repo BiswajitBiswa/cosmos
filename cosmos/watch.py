@@ -33,8 +33,10 @@ def load_live(cfg: Config) -> Dict[str, Dict[str, Any]]:
 def _summarise(turns, sid: str, agent: str, prev: Optional[Dict[str, Any]]) -> Dict[str, Any]:
     from .journal import commits_in
     from .transcript import Turn
-    asks = [" ".join(t.text.split())[:200] for t in turns if t.role == "user" and t.text.strip()
+    import re as _re
+    asks = [" ".join(_re.sub(r"\[Image: source: [^\]]*\]", " ", t.text).split())[:200] for t in turns if t.role == "user" and t.text.strip()
             and not t.text.lstrip().startswith(("<", "/", "Stop hook feedback", "[Request interrupted", "Hook "))]
+    asks = [a for a in asks if len(a) >= 4]
     files = list(dict.fromkeys(f for t in turns for f in (t.files or [])))
     cmds = [c for t in turns for c in (t.commands or [])]
     last_ts = next((t.timestamp for t in reversed(turns) if t.timestamp), "") or now_iso()
