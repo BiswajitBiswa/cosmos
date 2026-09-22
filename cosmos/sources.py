@@ -33,8 +33,9 @@ def git_commits(cfg: Config, state: State, first_days: int = 30, limit: int = 40
     since = state.data.get("gitlog_since") or (datetime.now(timezone.utc) - timedelta(days=first_days)).strftime("%Y-%m-%dT%H:%M:%SZ")
     fmt = _REC + _SEP.join(["%H", "%an", "%aI", "%s", "%b"])
     try:
-        out = subprocess.run(["git", "log", "--all", f"--since={since}", "--no-merges", f"--max-count={limit}", "--reverse",
-                              "--name-only", f"--format={fmt}"], cwd=root, capture_output=True, text=True, timeout=60).stdout
+        out = subprocess.run(["git", "log", "--all", "--exclude=refs/heads/cosmos", "--exclude=refs/remotes/*/cosmos", f"--since={since}",
+                              "--no-merges", f"--max-count={limit}", "--reverse", "--name-only", f"--format={fmt}"],
+                             cwd=root, capture_output=True, text=True, timeout=60).stdout
     except Exception:
         return []
     commits: List[Dict[str, Any]] = []
@@ -72,8 +73,8 @@ def ingest_git(cfg: Config, state: State, store: Observations, existing_commit_m
         except Exception:
             ts = now_iso()
         newest = max(newest, ts)
-        if _BOT.search(c["author"] or ""):
-            continue
+        if _BOT.search(c["author"] or "") or (c["author"] or "").strip().lower() == "cosmos":
+            continue                                   # bots, and cosmos's own ledger commits
         if c["subject"] in existing_commit_msgs:
             continue                                   # a session already journaled this commit
         oid = "obs_" + hashlib.sha1(("git:" + c["sha"]).encode()).hexdigest()[:10]
