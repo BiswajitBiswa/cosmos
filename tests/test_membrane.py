@@ -635,7 +635,7 @@ class TestMultiAgent(unittest.TestCase):
             self.assertIn("Redis is used for locks", res[3]["result"]["content"][0]["text"])
             self.assertIn("remembered", res[4]["result"]["content"][0]["text"])
             self.assertIn("## How we test", res[5]["result"]["content"][0]["text"])
-            self.assertIn("Filed QA-", res[6]["result"]["content"][0]["text"])
+            self.assertIn("filed QA-", res[6]["result"]["content"][0]["text"])
             mems = Ledger(r.cfg.paths).load()
             self.assertTrue(any(m.source == "explicit" and "production schemas" in m.text for m in mems.values()))
             self.assertTrue(any(m.category == "finding" for m in mems.values()))
@@ -1228,7 +1228,7 @@ class TestReviewFixes(unittest.TestCase):
             out = call_tool(r.cfg, "cosmos_remember", {"lane": "universe", "category": "constraint"})
             self.assertIn("needs `text` (got: category, lane)", out["content"][0]["text"])
             out = call_tool(r.cfg, "cosmos_flare", {"text": "GET /transitions has no role gate", "severity": "HIGH"})
-            self.assertIn("Filed QA-", out["content"][0]["text"])
+            self.assertIn("filed QA-", out["content"][0]["text"])
             out = call_tool(r.cfg, "cosmos_flare", {"severity": "high"})
             self.assertIn("needs `title`", out["content"][0]["text"])
 
