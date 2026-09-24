@@ -56,12 +56,65 @@ def ensure_ignored(root: Path) -> bool:
     return False
 
 
+def linked(root: Path) -> bool:
+    """.cosmos/.git names a worktree record git still has. A sandbox that sees the repo under another path (Cowork)
+    can prune that record; then every ledger commit fails until it is repaired."""
+    g = root / ".cosmos" / ".git"
+    try:
+        target = g.read_text().split("gitdir:", 1)[1].strip()
+    except (OSError, IndexError):
+        return False
+    return Path(target).is_dir()
+
+
+def repair(root: Path) -> Tuple[bool, str]:
+    """Re-register .cosmos as the worktree of the cosmos branch without touching its files: a fresh worktree record
+    is created next to it, its link is moved into .cosmos, and the index is reset to the branch. What .cosmos holds
+    that the branch does not (the newest ledger) then shows as changes and is committed by the next sync."""
+    import shutil
+    import time
+    cos = root / ".cosmos"
+    if not (cos / ".git").is_file() or linked(root):
+        return True, "linked"
+    if not has_local_branch(root):
+        if not has_remote_branch(root):
+            return False, "no cosmos branch to attach to"
+        _git(["branch", "-q", "--track", BRANCH, f"origin/{BRANCH}"], root)
+    _git(["worktree", "prune"], root)
+    tmp = root / f".cosmos-relink-{int(time.time())}"
+    code, out = _git(["worktree", "add", "-q", "--no-checkout", str(tmp), BRANCH], root)
+    if code != 0:
+        return False, out
+    try:
+        (cos / ".git").write_text((tmp / ".git").read_text())
+        shutil.rmtree(tmp, ignore_errors=True)
+        _git(["worktree", "repair", str(cos)], root)
+        code, out = _git(["reset", "-q"], cos)
+        return (code == 0 and linked(root)), ("relinked" if code == 0 else out)
+    finally:
+        shutil.rmtree(tmp, ignore_errors=True)
+
+
+def merged_into_head(root: Path) -> str:
+    """The merge commit that brought the ledger branch into the checked-out branch ("" when it is not there)."""
+    code, first = _git(["rev-list", "--max-parents=0", BRANCH], root)
+    first = first.strip().splitlines()[0] if code == 0 and first.strip() else ""
+    if not first:
+        return ""
+    code, head = _git(["rev-parse", "--abbrev-ref", "HEAD"], root)
+    if head.strip() == BRANCH or _git(["merge-base", "--is-ancestor", first, "HEAD"], root)[0] != 0:
+        return ""
+    code, out = _git(["log", "--merges", "--ancestry-path", "--format=%h", f"{first}..HEAD"], root)
+    merges = out.split()
+    return merges[-1] if merges else first[:8]
+
+
 def attach(root: Path) -> Tuple[bool, str]:
     """Attach .cosmos as a worktree of the cosmos branch: from origin/cosmos when it exists, from the local branch,
-    or as a new orphan branch. Idempotent."""
+    or as a new orphan branch. Idempotent; a worktree whose record was pruned is relinked."""
     cos = root / ".cosmos"
     if (cos / ".git").is_file():
-        return True, "already attached"
+        return repair(root) if not linked(root) else (True, "already attached")
     if cos.exists() and any(cos.iterdir()):
         return False, ".cosmos exists and is not a worktree (run migration)"
     if has_local_branch(root):
@@ -140,6 +193,8 @@ def migrate(root: Path) -> Tuple[bool, str]:
 
 def commit(root: Path, message: str) -> bool:
     """Commit whatever changed in the ledger worktree. Local and quick; safe to call often."""
+    if not linked(root):
+        repair(root)
     cos = root / ".cosmos"
     if not (cos / ".git").is_file():
         return False

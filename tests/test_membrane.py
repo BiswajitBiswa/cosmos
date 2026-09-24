@@ -381,6 +381,29 @@ class TestAtlasSources(unittest.TestCase):
             del os.environ["COSMOS_HOOKS_OFF"]
 
 
+class TestLedgerRelink(unittest.TestCase):
+    def test_pruned_worktree_record_is_relinked_and_nothing_is_lost(self):
+        import shutil
+        from cosmos import sync
+        with Repo() as r:
+            ok, msg = sync.migrate(r.root) if (r.root / ".cosmos").exists() else sync.attach(r.root)
+            self.assertTrue(sync.linked(r.root), msg)
+            (r.root / ".cosmos" / "ledger").mkdir(parents=True, exist_ok=True)
+            (r.root / ".cosmos" / "ledger" / "a.md").write_text("first\n")
+            sync.commit(r.root, "one")
+            gitdir = Path((r.root / ".cosmos" / ".git").read_text().split("gitdir:", 1)[1].strip())
+            shutil.rmtree(gitdir)                                   # what a sandbox's `git worktree prune` does
+            (r.root / ".cosmos" / "ledger" / "b.md").write_text("written while unlinked\n")
+            self.assertFalse(sync.linked(r.root))
+            self.assertTrue(sync.commit(r.root, "two"), "commit relinks first, then commits")
+            self.assertTrue(sync.linked(r.root))
+            files = subprocess.run(["git", "ls-tree", "-r", "--name-only", "cosmos"], cwd=r.root, capture_output=True, text=True).stdout.split()
+            self.assertIn("ledger/a.md", files)
+            self.assertIn("ledger/b.md", files)
+            self.assertEqual((r.root / ".cosmos" / "ledger" / "b.md").read_text(), "written while unlinked\n")
+            self.assertFalse(list(r.root.glob(".cosmos-relink-*")), "no temporary folder left behind")
+
+
 class TestAudit(unittest.TestCase):
     FINDINGS = [
         {"id": "11", "severity": "critical", "title": "Review chain bypassable via `transition_lookup_to_stage`", "area": "Reviews",

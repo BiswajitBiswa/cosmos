@@ -225,6 +225,15 @@ def session_start(cfg: Config) -> str:
     h = latest_handoff(cfg)
     if h:
         parts.append(h)
+    try:
+        from .sync import merged_into_head
+        m = merged_into_head(cfg.paths.root)
+        if m:
+            parts.append(f"cosm◎s · ⚠ this branch has the `cosmos` ledger branch merged into it (merge {m}): charter.md, ledger/ and vendor/ now sit "
+                         f"at the repository root. Tell the user before anything else; the fix is `git revert -m 1 {m}` on this branch. "
+                         "Never merge the `cosmos` branch again.")
+    except Exception:
+        pass
     at = check(cfg)
     if at.get("exists"):
         drift = f" ⚠ {len(at['drift'])+len(at['missing'])} source file(s) changed since — run `cosmos atlas`" if (at["drift"] or at["missing"]) else ""

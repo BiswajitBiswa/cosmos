@@ -24,7 +24,8 @@ def managed_block(mems: Dict[str, Memory], k: int, cfg: Optional[Config] = None)
              "4. **Gate** — before you stop: run the tests for files you touched, cite `file:line` for each change, address open flares on those files, self-review against the Charter, and record what the team learned (cosmos_remember kind=fact; cosmos_flare for bugs found - fixed or open - without asking).",
              "Explicit rules outrank inferred facts.", ""]
     lines.append("The rules are in `.cosmos/charter.md` and the facts, by lane, in `.cosmos/ledger/_index.md` (a git worktree of the "
-                 "`cosmos` branch — never part of a feature branch). Claude Code receives the relevant ones through hooks; any other agent "
+                 "`cosmos` branch). Never merge, rebase or cherry-pick the `cosmos` branch into another branch, and leave it out when syncing "
+                 "a branch with the latest changes: it holds the team memory, not code. Claude Code receives the relevant ones through hooks; any other agent "
                  "reads those two files or calls `cosmos_recall` before changing code it did not write.")
     lines.append("")
     lines.append("`cosmos why <id>` explains a fact · `remember: …` adds a rule · `flare: …` files a flare · `cosmos horizon \"…\"` maps a feature before coding")

@@ -34,6 +34,16 @@ def clean_lane(name: str) -> str:
 DOC_DIRS = {"docs", "doc", "references", "reference", "adr", "rfcs", "wiki"}
 
 
+def configured_lane(files: Iterable[str], lane_globs: Optional[Dict[str, List[str]]]) -> str:
+    """The lane the team configured for these files ("" when no configured glob matches)."""
+    files = [f.replace("\\", "/") for f in files if looks_like_path(f)]
+    for name, globs in (lane_globs or {}).items():
+        for f in files:
+            if any(fnmatch.fnmatch(f, g) or fnmatch.fnmatch(f, g.rstrip("/**") + "/*") or f.startswith(g.rstrip("*/") + "/") for g in globs):
+                return name
+    return ""
+
+
 def infer_lane(files: Iterable[str], lane_globs: Optional[Dict[str, List[str]]] = None) -> str:
     """Config globs win; otherwise first meaningful path segment, plus the last directory when it adds information."""
     files = [f.replace("\\", "/") for f in files if looks_like_path(f)]
@@ -166,6 +176,12 @@ def assign_lanes(mems: Dict[str, Memory], cfg: Config, only_missing: bool = True
         if fixed != m.files:
             m.files, recompute = fixed, True
             n += 1
+        team = configured_lane(m.files, globs)
+        if team:                                       # a lane the team configured outranks one the model named
+            if team != m.lane:
+                m.lane = team
+                n += 1
+            continue
         if m.meta.get("lane_by") == "model" and m.lane:
             cleaned = clean_lane(m.lane)
             if cleaned and cleaned != m.lane:
