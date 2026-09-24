@@ -276,6 +276,22 @@ class TestAudit(unittest.TestCase):
         p.write_text(json.dumps(items))
         return p
 
+    def test_import_missing_file_created_only_on_confirmation(self):
+        env = {**os.environ, "COSMOS_NO_BACKGROUND": "1", "PYTHONPATH": str(Path(__file__).resolve().parent.parent)}
+        with Repo() as r:
+            cmd = [sys.executable, "-m", "cosmos", "flares", "import", "qa/findings.json", "--prefix", "RET"]
+            out = subprocess.run(cmd, cwd=r.root, capture_output=True, text=True, stdin=subprocess.DEVNULL, env=env)
+            self.assertEqual(out.returncode, 1)
+            self.assertNotIn("Traceback", out.stdout + out.stderr)
+            self.assertFalse((r.root / "qa" / "findings.json").exists(), "never created without confirmation")
+            out = subprocess.run(cmd + ["--yes"], cwd=r.root, capture_output=True, text=True, env=env)
+            self.assertEqual(out.returncode, 0, out.stderr)
+            data = json.loads((r.root / "qa" / "findings.json").read_text())
+            self.assertEqual(data["findings"], [], "created empty: no made-up finding")
+            out = subprocess.run(cmd, cwd=r.root, capture_output=True, text=True, env=env)
+            self.assertEqual(out.returncode, 0, out.stderr)
+            self.assertIn("imported 0 new", out.stdout)
+
     def test_import_idempotent_withdrawn_preserved_regression_detected(self):
         from cosmos.audit import export_json, findings, import_findings, set_status
         from cosmos.audit_slack import build_card, PostState

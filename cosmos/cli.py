@@ -691,6 +691,20 @@ def _find_finding(cfg, key: str) -> Optional[Memory]:
     return _find({k: v for k, v in mems.items() if v.category == "finding"}, key)
 
 
+FINDINGS_TEMPLATE = {
+    "format": {
+        "id": "stable id, e.g. 001 (same id on a later import = update, never a duplicate)",
+        "severity": "critical | high | medium | low | note",
+        "title": "what is wrong, in one line",
+        "area": "feature or module, e.g. payments",
+        "locations": "`path/to/file.py:42` · `path/to/other.ts:10`",
+        "status": "open | claimed | pr_open | needs_human | fixed | wontfix | withdrawn (optional, default open)",
+        "sections": "[[\"Repro\", \"steps\"], [\"Expected\", \"what should happen\"]] (optional)",
+    },
+    "findings": [],
+}
+
+
 def cmd_audit_import(a) -> int:
     from .audit import import_findings
     cfg = load_config(); _require(cfg)
@@ -698,13 +712,26 @@ def cmd_audit_import(a) -> int:
     if not f.exists():
         cands = sorted({str(p.relative_to(cfg.paths.root)) for pat in ("**/*finding*.json", "**/qa-*.json", "**/*audit*.json")
                         for p in cfg.paths.root.glob(pat) if ".cosmos" not in p.parts and "node_modules" not in p.parts})[:8]
-        print(col("✗", "r"), f"no such file: {a.file}")
-        if cands:
-            print(col("  found instead:", "d")); [print(f"    cosmos flares import {c} --prefix {a.prefix}") for c in cands]
-        else:
+        yes = getattr(a, "yes", False)
+        if not yes:
+            print(col("✗", "r"), f"no such file: {a.file}")
+            if cands:
+                print(col("  found instead:", "d")); [print(f"    cosmos flares import {c} --prefix {a.prefix}") for c in cands]
+        if not yes and sys.stdin.isatty():
+            try:
+                yes = input(f"  create {a.file} as an empty findings file to fill in? [y/N] ").strip().lower() in ("y", "yes")
+            except EOFError:
+                yes = False
+        if yes:
+            f.parent.mkdir(parents=True, exist_ok=True)
+            f.write_text(json.dumps(FINDINGS_TEMPLATE, indent=2, ensure_ascii=False) + "\n")
+            print(col("✓", "g"), f"created {a.file}: add findings to the \"findings\" list, then run the import again")
+            print(col(f"    cosmos flares import {a.file} --prefix {a.prefix}", "d"))
+            return 0
+        if not cands:
             print(col("  ", "d") + "cosmos flares import expects the JSON your QA / audit session produced: a list of findings with")
             print(col("  ", "d") + "id, severity (critical|high|medium|low|note), title, area, locations (`path:line · path:line`) and sections [[label, text], …].")
-            print(col("  ", "d") + "No file yet? Type `flare: <what is wrong>` in any agent session, or call cosmos_flare over MCP, and skip the import.")
+            print(col("  ", "d") + f"Run with --yes to create an empty {a.file}, or type `flare: <what is wrong>` in any agent session and skip the import.")
         return 1
     try:
         new, upd, reg = import_findings(cfg, f, a.prefix, a.source or "")
@@ -881,7 +908,7 @@ def build_parser() -> argparse.ArgumentParser:
 
     au = sp.add_parser("flares", aliases=["audit"], help="QA / security findings (flares) as memory: import, track lifecycle, report, publish").add_subparsers(dest="audit_cmd", required=True)
     from .audit import FINDING_STATUSES as FST, SEVERITIES as SEVS
-    x = au.add_parser("import", help="import findings JSON (id, severity, title, area, locations, sections)"); x.add_argument("file"); x.add_argument("--prefix", default="QA", help="stable id prefix, e.g. QA"); x.add_argument("--source", help="source document name"); x.set_defaults(fn=cmd_audit_import)
+    x = au.add_parser("import", help="import findings JSON (id, severity, title, area, locations, sections)"); x.add_argument("file"); x.add_argument("--prefix", default="QA", help="stable id prefix, e.g. QA"); x.add_argument("--source", help="source document name"); x.add_argument("-y", "--yes", action="store_true", help="create the file (empty) if it does not exist"); x.set_defaults(fn=cmd_audit_import)
     x = au.add_parser("list", help="list findings"); x.add_argument("--status", choices=FST); x.add_argument("--severity", choices=SEVS); x.add_argument("--json", action="store_true"); x.set_defaults(fn=cmd_audit_list)
     x = au.add_parser("show", help="show one finding"); x.add_argument("id"); x.set_defaults(fn=cmd_audit_show)
     for name, status, help_ in (("fix", "fixed", "mark fixed (records HEAD commit)"), ("withdraw", "withdrawn", "not a bug / by design — kept so nobody re-files it"),

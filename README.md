@@ -226,7 +226,7 @@ git clone <repo> && cd <repo>
 | | step | command |
 |---|---|---|
 | 1 | Initialise. This also reads every past session (all worktrees, subagents), writes their journal, marks recent history for the model, starts the first dream and the watcher | `cd <your-repo> && cosmos init` |
-| 2 | Bring in an existing audit, if there is one | `cosmos flares import <findings.json> --prefix <ID-PREFIX> --source <report-name>` |
+| 2 | Bring in an existing audit, if there is one. If the file does not exist yet, cosmos asks before creating an empty one to fill in (`--yes` creates it without asking). | `cosmos flares import <findings.json> --prefix <ID-PREFIX> --source <report-name>` |
 | 3 | Look while the first dream finishes in the background | `cosmos ui` |
 | 4 | Agree the Charter, commit the wiring on a branch off your base branch | `cosmos charter edit` · `git checkout -b cosmos/init origin/<base-branch>` · add `.claude/settings.json .claude/commands .mcp.json CLAUDE.md AGENTS.md GEMINI.md .gitignore` · commit · `git push -u origin cosmos/init`. The ledger itself is on the `cosmos` branch, pushed by itself. |
 | 5 | Restart sessions that were already open | hooks are read when a session starts |

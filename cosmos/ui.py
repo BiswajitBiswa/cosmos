@@ -988,7 +988,7 @@ cosmos lanes [--days 30]</pre>`],
                  ↘ needs_human → (human) fixed | wontfix | withdrawn
 fixed/wontfix reported again by a later audit → regressed ⚠️</pre>
   <table><tr><th>stage</th><th>how</th></tr>
-  <tr><td>Report</td><td>An audit session writes <code>qa-findings.json</code> → <code>cosmos flares import docs/qa-findings.json --prefix QA</code>. Same id = update, never a duplicate. Or type <code>flare: …</code> in a session.</td></tr>
+  <tr><td>Report</td><td>An audit session writes <code>qa-findings.json</code> → <code>cosmos flares import docs/qa-findings.json --prefix QA</code>. Same id = update, never a duplicate. No file yet? cosmos asks before creating an empty one (<code>--yes</code> skips the question). Or type <code>flare: …</code> in a session.</td></tr>
   <tr><td>Triage</td><td><b>Flares</b> board, kanban by status. Click a card for What / Impact / Evidence / Fix.</td></tr>
   <tr><td>Fix</td><td><code>cosmos flares claim QA-12</code> → <code>pr-open</code> → <code>fix QA-12 "PR #<n>"</code> (records the commit). Or the buttons in the card. Or the QA fix loop, which writes <code>status</code>/<code>status_note</code>/<code>status_at</code> into the JSON — re-import is the sync point; an incoming <i>open</i> never downgrades a local <i>claimed</i>.</td></tr>
   <tr><td>Withdraw</td><td><code>cosmos flares withdraw QA-8 "shared reference data by design"</code>. Kept forever so nobody re-files it; hidden from retrieval.</td></tr>
