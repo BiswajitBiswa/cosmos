@@ -36,6 +36,46 @@ PUBLISHABLE = OPEN_LIKE | {NOTE}
 _LOC = re.compile(r"`?([\w\-./]+\.(?:py|ts|tsx|js|kt|java|go|rs|rb|sql|sh|yml|yaml|json|toml))(?::\d+(?:,\d+)*)?`?")
 
 
+def flare_prefix(cfg: Config) -> str:
+    """The id prefix for this repository's flares: set by the last `cosmos flares import --prefix`, else QA."""
+    return str(cfg.get("flares.prefix") or "QA")
+
+
+def remember_prefix(cfg: Config, prefix: str) -> bool:
+    """Keep the prefix someone chose, so flares filed later from sessions carry it too. True when it changed."""
+    import json as _json
+    if not prefix or prefix == flare_prefix(cfg):
+        return False
+    p = cfg.paths.config
+    data = _json.loads(p.read_text()) if p.exists() else {}
+    data.setdefault("flares", {})["prefix"] = prefix
+    p.write_text(_json.dumps(data, indent=2) + "\n")
+    cfg.data.setdefault("flares", {})["prefix"] = prefix
+    return True
+
+
+def rename_prefix(cfg: Config, old: str, new: str, only_source: str = "") -> int:
+    """Give flares filed under one prefix the new one: audit id and memory id both follow, so a later import or
+    session flare with the same raw id updates the flare instead of creating a second one. Returns flares renamed."""
+    ledger = Ledger(cfg.paths)
+    mems = ledger.load()
+    n = 0
+    for m in list(mems.values()):
+        aid = m.meta.get("audit_id", "")
+        if m.category != "finding" or not aid.startswith(old + "-") or (only_source and m.meta.get("source_doc") != only_source):
+            continue
+        raw = m.meta.get("raw_id") or aid[len(old) + 1:]
+        ledger.delete(m.id)
+        del mems[m.id]
+        m.id = finding_id(new, raw)
+        m.meta["audit_id"] = f"{new}-{raw}"
+        mems[m.id] = m
+        n += 1
+    if n:
+        ledger.save_all(mems.values())
+    return n
+
+
 def finding_id(prefix: str, raw_id: str) -> str:
     return "mem_" + hashlib.sha1(f"finding:{prefix}:{raw_id}".encode()).hexdigest()[:8]
 

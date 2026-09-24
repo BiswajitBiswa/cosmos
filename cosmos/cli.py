@@ -721,8 +721,14 @@ FINDINGS_TEMPLATE = {
 
 
 def cmd_audit_import(a) -> int:
-    from .audit import import_findings
+    from .audit import flare_prefix, import_findings, remember_prefix, rename_prefix
     cfg = load_config(); _require(cfg)
+    was = flare_prefix(cfg)
+    if a.prefix and remember_prefix(cfg, a.prefix):
+        moved = rename_prefix(cfg, was, a.prefix, only_source="mcp")      # flares agents filed under the default follow
+        print(col("✓", "g"), f"flares in this repo now use the prefix {a.prefix}, including the ones filed from sessions"
+              + (f" ({moved} renamed from {was})" if moved else ""))
+    a.prefix = a.prefix or flare_prefix(cfg)
     f = Path(a.file)
     if not f.exists():
         cands = sorted({str(p.relative_to(cfg.paths.root)) for pat in ("**/*finding*.json", "**/qa-*.json", "**/*audit*.json")
@@ -923,7 +929,7 @@ def build_parser() -> argparse.ArgumentParser:
 
     au = sp.add_parser("flares", aliases=["audit"], help="QA / security findings (flares) as memory: import, track lifecycle, report, publish").add_subparsers(dest="audit_cmd", required=True)
     from .audit import FINDING_STATUSES as FST, SEVERITIES as SEVS
-    x = au.add_parser("import", help="import findings JSON (id, severity, title, area, locations, sections)"); x.add_argument("file"); x.add_argument("--prefix", default="QA", help="stable id prefix, e.g. QA"); x.add_argument("--source", help="source document name"); x.add_argument("-y", "--yes", action="store_true", help="create the file (empty) if it does not exist"); x.set_defaults(fn=cmd_audit_import)
+    x = au.add_parser("import", help="import findings JSON (id, severity, title, area, locations, sections)"); x.add_argument("file"); x.add_argument("--prefix", help="stable id prefix for this repo's flares, e.g. QA (remembered; default: the last one used, else QA)"); x.add_argument("--source", help="source document name"); x.add_argument("-y", "--yes", action="store_true", help="create the file (empty) if it does not exist"); x.set_defaults(fn=cmd_audit_import)
     x = au.add_parser("list", help="list findings"); x.add_argument("--status", choices=FST); x.add_argument("--severity", choices=SEVS); x.add_argument("--json", action="store_true"); x.set_defaults(fn=cmd_audit_list)
     x = au.add_parser("show", help="show one finding"); x.add_argument("id"); x.set_defaults(fn=cmd_audit_show)
     for name, status, help_ in (("fix", "fixed", "mark fixed (records HEAD commit)"), ("withdraw", "withdrawn", "not a bug / by design — kept so nobody re-files it"),

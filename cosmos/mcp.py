@@ -13,6 +13,7 @@ from typing import Any, Dict, List
 
 from . import __version__
 from .config import Config, git_author, load_config
+from .audit import flare_prefix
 from .store import Ledger, Memory, make_id, today
 
 PROTOCOL = "2025-06-18"
@@ -94,7 +95,7 @@ def call_tool(cfg: Config, name: str, args: Dict[str, Any]) -> Dict[str, Any]:
         with tempfile.NamedTemporaryFile("w", suffix=".json", delete=False) as fh:
             json.dump([item], fh); tmp = fh.name
         try:
-            new, upd, _ = import_findings(cfg, __import__("pathlib").Path(tmp), "QA", "mcp")
+            new, upd, _ = import_findings(cfg, __import__("pathlib").Path(tmp), flare_prefix(cfg), "mcp")
         finally:
             os.unlink(tmp)
         render_all(cfg, Ledger(cfg.paths).load())

@@ -465,6 +465,7 @@ def dream(cfg: Config, use_llm: Optional[bool] = None, verbose: bool = False, re
     from .lanes import assign_lanes
     assign_lanes(mems, cfg, only_missing=bool(report.llm_used))
     _link_related(mems)
+    _name_findings(cfg, mems)
     ledger.save_all(mems.values())
     state.mark_dreamed(seen_ids)
     state.save()
@@ -496,6 +497,21 @@ def dream(cfg: Config, use_llm: Optional[bool] = None, verbose: bool = False, re
     except Exception:
         pass
     return report
+
+
+def _name_findings(cfg: Config, mems: Dict[str, Memory]) -> int:
+    """A finding the model wrote while reading a session has no flare id yet: give it one with the repo's prefix.
+    Without a stated severity it is a note (a measurement, a verification) - kept, but never an open bug."""
+    from .audit import flare_prefix
+    n = 0
+    for m in mems.values():
+        if m.category != "finding" or m.meta.get("audit_id"):
+            continue
+        sev = m.meta.get("severity") or "note"
+        m.meta.update({"audit_id": f"{flare_prefix(cfg)}-{m.id[-6:]}", "raw_id": m.id[-6:], "severity": sev,
+                       "finding_status": "note" if sev == "note" else m.meta.get("finding_status", "open")})
+        n += 1
+    return n
 
 
 def _flares_from_commits(cfg: Config, journals: List[Dict], mems: Dict[str, Memory]) -> int:

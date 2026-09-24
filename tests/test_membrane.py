@@ -404,6 +404,28 @@ class TestLedgerRelink(unittest.TestCase):
             self.assertFalse(list(r.root.glob(".cosmos-relink-*")), "no temporary folder left behind")
 
 
+class TestFlarePrefix(unittest.TestCase):
+    def test_chosen_prefix_is_remembered_and_session_flares_follow_it(self):
+        from cosmos.audit import flare_prefix, remember_prefix, rename_prefix
+        from cosmos.config import load_config
+        from cosmos.mcp import call_tool
+        from cosmos.dream import _name_findings
+        with Repo() as r:
+            call_tool(r.cfg, "cosmos_flare", {"title": "Opt-out ignored on bulk send", "severity": "high"})
+            self.assertTrue(any(m.meta.get("audit_id", "").startswith("QA-") for m in Ledger(r.cfg.paths).load().values()))
+            self.assertTrue(remember_prefix(r.cfg, "RET"))
+            self.assertEqual(rename_prefix(r.cfg, "QA", "RET", only_source="mcp"), 1)
+            cfg = load_config(r.root)
+            self.assertEqual(flare_prefix(cfg), "RET", "saved in the repo config")
+            call_tool(cfg, "cosmos_flare", {"title": "Holdout shrinks when pct is unset", "severity": "medium"})
+            ids = sorted(m.meta["audit_id"] for m in Ledger(cfg.paths).load().values() if m.category == "finding")
+            self.assertTrue(all(i.startswith("RET-") for i in ids), ids)
+            stray = Memory(id="mem_abc12345", text="Benchmark: 226ms for the heaviest query", category="finding")
+            mems = {stray.id: stray}
+            _name_findings(cfg, mems)
+            self.assertEqual((stray.meta["audit_id"], stray.meta["severity"], stray.meta["finding_status"]), ("RET-c12345", "note", "note"))
+
+
 class TestAudit(unittest.TestCase):
     FINDINGS = [
         {"id": "11", "severity": "critical", "title": "Review chain bypassable via `transition_lookup_to_stage`", "area": "Reviews",
