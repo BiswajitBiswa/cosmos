@@ -143,7 +143,10 @@ def call_tool(cfg: Config, name: str, args: Dict[str, Any]) -> Dict[str, Any]:
 
 def serve(cfg: Config) -> None:
     """Blocking stdio loop. One JSON-RPC message per line."""
+    import importlib
+    from . import code_stamp, fresh_modules
     out = sys.stdout
+    stamp, tools = code_stamp(), call_tool
     for line in sys.stdin:
         line = line.strip()
         if not line:
@@ -166,7 +169,12 @@ def serve(cfg: Config) -> None:
             elif method == "tools/list":
                 resp = {"tools": [dict(t, icons=[{"src": ICON, "mimeType": "image/svg+xml", "sizes": ["any"]}]) for t in TOOLS]}
             elif method == "tools/call":
-                resp = call_tool(cfg, str(params.get("name")), params.get("arguments") or {})
+                if code_stamp() != stamp:                # cosmos was updated: serve this call from the new code
+                    fresh_modules()
+                    tools = importlib.import_module("cosmos.mcp").call_tool
+                    cfg = importlib.import_module("cosmos.config").load_config()
+                    stamp = importlib.import_module("cosmos").code_stamp()
+                resp = tools(cfg, str(params.get("name")), params.get("arguments") or {})
             elif method.startswith("notifications/"):
                 continue
             else:

@@ -7,6 +7,7 @@ Every action goes through POST /api/action and calls the same functions the CLI 
 from __future__ import annotations
 
 import json
+import os
 import threading
 import webbrowser
 from datetime import date
@@ -305,14 +306,28 @@ def serve(cfg: Config, port: int = 7331, open_browser: bool = True, strict_port:
     port = srv.server_address[1]
     url = f"http://127.0.0.1:{port}/"
     print(f"cosmos ui · {cfg.paths.root.name} → {url}   (ctrl-c to stop)", flush=True)
-    if open_browser:
+    if open_browser and not os.environ.get("COSMOS_REEXEC"):
         threading.Timer(0.4, lambda: webbrowser.open(url)).start()
+    from cosmos import code_stamp, restart_process
+    stamp, updated = code_stamp(), threading.Event()
+
+    def _follow_updates():
+        import time as _t
+        while not updated.is_set():
+            _t.sleep(3)
+            if code_stamp() != stamp:
+                updated.set()
+                srv.shutdown()
+    threading.Thread(target=_follow_updates, daemon=True, name="cosmos-reload").start()
     try:
         srv.serve_forever()
     except KeyboardInterrupt:
         pass
     finally:
         srv.server_close()
+    if updated.is_set():
+        print("cosmos was updated, restarting the console", flush=True)
+        restart_process()
 
 
 # ---------------------------------------------------------------- app

@@ -158,8 +158,14 @@ def run(cfg: Config, interval: int = 30, once: bool = False, agents: Optional[Li
         cfg.paths.state.mkdir(parents=True, exist_ok=True)
         lock.write_text(f"{os.getpid()} {now_iso()}")
     last_activity = time.time()
+    from . import code_stamp, restart_process
+    stamp = code_stamp()
     try:
         while True:
+            if not once and code_stamp() != stamp:
+                if verbose:
+                    print(f"{now_iso()} watch: cosmos was updated, restarting", flush=True)
+                restart_process()                        # same pid, so the lock stays valid
             try:
                 res = tick(cfg, agents, verbose)
                 if res.get("captured") or res.get("live"):
