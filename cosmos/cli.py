@@ -614,11 +614,20 @@ def cmd_atlas(a) -> int:
             print(col(f"⚠ atlas drift: {len(r['drift'])} changed, {len(r['missing'])} missing since {r['generated']} @ {r['commit']}", "y"))
             for f in r["drift"][:15]: print("  changed ", f)
             for f in r["missing"][:15]: print("  missing ", f)
-            print(col("  run `cosmos atlas` (deterministic) and /atlas in Claude Code (deep pass)", "d")); return 1
+            print(col("  the next dream refreshes it (or `cosmos atlas --deep` now)", "d")); return 1
         print(col("✓", "g"), f"atlas in sync (generated {r['generated']} @ {r['commit']})"); return 0
+    if a.deep:
+        from .atlas import DEEP_FILES, _by_model, run_deep
+        print(col("…", "d"), "the model is reading the code and writing the Atlas (a few minutes)", flush=True)
+        rc = run_deep(cfg, wait=True)
+        if rc is None:
+            print(col("✗", "r"), "claude CLI not found: the deep pass uses your Claude Code login"); return 1
+        done = [f for f in DEEP_FILES if _by_model(cfg.paths.ledger / "atlas" / f)]
+        print(col("✓" if rc == 0 and done else "✗", "g" if rc == 0 and done else "r"), f"deep atlas: {', '.join(done) or 'nothing written'}  (log: .cosmos/state/atlas-deep.log)")
+        return 0 if rc == 0 and done else 1
     inv = build(cfg)
     print(col("✓", "g"), f"atlas → .cosmos/ledger/atlas/  ({len(inv['apps'])} apps · {len(inv['services'])} services · {len(inv['stores'])} stores · {len(inv['k8s'])} k8s objects · {len(inv['terraform'])} tf types · {sum(len(x['endpoints']) for x in inv['api'])} endpoints · {len(inv['env_keys'])} config keys)")
-    print(col("  deeper pass: type /atlas in Claude Code", "d"))
+    print(col("  the model's deeper pass runs with the next dream (or `cosmos atlas --deep` now)", "d"))
     return 0
 
 
@@ -907,7 +916,7 @@ def build_parser() -> argparse.ArgumentParser:
     s = sp.add_parser("update", help="refresh the vendored copy in .cosmos/vendor from the installed cosmos"); s.set_defaults(fn=cmd_update)
 
     s = sp.add_parser("lanes", help="facts, findings and people per feature lane; flags overlap"); s.add_argument("--days", type=int, default=30); s.add_argument("--json", action="store_true"); s.add_argument("--propose", action="store_true", help="suggest a lanes mapping (LLM if configured, else from paths)"); s.add_argument("--write", action="store_true", help="with --propose: save to config and re-file"); s.add_argument("--no-llm", action="store_true"); s.set_defaults(fn=cmd_lanes)
-    s = sp.add_parser("atlas", help="build architecture inventory + diagrams from the repo (or --check for drift)"); s.add_argument("--check", action="store_true"); s.set_defaults(fn=cmd_atlas)
+    s = sp.add_parser("atlas", help="build architecture inventory + diagrams from the repo (or --check for drift)"); s.add_argument("--check", action="store_true"); s.add_argument("--deep", action="store_true", help="let the model follow the Atlas prompt now (system context, containers, data flow, deployment, dependencies, lanes)"); s.set_defaults(fn=cmd_atlas)
     s = sp.add_parser("charter", help="the team's working agreement: show | add \"rule\" | edit | gate"); s.add_argument("action", nargs="?", default="show", choices=["show", "add", "edit", "gate"]); s.add_argument("text", nargs="*"); s.add_argument("--section", default="Architecture rules"); s.set_defaults(fn=cmd_charter)
     s = sp.add_parser("horizon", aliases=["intake"], help="map a feature before coding: lanes, collisions, findings, people"); s.add_argument("text", nargs="+"); s.add_argument("-f", "--file", action="append", help="folder or file it will touch (repeatable)"); s.add_argument("--attach", action="append", help="ad-hoc document to read as context (PRD, spec, notes)"); s.add_argument("--brief", help="text file with the brief"); s.add_argument("--json", action="store_true"); s.add_argument("--no-save", action="store_true"); s.set_defaults(fn=cmd_intake)
     s = sp.add_parser("gate", help="show Gate rules, or dry-run it on a transcript"); s.add_argument("--transcript"); s.set_defaults(fn=cmd_gate)

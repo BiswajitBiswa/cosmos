@@ -46,6 +46,7 @@ class DreamReport:
     turns_read: int = 0
     windows_waiting: int = 0
     auto_memory_notes: int = 0
+    atlas_deep: bool = False
     fallback_windows: int = 0
     flares_closed: int = 0
     verified: int = 0
@@ -70,6 +71,7 @@ class DreamReport:
                 + (f" · {self.journal_entries} journal entries written" if self.journal_entries else "")
                 + (f" · model read {self.turns_read} turns" if self.turns_read else "")
                 + (f" · {self.auto_memory_notes} auto memory notes offered" if self.auto_memory_notes else "")
+                + (" · atlas deep pass started" if self.atlas_deep else "")
                 + (f" · {self.windows_waiting} session ranges still waiting for a model" if self.windows_waiting else "")
                 + (f" · {self.fallback_windows} ranges read heuristically (no model for days)" if self.fallback_windows else "")
                 + (f" · {self.flares_closed} flares marked fixed by commit messages" if self.flares_closed else "")
@@ -479,6 +481,13 @@ def dream(cfg: Config, use_llm: Optional[bool] = None, verbose: bool = False, re
         entry = f"## {t}\n\n**Update**: {report.summary()[:300]}\n\n"
         body = old.split("\n", 2)[2] if old.startswith("# Log") else old
         lp.write_text("# Log\n\n" + entry + body)
+    except Exception:
+        pass
+    try:   # the Atlas deep pass: the model follows the /atlas prompt in the background when the map is missing or has moved
+        if want_llm is not False:
+            from .atlas import deep_due, run_deep
+            if deep_due(cfg) and run_deep(cfg):
+                report.atlas_deep = True
     except Exception:
         pass
     try:

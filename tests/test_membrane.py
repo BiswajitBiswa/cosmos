@@ -350,6 +350,37 @@ class TestCowork(unittest.TestCase):
             self.assertEqual(commits_in([c for x in turns for c in x.commands]), ["fix opt-out"])
 
 
+class TestAtlasSources(unittest.TestCase):
+    def test_ignored_folders_and_setup_jobs_do_not_shape_the_atlas(self):
+        from cosmos.atlas import _by_model, build, inventory
+        with Repo() as r:
+            (r.root / ".gitignore").write_text("junk/\n")
+            (r.root / "junk" / "pkg").mkdir(parents=True)
+            (r.root / "junk" / "pkg" / "package.json").write_text('{"name": "stale-copy"}')
+            (r.root / "web").mkdir(exist_ok=True)
+            (r.root / "web" / "package.json").write_text('{"name": "web"}')
+            (r.root / "docker-compose.yml").write_text("services:\n  db:\n    image: postgres:16\n  minio:\n    image: minio/minio\n  minio-init:\n    image: minio/mc\n    depends_on: [minio]\n")
+            inv = inventory(r.cfg)
+            self.assertNotIn("stale-copy", [a["name"] for a in inv["apps"]])
+            self.assertIn("web", [a["name"] for a in inv["apps"]])
+            self.assertEqual(sorted(x["name"] for x in inv["stores"]), ["db", "minio"], "minio-init is a job, not a store")
+            d = r.cfg.paths.ledger / "atlas"
+            d.mkdir(parents=True, exist_ok=True)
+            refined = "---\ntype: Diagram\ngenerated_by: atlas-deep\n---\n# refined by the model\n"
+            (d / "containers.md").write_text(refined)
+            build(r.cfg)
+            self.assertEqual((d / "containers.md").read_text(), refined, "the generator never overwrites the model's diagram")
+            self.assertTrue(_by_model(d / "containers.md"))
+
+    def test_hooks_off_for_cosmos_own_headless_runs(self):
+        from cosmos.hooks import handle
+        os.environ["COSMOS_HOOKS_OFF"] = "1"
+        try:
+            self.assertEqual(handle(json.dumps({"hook_event_name": "Stop", "cwd": "/"})), 0)
+        finally:
+            del os.environ["COSMOS_HOOKS_OFF"]
+
+
 class TestAudit(unittest.TestCase):
     FINDINGS = [
         {"id": "11", "severity": "critical", "title": "Review chain bypassable via `transition_lookup_to_stage`", "area": "Reviews",

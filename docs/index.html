@@ -222,7 +222,7 @@ a{color:var(--warm2)}
   <div class="feat">
     <div><b>Ledger</b><p>Architecture, decisions and their reasons, conventions, constraints, bug root causes, dependency limits, workflows, domain rules — each with its evidence files, dates and observers. <code>cosmos why redis</code>.</p></div>
     <div><b>Charter</b><p>How we write, test, point and review, in one file. Injected first into every session. Add a rule from the UI, the CLI, or by typing <code>remember: …</code>.</p></div>
-    <div><b>Atlas</b><p>Inventory, containers, deployment and API diagrams from what the repo declares. Hash-checked for drift. <code>/atlas</code> in Claude Code adds data flows and a dependency index.</p></div>
+    <div><b>Atlas</b><p>Inventory, containers, deployment and API diagrams from what the repo declares. Hash-checked for drift. Dreams let the model follow the Atlas prompt and add system context, data flows and a dependency index.</p></div>
     <div><b>Lanes</b><p>Every fact under the feature a product manager would name — assigned by the model, refined from paths. Who is active where, where people overlap, which lanes carry open findings.</p></div>
     <div><b>Horizon</b><p>Map a feature before coding: lanes touched, colliding decisions, findings in the way, suggested owner. Saved beside the code it will change.</p></div>
     <div><b>Gate</b><p>Tests run, <code>file:line</code> cited, findings addressed, self-review done — or the turn is not over. Held at most once, never loops, never gates docs.</p></div>
@@ -300,7 +300,7 @@ git commit -m "cosmos: hooks and instruction files" &amp;&amp; git push -u origi
     <tr><td>MemContext</td><td>Facts cite their source; the system learns from human corrections.</td><td>Every fact carries evidence files, dates and observers. Verify, keep and forget decisions are recorded as memory.</td></tr>
     <tr><td>ZeroShot</td><td>One memory shared across Claude Code, Cursor and Copilot.</td><td>Charter and facts are written to both <code>CLAUDE.md</code> and <code>AGENTS.md</code>.</td></tr>
     <tr><td>ContextOps practice</td><td>A hierarchical <code>CLAUDE.md</code> / <code>AGENTS.md</code>: what, how, why.</td><td>Generated and kept current — the Charter is the <em>how</em>, the Ledger the <em>why</em>, the Atlas the <em>what</em>.</td></tr>
-    <tr><td>Architecture-diagram prompts</td><td>“Inventory first, then diagrams” gives good Mermaid from a repo.</td><td>Built in: <code>cosmos atlas</code> does the inventory deterministically; <code>/atlas</code> runs the deep pass on top; drift is detected afterwards.</td></tr>
+    <tr><td>Architecture-diagram prompts</td><td>“Inventory first, then diagrams” gives good Mermaid from a repo.</td><td>Built in: <code>cosmos atlas</code> does the inventory from files git tracks; dreams run the prompt as a deep pass through the model; drift triggers the next one.</td></tr>
     <tr><td>Augment Code</td><td>Maps dependencies across 400k-file codebases.</td><td class="no">Deliberately not taken. That needs an indexing engine. cosmos stays a few thousand lines of standard-library Python.</td></tr>
   </table></div>
 </div></section>

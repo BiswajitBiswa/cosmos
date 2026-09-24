@@ -16,7 +16,9 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
 from .config import Config, git_head
-from .store import today
+from datetime import datetime, timedelta, timezone
+
+from .store import now_iso, today
 
 MANIFESTS = ["package.json", "pyproject.toml", "requirements.txt", "requirements-*.txt", "requirements/*.txt", "pom.xml", "build.gradle", "build.gradle.kts", "go.mod", "Cargo.toml", "Gemfile",
              "setup.py", "**/package.json", "**/pyproject.toml", "**/requirements.txt", "**/setup.py", "**/go.mod", "**/Cargo.toml"]
@@ -30,10 +32,28 @@ STORE_IMAGES = {"postgres": "database", "postgresql": "database", "mysql": "data
 SKIP_DIRS = {".git", "node_modules", ".venv", "venv", "__pycache__", "dist", "build", ".cosmos", ".next", "target", ".idea", ".terraform"}
 
 
+def _repo_files(root: Path) -> Optional[List[str]]:
+    """Files git would show: tracked plus untracked-but-not-ignored. None outside git (then the tree is walked)."""
+    import subprocess
+    try:
+        out = subprocess.run(["git", "ls-files", "--cached", "--others", "--exclude-standard"], cwd=root, capture_output=True, text=True, timeout=20)
+        return out.stdout.splitlines() if out.returncode == 0 else None
+    except Exception:
+        return None
+
+
 def _walk(root: Path, patterns: List[str], limit: int = 400) -> List[Path]:
+    """Files matching the glob patterns, honouring .gitignore (an ignored node_modules copy is not the architecture)."""
+    import fnmatch
+    files = _repo_files(root)
     out: List[Path] = []
     for pat in patterns:
-        for p in root.glob(pat):
+        if files is not None:
+            flat = pat[3:] if pat.startswith("**/") else None
+            cands = [root / f for f in files if fnmatch.fnmatch(f, pat) or (flat and fnmatch.fnmatch(f.rsplit("/", 1)[-1], flat) and fnmatch.fnmatch(f, "*" + flat))]
+        else:
+            cands = list(root.glob(pat))
+        for p in cands:
             if any(part in SKIP_DIRS for part in p.relative_to(root).parts):
                 continue
             if p.is_file() and p not in out:
@@ -184,6 +204,8 @@ def inventory(cfg: Config) -> Dict[str, Any]:
             if isinstance(dep, dict):
                 dep = list(dep.keys())
             kind = next((v for k, v in STORE_IMAGES.items() if k in image.lower()), None)
+            if kind and (re.search(r"(^|[-_])(init|setup|migrate|seed)([-_]|$)", name) or str(svc.get("restart", "")).strip("'\"") == "no" and svc.get("entrypoint")):
+                kind = None                                   # a one-off setup job that uses the store's image, not a store
             rec = {"name": name, "image": image, "build": (build.get("context") if isinstance(build, dict) else build) or "", "ports": [str(x) for x in ports][:4],
                    "depends_on": [str(x) for x in dep], "compose": rel, "kind": kind or "service"}
             (inv["stores"] if kind else inv["services"]).append(rec)
@@ -295,6 +317,16 @@ def mermaid_deployment(inv: Dict[str, Any]) -> str:
     return "\n".join(L)
 
 
+def _by_model(p: Path) -> bool:
+    """A diagram the deep pass wrote (frontmatter `generated_by: atlas-deep`): the generator leaves it alone."""
+    try:
+        text = p.read_text()
+    except OSError:
+        return False
+    head = text.split("\n---", 1)[0] if text.startswith("---") else ""
+    return "generated_by: atlas-deep" in head
+
+
 def build(cfg: Config) -> Dict[str, Any]:
     inv = inventory(cfg)
     d = cfg.paths.ledger / "atlas"
@@ -316,9 +348,11 @@ def build(cfg: Config) -> Dict[str, Any]:
     L += ["", "## Sources", "", srcs]
     (d / "inventory.md").write_text("\n".join(L) + "\n")
     # containers.md
-    (d / "containers.md").write_text("\n".join(["---", "type: Diagram", 'tags: ["atlas","diagram"]', "---", f"# Atlas · Containers — {inv['repo']}", "", head, "", "```mermaid", mermaid_containers(inv), "```", "", "## Sources", "", srcs]) + "\n")
+    if not _by_model(d / "containers.md"):
+        (d / "containers.md").write_text("\n".join(["---", "type: Diagram", 'tags: ["atlas","diagram"]', "---", f"# Atlas · Containers — {inv['repo']}", "", head, "", "```mermaid", mermaid_containers(inv), "```", "", "## Sources", "", srcs]) + "\n")
     # deployment.md
-    (d / "deployment.md").write_text("\n".join(["---", "type: Diagram", 'tags: ["atlas","diagram"]', "---", f"# Atlas · Deployment — {inv['repo']}", "", head, "", "```mermaid", mermaid_deployment(inv), "```", "", "## Sources", "", srcs]) + "\n")
+    if not _by_model(d / "deployment.md"):
+        (d / "deployment.md").write_text("\n".join(["---", "type: Diagram", 'tags: ["atlas","diagram"]', "---", f"# Atlas · Deployment — {inv['repo']}", "", head, "", "```mermaid", mermaid_deployment(inv), "```", "", "## Sources", "", srcs]) + "\n")
     # api.md
     A = ["---", 'tags: ["atlas"]', "---", f"# Atlas · API surface — {inv['repo']}", "", head, ""]
     for spec in inv["api"]:
@@ -368,3 +402,103 @@ Write `.cosmos/ledger/atlas/dependencies.md`: service → service calls, service
 
 Rules: every node must exist in the inventory; every edge must have a source file; use the team's own names; keep each diagram under 40 nodes (split if bigger). Finish with `cosmos atlas --check` and print a 5-line summary of what changed since the previous Atlas.
 """
+
+
+# ---------------------------------------------------------------- deep pass (the model follows the /atlas prompt)
+DEEP_FILES = ["system-context.md", "containers.md", "data-flow.md", "deployment.md", "dependencies.md", "lanes.md"]
+DEEP_TOOLS = "Read Glob Grep Write(.cosmos/ledger/atlas/**) Edit(.cosmos/ledger/atlas/**) Bash(git log:*) Bash(git ls-files:*) Bash(git show:*)"
+
+
+def deep_prompt() -> str:
+    body = COMMAND_MD.split("---", 2)[2].strip()
+    body = body.replace("Finish with `cosmos atlas --check` and print a 5-line summary of what changed since the previous Atlas.",
+                        "Finish by printing a 5-line summary of what changed since the previous Atlas.")
+    return (body + "\n\nYou are running headless for cosmos. Write every file under `.cosmos/ledger/atlas/` only; never modify anything "
+            "else. Start each file you write with this frontmatter:\n---\ntype: Diagram\ngenerated_by: atlas-deep\ncommit: <HEAD sha>\n---\n"
+            "(`inventory.md` and `dependencies.md` use `type: Reference`). Read the code, not only the manifests: entry points, routers, "
+            "clients for external APIs, schedulers and background jobs. Leave out anything under ignored folders.")
+
+
+def deep_status(cfg: Config) -> Dict[str, Any]:
+    from .store import State
+    d = State(cfg.paths).data.get("atlas_deep", {})
+    return d if isinstance(d, dict) else {}
+
+
+def deep_due(cfg: Config) -> bool:
+    """Run the deep pass when a deep file is missing, when the code the Atlas read has moved, or after `atlas.deep_days`."""
+    import os
+    if not cfg.get("atlas.deep", True) or os.environ.get("COSMOS_NO_BACKGROUND"):
+        return False
+    st = deep_status(cfg)
+    if st.get("pid") and _alive(int(st["pid"])):
+        return False
+    if st.get("failed_at", "") > (datetime.now(timezone.utc) - timedelta(hours=6)).strftime("%Y-%m-%dT%H:%M:%SZ"):
+        return False                                       # do not retry a failing run every dream
+    d = cfg.paths.ledger / "atlas"
+    if not all((d / f).exists() for f in DEEP_FILES) or not any(_by_model(d / f) for f in DEEP_FILES):
+        return True
+    r = check(cfg)
+    if r.get("drift") or r.get("missing"):
+        return True
+    last = st.get("finished", "")
+    return bool(last) and last < (datetime.now(timezone.utc) - timedelta(days=int(cfg.get("atlas.deep_days", 7)))).strftime("%Y-%m-%dT%H:%M:%SZ") and git_head(cfg.paths.root) != st.get("commit")
+
+
+def _alive(pid: int) -> bool:
+    import os
+    try:
+        os.kill(pid, 0)
+        return True
+    except OSError:
+        return False
+
+
+def run_deep(cfg: Config, wait: bool = False) -> Optional[int]:
+    """Start `claude -p` in the repository with the Atlas prompt. Read-only tools everywhere, writes only under
+    .cosmos/ledger/atlas, and COSMOS_HOOKS_OFF so the run does not capture or gate itself. Returns the pid (or the
+    exit code when `wait`)."""
+    import os, shutil, subprocess
+    from .store import State
+    exe = shutil.which("claude")
+    if not exe:
+        return None
+    build(cfg)                                             # the deterministic inventory is the model's starting point
+    log = cfg.paths.state / "atlas-deep.log"
+    cfg.paths.state.mkdir(parents=True, exist_ok=True)
+    cmd = [exe, "-p", deep_prompt(), "--permission-mode", "dontAsk", "--allowedTools", DEEP_TOOLS, "--output-format", "text"]
+    model = cfg.get("atlas.model") or cfg.get("llm.model")
+    if model:
+        cmd += ["--model", str(model)]
+    env = {**os.environ, "COSMOS_HOOKS_OFF": "1"}
+    st = State(cfg.paths)
+    st.data["atlas_deep"] = {"started": now_iso(), "commit": git_head(cfg.paths.root)}
+    fh = log.open("w")
+    if wait:
+        st.save()
+        rc = subprocess.call(cmd, cwd=str(cfg.paths.root), stdin=subprocess.DEVNULL, stdout=fh, stderr=subprocess.STDOUT, env=env)
+        _finish_deep(cfg, rc)
+        return rc
+    runner = ("import subprocess, sys, json; from cosmos.config import load_config; from cosmos.atlas import _finish_deep; "
+              f"rc = subprocess.call({cmd!r}, cwd={str(cfg.paths.root)!r}, stdin=subprocess.DEVNULL, stdout=open({str(log)!r}, 'a'), stderr=subprocess.STDOUT); "
+              f"_finish_deep(load_config(__import__('pathlib').Path({str(cfg.paths.root)!r})), rc)")
+    p = subprocess.Popen([sys.executable, "-c", runner], cwd=str(cfg.paths.root), stdin=subprocess.DEVNULL, stdout=fh, stderr=subprocess.STDOUT,
+                         start_new_session=True, env={**env, "PYTHONPATH": str(Path(__file__).resolve().parent.parent) + os.pathsep + os.environ.get("PYTHONPATH", "")})
+    st.data["atlas_deep"]["pid"] = p.pid
+    st.save()
+    return p.pid
+
+
+def _finish_deep(cfg: Config, rc: int) -> None:
+    from .store import State
+    st = State(cfg.paths)
+    d = st.data.get("atlas_deep", {}) or {}
+    d.pop("pid", None)
+    written = [f for f in DEEP_FILES if _by_model(cfg.paths.ledger / "atlas" / f)]
+    if rc == 0 and written:
+        d.update({"finished": now_iso(), "files": written})
+        d.pop("failed_at", None)
+    else:
+        d.update({"failed_at": now_iso(), "rc": rc})
+    st.data["atlas_deep"] = d
+    st.save()

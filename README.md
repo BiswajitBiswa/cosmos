@@ -108,9 +108,9 @@ git clone <repo> && claude
 | | |
 |---|---|
 | **what** | Inventory, container, deployment and API diagrams generated from what the repository already declares: package manifests, docker-compose, Kubernetes, Terraform, OpenAPI, `.env.example`, README. Every source file is fingerprinted. |
-| **you do** | Run `cosmos atlas` once; type `/atlas` in Claude Code for the deeper pass (data flows, dependency index). |
+| **you do** | Nothing. `cosmos init` builds the inventory; the next dream lets the model follow the Atlas prompt and write system context, containers, data flow, deployment, a dependency index and proposed lanes. It runs again when the code the Atlas read moves. `/atlas` in Claude Code does the same interactively. |
 | **you get** | A diagram that cannot quietly go stale: when compose or manifests change and the picture does not, everyone is told at the start of their session and on the Atlas page. |
-| **command** | `cosmos atlas` · `cosmos atlas --check` · `/atlas` |
+| **command** | `cosmos atlas` · `cosmos atlas --deep` · `cosmos atlas --check` · `/atlas` |
 
 ### <img src="docs/assets/icon-lanes.svg" width="28" alt=""> Lanes · memory by feature
 
@@ -245,7 +245,7 @@ Transcripts live in `~/.claude/projects/<repo path, slashes → dashes>/` (Claud
 | MemContext | Facts cite their source; the system learns from human corrections. | Every fact carries evidence files, dates and observers. Verify, keep and forget decisions are recorded as memory. |
 | ZeroShot | One memory shared across Claude Code, Cursor and Copilot. | Charter and facts are written to every agent's instruction file and served over MCP. |
 | ContextOps practice | A hierarchical `CLAUDE.md` / `AGENTS.md`: what, how, why. | Generated and kept current: the Charter is the *how*, the Ledger the *why*, the Atlas the *what*. |
-| Architecture-diagram prompts | “Inventory first, then diagrams” gives good Mermaid from a repo. | Built in: `cosmos atlas` does the inventory deterministically; `/atlas` runs the deep pass; drift is detected afterwards. |
+| Architecture-diagram prompts | “Inventory first, then diagrams” gives good Mermaid from a repo. | Built in: `cosmos atlas` does the inventory from files git tracks; dreams run the prompt as a deep pass through the model; drift triggers the next one. |
 | Augment Code | Maps dependencies across 400k-file codebases. | Deliberately not taken. That needs an indexing engine. cosmos stays a few thousand lines of standard-library Python. |
 
 ## Honest assessment

@@ -345,6 +345,9 @@ def file_context(cfg: Config, event: Dict[str, Any]) -> str:
 
 
 def handle(stdin_text: str) -> int:
+    import os
+    if os.environ.get("COSMOS_HOOKS_OFF"):
+        return 0                                       # cosmos's own headless runs (the Atlas deep pass) do not capture or gate themselves
     try:
         event = json.loads(stdin_text) if stdin_text.strip() else {}
     except Exception:
