@@ -263,6 +263,58 @@ if __name__ == "__main__":
     unittest.main()
 
 
+class TestLaneHygiene(unittest.TestCase):
+    def test_multiparagraph_commit_body_is_not_a_file_list(self):
+        from cosmos.sources import git_commits
+        from cosmos.store import State
+        with Repo() as r:
+            (r.root / "svc").mkdir(exist_ok=True)
+            (r.root / "svc" / "flags.py").write_text("X = 1\n")
+            subprocess.run(["git", "add", "-A"], cwd=r.root, check=True)
+            msg = "feat: default flags off\n\nFirst paragraph explains why.\n\nto dev and qa-v2 only, not prod/qa/stg. With a True default\n--reply --only <id> --text posts a reply"
+            subprocess.run(["git", "-c", "user.name=t", "-c", "user.email=t@t", "commit", "-q", "-m", msg], cwd=r.root, check=True)
+            c = [c for c in git_commits(r.cfg, State(r.cfg.paths)) if c["subject"] == "feat: default flags off"][0]
+            self.assertIn("svc/flags.py", c["files"])
+            self.assertFalse([f for f in c["files"] if " " in f or f.startswith("-")], "no prose in the file list")
+            self.assertIn("--reply --only", c["body"], "later paragraphs stay in the body")
+
+    def test_prose_in_evidence_never_becomes_a_lane_or_escapes_lanes_dir(self):
+        from cosmos.lanes import assign_lanes, infer_lane
+        from cosmos.render import write_lane_pages
+        with Repo() as r:
+            self.assertEqual(infer_lane(["to dev and qa-v2 only, not prod/qa/stg. With a True default", "--reply --only <id>/x"]), "general")
+            m = Memory(id="mem_bad00001", text="Flags default off in every environment", category="decision",
+                       files=["to dev and qa-v2 only, not prod/qa/stg. With a True default", "svc/flags.py"], lane="to dev and qa-v2 only, not prod")
+            mems = {m.id: m}
+            assign_lanes(mems, r.cfg)
+            self.assertEqual(m.files, ["svc/flags.py"])
+            self.assertNotIn(" ", m.lane)
+            gone = Memory(id="mem_gone0001", text="An old fact nobody needs", category="decision", status="forgotten", lane="old-lane")
+            sib = Memory(id="mem_sib00001", text="The web app reads the same flag", category="decision", lane="../web-app", meta={"lane_by": "model"})
+            mems.update({gone.id: gone, sib.id: sib})
+            d = r.cfg.paths.ledger / "lanes"
+            d.mkdir(parents=True, exist_ok=True)
+            (d / "stale.md").write_text('---\ntype: "Lane"\n---\n# Lane · stale\n')
+            write_lane_pages(r.cfg, mems)
+            names = sorted(p.name for p in d.glob("*.md"))
+            self.assertNotIn("old-lane.md", names, "no page for a lane with only forgotten facts")
+            self.assertNotIn("stale.md", names, "pages of lanes that no longer exist are removed")
+            self.assertIn("repo-web-app.md", names)
+            self.assertFalse((r.cfg.paths.ledger / "web-app.md").exists(), "a ../ lane never writes outside lanes/")
+
+
+class TestCharterRepair(unittest.TestCase):
+    def test_text_pasted_above_the_header_moves_into_the_body(self):
+        from cosmos.charter import TEMPLATE, normalize
+        pasted = "## Architecture rules\n\n### Tenancy\n- Every query is scoped to the business.---\n"   # no newline before the header
+        out = normalize(pasted + TEMPLATE)
+        self.assertTrue(out.startswith("---\ngate:"))
+        self.assertEqual(out.count("## Architecture rules"), 1, "merged into the existing section, not duplicated")
+        self.assertIn("### Tenancy\n- Every query is scoped", out.split("## Architecture rules", 1)[1])
+        self.assertEqual(normalize(out), out, "idempotent")
+        self.assertEqual(normalize(TEMPLATE), TEMPLATE, "a well-formed charter is untouched")
+
+
 class TestAudit(unittest.TestCase):
     FINDINGS = [
         {"id": "11", "severity": "critical", "title": "Review chain bypassable via `transition_lookup_to_stage`", "area": "Reviews",

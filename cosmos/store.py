@@ -22,6 +22,14 @@ def now_iso() -> str:
     return datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
 
 
+def lane_file(lane: str) -> str:
+    """The page name for a lane under ledger/lanes/ - always a plain file name, never a path (a sibling-repo lane
+    such as ../web-app becomes repo-web-app.md)."""
+    lane = str(lane or "general")
+    prefix = "repo-" if lane.startswith("../") else ""
+    return prefix + (re.sub(r"[^a-z0-9._-]+", "-", lane.lower()).strip("-.") or "general") + ".md"
+
+
 def slugify(text: str, n: int = 48) -> str:
     s = re.sub(r"[`*_\"']", "", text.lower())
     s = re.sub(r"[^a-z0-9]+", "-", s).strip("-")
@@ -100,7 +108,7 @@ class Memory:
         """`paths` maps memory ids to bundle-relative note paths, so relationships become real OKF links."""
         paths = paths or {}
         okf = self.okf_frontmatter(self.meta_stale_days if hasattr(self, "meta_stale_days") else 180)
-        links = ([f"/lanes/{self.lane}.md"] if self.lane and self.lane != "general" else []) + [paths[i] for i in self.link_targets() if i in paths]
+        links = ([f"/lanes/{lane_file(self.lane)}"] if self.lane and self.lane != "general" else []) + [paths[i] for i in self.link_targets() if i in paths]
         if links:
             okf["links"] = links
         fm = {**okf,
@@ -148,7 +156,7 @@ class Memory:
             lines.extend(f"- [[{r}]]" for r in self.related)
         rel = []
         if self.lane and self.lane != "general":
-            rel.append(f"- lane: [{self.lane}](/lanes/{self.lane}.md)")
+            rel.append(f"- lane: [{self.lane}](/lanes/{lane_file(self.lane)})")
         for label, ids in (("supersedes", [self.supersedes] if self.supersedes else []), ("superseded by", [self.superseded_by] if self.superseded_by else []),
                            ("contradicts", self.contradicts), ("related", self.related)):
             for i in ids:

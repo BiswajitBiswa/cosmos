@@ -22,6 +22,7 @@ from .privacy import redact
 from .store import Observations, State, now_iso
 
 _SEP = "\x1f"
+_END = "\x1d"                                     # end of body: everything after it is --name-only output
 _REC = "\x1e"
 _BOT = re.compile(r"\[bot\]$|dependabot|renovate|github-actions", re.I)
 
@@ -31,7 +32,7 @@ def git_commits(cfg: Config, state: State, first_days: int = 30, limit: int = 40
     """New commits on any branch since the last pass, oldest first: sha, author, ts, subject, body, files."""
     root = cfg.paths.root
     since = state.data.get("gitlog_since") or (datetime.now(timezone.utc) - timedelta(days=first_days)).strftime("%Y-%m-%dT%H:%M:%SZ")
-    fmt = _REC + _SEP.join(["%H", "%an", "%aI", "%s", "%b"])
+    fmt = _REC + _SEP.join(["%H", "%an", "%aI", "%s", "%b"]) + _END
     try:
         out = subprocess.run(["git", "log", "--all", "--exclude=refs/heads/cosmos", "--exclude=refs/remotes/*/cosmos", f"--since={since}",
                               "--no-merges", f"--max-count={limit}", "--reverse", "--name-only", f"--format={fmt}"],
@@ -42,15 +43,12 @@ def git_commits(cfg: Config, state: State, first_days: int = 30, limit: int = 40
     for chunk in out.split(_REC):
         if not chunk.strip():
             continue
-        head, _, rest = chunk.partition("\n")
+        head, _, rest = chunk.partition(_END)        # header + multi-line body end at the marker; the file list follows
         parts = head.split(_SEP)
         if len(parts) < 5:
             continue
         sha, author, ts, subject, body = parts[0], parts[1], parts[2], parts[3], _SEP.join(parts[4:])
-        files = [l.strip() for l in rest.splitlines() if l.strip() and not l.startswith(_REC)]
-        # the body ends where the file list starts: git prints body then a blank line then files
-        if "\n\n" in body:
-            body = body.split("\n\n")[0]
+        files = [l.strip() for l in rest.splitlines() if l.strip()]
         commits.append({"sha": sha, "author": author, "ts": ts, "subject": subject.strip(), "body": body.strip(), "files": files[:12]})
     return commits
 

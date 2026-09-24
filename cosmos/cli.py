@@ -638,7 +638,13 @@ def cmd_charter(a) -> int:
     if a.action == "edit":
         import os as _os
         editor = _os.environ.get("VISUAL") or _os.environ.get("EDITOR") or "nano"
-        subprocess.call([editor, str(path(cfg))]); return 0
+        subprocess.call([editor, str(path(cfg))])
+        from .charter import normalize
+        p = path(cfg); txt = p.read_text() if p.exists() else ""
+        if normalize(txt) != txt:
+            p.write_text(normalize(txt))
+            print(col("✓", "g"), "moved the text you added above the settings header into the Charter body (the header has to come first)")
+        return 0
     if a.action == "gate":
         print(json.dumps(gate_config(cfg), indent=1)); return 0
     print(body(cfg)); return 0

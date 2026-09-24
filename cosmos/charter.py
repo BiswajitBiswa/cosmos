@@ -61,9 +61,31 @@ def ensure(cfg: Config) -> Path:
     return p
 
 
+def normalize(txt: str) -> str:
+    """Text pasted above the settings header belongs in the body: the header must come first to be a header.
+    A leading "## Section" block replaces that section's placeholder when there is one, otherwise it goes at the end."""
+    if txt.startswith("---\n"):
+        return txt
+    m = re.search(r"---\ngate:.*?\n---\n", txt, re.S)          # also when the paste ended without a newline
+    if not m:
+        return txt
+    above, header, rest = txt[:m.start()].strip(), m.group(0), txt[m.end():]
+    if not above:
+        return header + rest
+    h = re.match(r"## ([^\n]+)\n", above)
+    if h and f"## {h.group(1)}\n" in rest:
+        head, marker, tail = rest.partition(f"## {h.group(1)}\n")
+        nxt = re.search(r"^## ", tail, re.M)
+        section, after = (tail[:nxt.start()], tail[nxt.start():]) if nxt else (tail, "")
+        kept = "\n".join(l for l in section.strip().splitlines() if l.startswith("- Add rules here"))
+        new_section = (kept.lstrip("- ") + "\n\n" if kept else "") + above[h.end():].strip() + "\n"
+        return header + head + marker + new_section + ("\n" + after if after else "")
+    return header + rest.rstrip("\n") + "\n\n" + above + "\n"
+
+
 def read(cfg: Config) -> str:
     p = path(cfg)
-    return p.read_text() if p.exists() else ""
+    return normalize(p.read_text()) if p.exists() else ""
 
 
 def body(cfg: Config) -> str:

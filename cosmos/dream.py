@@ -334,8 +334,9 @@ def dream(cfg: Config, use_llm: Optional[bool] = None, verbose: bool = False, re
             sessions=[o["session"]] if o.get("session") else [],
         )
         mem.tags = sorted(_auto_tags(mem))[:6]
-        if o.get("lane"):
-            mem.lane = str(o["lane"])
+        from .lanes import clean_lane
+        if clean_lane(o.get("lane") or ""):
+            mem.lane = clean_lane(o["lane"])
             mem.meta["lane_by"] = "model"
         if o.get("curated"):
             mem.meta["curated"] = f"llm:{t}"

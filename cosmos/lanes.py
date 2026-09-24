@@ -20,12 +20,23 @@ GENERIC = {"src", "app", "apps", "lib", "libs", "main", "java", "kotlin", "pytho
            "__tests__", "packages", "modules", "core", "common", "shared", "utils", "util", "helpers", "components", "v1", "v2", "api", "endpoints", "routes"}
 GENERAL = "general"
 TOOLING_DIRS = {".claude", ".cosmos", ".github", ".vscode", ".cursor", ".gemini", "scripts", "ci", ".circleci", "infra", "terraform", "k8s", "helm", "deploy"}
+
+
+def looks_like_path(f: str) -> bool:
+    """A file reference, not a sentence that slipped into the evidence list (commit prose, CLI flags, markdown bullets)."""
+    f = (f or "").strip()
+    return bool(f) and len(f) <= 300 and not f.startswith("-") and not re.search(r"\s|[<>|*?\"]", f)
+
+
+def clean_lane(name: str) -> str:
+    """A lane name as the model or a person gave it → a short slug ("" when nothing usable is left)."""
+    return re.sub(r"[^a-z0-9/._\-]+", "-", str(name or "").lower()).strip("-")[:40]
 DOC_DIRS = {"docs", "doc", "references", "reference", "adr", "rfcs", "wiki"}
 
 
 def infer_lane(files: Iterable[str], lane_globs: Optional[Dict[str, List[str]]] = None) -> str:
     """Config globs win; otherwise first meaningful path segment, plus the last directory when it adds information."""
-    files = [f.replace("\\", "/") for f in files if f]
+    files = [f.replace("\\", "/") for f in files if looks_like_path(f)]
     for name, globs in (lane_globs or {}).items():
         for f in files:
             if any(fnmatch.fnmatch(f, g) or fnmatch.fnmatch(f, g.rstrip("/**") + "/*") or f.startswith(g.rstrip("*/") + "/") for g in globs):
@@ -147,16 +158,24 @@ def assign_lanes(mems: Dict[str, Memory], cfg: Config, only_missing: bool = True
     index = None
     for m in mems.values():
         # normalise evidence paths: absolute → relative; partial fragments → resolved against the tree
-        fixed = [relativize(f, cfg.paths.root) if f.startswith("/") else f for f in m.files]
+        fixed = [relativize(f, cfg.paths.root) if f.startswith("/") else f for f in m.files if looks_like_path(f)]
         if any(not (cfg.paths.root / f).exists() and not f.startswith(("../", "external/")) for f in fixed):
             index = index if index is not None else _tree_index(cfg.paths.root)
             fixed = [f if (cfg.paths.root / f).exists() or f.startswith(("../", "external/")) else resolve_path(f, index) for f in fixed]
+        recompute = not only_missing or not m.lane
         if fixed != m.files:
-            m.files, only_missing = fixed, False
+            m.files, recompute = fixed, True
             n += 1
         if m.meta.get("lane_by") == "model" and m.lane:
-            continue                                   # the model named this lane; paths never overrule it
-        if only_missing and m.lane:
+            cleaned = clean_lane(m.lane)
+            if cleaned and cleaned != m.lane:
+                m.lane = cleaned
+                n += 1
+            if cleaned:
+                continue                               # the model named this lane; paths never overrule it
+        if m.lane and clean_lane(m.lane) != m.lane:
+            recompute = True                           # a lane that is not a slug came from bad evidence: infer it again
+        if not recompute:
             continue
         lane = infer_lane(m.files, globs)
         if lane == GENERAL and m.category == "finding" and m.meta.get("area"):

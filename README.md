@@ -99,7 +99,7 @@ git clone <repo> && claude
 | | |
 |---|---|
 | **what** | A short file, `.cosmos/charter.md`: how we write code, how we test, how we point at things, how we review our own work, our architecture rules. Owned by the team, changed in pull requests. |
-| **you do** | Agree it once. Add a rule when a decision is made, from the UI, the CLI, or by typing `remember:` in a session. |
+| **you do** | Agree it once. Add a rule when a decision is made, from the UI, the CLI, or by typing `remember:` in a session. Text pasted above the settings header is moved into the body when the editor closes. |
 | **you get** | Every AI session on every machine reads it first. Personal preferences stop leaking into the codebase. Explicit rules outrank anything the AI inferred. |
 | **command** | `cosmos charter` · `cosmos charter add "…"` · `cosmos charter edit` |
 
