@@ -1502,3 +1502,15 @@ class TestOKFAndSearch(unittest.TestCase):
             mems = Ledger(r.cfg.paths).load()
             self.assertEqual(sum(1 for m in mems.values() if "s3_key" in m.text), 1)
             self.assertEqual(next(m for m in mems.values() if "s3_key" in m.text).evidence_count, 2)
+
+    def test_older_notes_gain_an_okf_type_on_the_next_dream(self):
+        from cosmos.dream import _okf_conform
+        with Repo() as r:
+            j = r.cfg.paths.ledger / "journal"; j.mkdir(parents=True)
+            (j / "2026-09-01.md").write_text("---\nkind: journal\ndate: \"2026-09-01\"\n---\n\n# Journal · 2026-09-01\n- x\n")
+            a = r.cfg.paths.ledger / "atlas"; a.mkdir()
+            (a / "inventory.md").write_text("# Atlas · Inventory\n\nstuff\n")
+            self.assertEqual(_okf_conform(r.cfg), 2)
+            self.assertTrue((j / "2026-09-01.md").read_text().startswith("---\ntype: Journal\nkind: journal"))
+            self.assertTrue((a / "inventory.md").read_text().startswith("---\ntype: Diagram\ntitle: \"Atlas · Inventory\""))
+            self.assertEqual(_okf_conform(r.cfg), 0, "idempotent")

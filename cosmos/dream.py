@@ -5,6 +5,7 @@ output is validated and merged - never trusted blindly.
 """
 from __future__ import annotations
 
+import json
 import re
 from dataclasses import dataclass, field
 from datetime import date
@@ -467,6 +468,7 @@ def dream(cfg: Config, use_llm: Optional[bool] = None, verbose: bool = False, re
         report.recall_at_5 = eval_run(cfg).get("recall_at_k")
     except Exception:
         pass
+    _okf_conform(cfg)
     _persist_run(cfg, report, started)
     try:   # OKF log.md: chronological history of the bundle, newest first
         lp = cfg.paths.ledger / "log.md"
@@ -502,6 +504,31 @@ def _flares_from_commits(cfg: Config, journals: List[Dict], mems: Dict[str, Memo
                         n += 1
                     except SystemExit:
                         pass
+    return n
+
+
+def _okf_conform(cfg: Config) -> int:
+    """Older notes written before the ledger became an OKF bundle get a `type` in their frontmatter (journal days,
+    handoffs, horizon notes, atlas pages). Idempotent; returns how many files were touched."""
+    kinds = {"journal": "Journal", "handoffs": "Handoff", "horizon": "Horizon", "intake": "Horizon", "atlas": "Diagram"}
+    n = 0
+    for p in cfg.paths.ledger.rglob("*.md"):
+        if p.name in ("index.md", "log.md") or ".obsidian" in p.parts or p.name.startswith("mem_"):
+            continue
+        try:
+            text = p.read_text(errors="ignore")
+        except Exception:
+            continue
+        head = text[:600]
+        if head.startswith("---") and re.search(r"^type:\s*\S", head, re.M):
+            continue
+        typ = next((kinds[part] for part in reversed(p.relative_to(cfg.paths.ledger).parts[:-1]) if part in kinds), "Note")
+        if text.startswith("---\n"):
+            text = "---\ntype: " + typ + "\n" + text[4:]
+        else:
+            title = next((l[2:].strip() for l in text.splitlines() if l.startswith("# ")), p.stem)
+            text = f"---\ntype: {typ}\ntitle: {json.dumps(title[:120])}\n---\n\n" + text
+        p.write_text(text); n += 1
     return n
 
 
