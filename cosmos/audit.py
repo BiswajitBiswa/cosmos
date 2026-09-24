@@ -1,4 +1,6 @@
 """QA / security audit findings as first-class memory.
+        if len(str(item.get("title", "")).strip()) < 8:
+            continue                                   # a finding without a title is not a finding
 
 A finding is durable engineering knowledge with a lifecycle (open → fixed | withdrawn | wontfix, or regressed).
 It lives in the ledger like any other fact (category `finding`), so it shows up in retrieval when someone

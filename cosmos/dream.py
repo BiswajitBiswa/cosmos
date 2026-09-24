@@ -527,7 +527,7 @@ def _okf_conform(cfg: Config) -> int:
             text = "---\ntype: " + typ + "\n" + text[4:]
         else:
             title = next((l[2:].strip() for l in text.splitlines() if l.startswith("# ")), p.stem)
-            text = f"---\ntype: {typ}\ntitle: {json.dumps(title[:120])}\n---\n\n" + text
+            text = f"---\ntype: {typ}\ntitle: {json.dumps(title[:120], ensure_ascii=False)}\n---\n\n" + text
         p.write_text(text); n += 1
     return n
 
