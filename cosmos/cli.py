@@ -514,6 +514,18 @@ def cmd_doctor(a) -> int:
         except Exception as e:
             line(False, f"LLM: {prov.name} configured but failing — {str(e)[:120]}")
     try:
+        import re as _re
+        bad_okf = []
+        for p in cfg.paths.ledger.rglob("*.md"):
+            if p.name in ("index.md", "log.md") or ".obsidian" in p.parts:
+                continue
+            head = p.read_text(errors="ignore")[:600]
+            if not (head.startswith("---") and _re.search(r"^type:\s*\S", head, _re.M)):
+                bad_okf.append(str(p.relative_to(cfg.paths.ledger)))
+        line(not bad_okf, "ledger is an OKF v0.2 bundle: every note has frontmatter with a type" if not bad_okf else f"{len(bad_okf)} ledger note(s) without an OKF type (older notes; the next dream rewrites them): " + ", ".join(bad_okf[:3]))
+    except Exception:
+        pass
+    try:
         from .charter import check as charter_check
         bad = charter_check(cfg)
         line(not bad, "charter is grounded: every path it names exists" if not bad else f"charter names {len(bad)} path(s) that do not exist: " + ", ".join(bad[:4]))

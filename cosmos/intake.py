@@ -114,7 +114,7 @@ def _llm_assessment(cfg: Config, res: Dict) -> str:
 
 
 def render_md(a: Dict, author: str) -> str:
-    L = [f"---", f"kind: horizon", f"created: {today()}", f"by: \"{author}\"", f"lanes: {a['lanes']}", "---", "", f"# Horizon: {a['text']}", ""]
+    L = [f"---", f"type: Horizon", f"kind: horizon", f"created: {today()}", f"by: \"{author}\"", f"lanes: {a['lanes']}", "---", "", f"# Horizon: {a['text']}", ""]
     if a.get("brief"):
         L += ["## Brief", "", a["brief"], ""]
     if a.get("attachments"):

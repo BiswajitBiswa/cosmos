@@ -316,9 +316,9 @@ def build(cfg: Config) -> Dict[str, Any]:
     L += ["", "## Sources", "", srcs]
     (d / "inventory.md").write_text("\n".join(L) + "\n")
     # containers.md
-    (d / "containers.md").write_text("\n".join(["---", 'tags: ["atlas","diagram"]', "---", f"# Atlas · Containers — {inv['repo']}", "", head, "", "```mermaid", mermaid_containers(inv), "```", "", "## Sources", "", srcs]) + "\n")
+    (d / "containers.md").write_text("\n".join(["---", "type: Diagram", 'tags: ["atlas","diagram"]', "---", f"# Atlas · Containers — {inv['repo']}", "", head, "", "```mermaid", mermaid_containers(inv), "```", "", "## Sources", "", srcs]) + "\n")
     # deployment.md
-    (d / "deployment.md").write_text("\n".join(["---", 'tags: ["atlas","diagram"]', "---", f"# Atlas · Deployment — {inv['repo']}", "", head, "", "```mermaid", mermaid_deployment(inv), "```", "", "## Sources", "", srcs]) + "\n")
+    (d / "deployment.md").write_text("\n".join(["---", "type: Diagram", 'tags: ["atlas","diagram"]', "---", f"# Atlas · Deployment — {inv['repo']}", "", head, "", "```mermaid", mermaid_deployment(inv), "```", "", "## Sources", "", srcs]) + "\n")
     # api.md
     A = ["---", 'tags: ["atlas"]', "---", f"# Atlas · API surface — {inv['repo']}", "", head, ""]
     for spec in inv["api"]:

@@ -1463,3 +1463,42 @@ class TestTeamSources(unittest.TestCase):
             res = run(r.cfg, k=5)
             self.assertEqual(res["cases"], 3)
             self.assertGreaterEqual(res["recall_at_k"], 0.66)
+
+
+class TestOKFAndSearch(unittest.TestCase):
+    def test_notes_are_okf_conformant_and_round_trip(self):
+        with Repo() as r:
+            m = Memory(id="mem_okf1", text="Redis lock TTL is 30 seconds in src/redis-lock.ts.", category="constraint", files=["src/redis-lock.ts"], meta={"verified": "llm:2026-09-22"})
+            led = Ledger(r.cfg.paths); led.save(m)
+            md = next(led.dir.rglob("mem_okf1-*.md")).read_text()
+            for key in ("type: \"Constraint\"", "title:", "description:", "status: \"stable\"", "cosmos_status: \"active\"", "generated:", "verified:", "stale_after:", "sources:"):
+                self.assertIn(key, md, key)
+            back = led.load()["mem_okf1"]
+            self.assertEqual((back.status, back.category, back.files), ("active", "constraint", ["src/redis-lock.ts"]))
+            back.status = "superseded"; led.save(back)
+            self.assertIn("status: \"deprecated\"", next(led.dir.rglob("mem_okf1-*.md")).read_text())
+            self.assertEqual(led.load()["mem_okf1"].status, "superseded", "cosmos lifecycle survives the OKF status mapping")
+            from cosmos.render import write_index
+            write_index(r.cfg, led.load())
+            self.assertIn('okf_version: "0.2"', (r.cfg.paths.ledger / "index.md").read_text())
+
+    def test_bm25_prefers_specific_terms_over_common_ones(self):
+        from cosmos.retrieve import retrieve
+        mems = {}
+        for i in range(8):
+            mems[f"mem_c{i}"] = Memory(id=f"mem_c{i}", text=f"The webserver service handles requests for module {i}.", category="architecture", files=[f"webserver/app/m{i}.py"])
+        mems["mem_t"] = Memory(id="mem_t", text="Tavily search results are capped at n like the other backends.", category="constraint", files=["aura_gateway/aura/search.py"])
+        got = [m.id for m in retrieve(mems, "why are tavily results capped", k=3)]
+        self.assertEqual(got[0], "mem_t", "a rare term outranks eight notes sharing common words")
+        got = [m.id for m in retrieve(mems, "search.py", paths=["aura_gateway/aura/search.py"], k=3)]
+        self.assertEqual(got[0], "mem_t", "the evidence path wins for a file task")
+
+    def test_remember_confirms_instead_of_duplicating(self):
+        from cosmos.mcp import call_tool
+        with Repo() as r:
+            call_tool(r.cfg, "cosmos_remember", {"text": "Universe erase treats an empty s3_key as nothing to delete and skips the S3 call.", "category": "constraint"})
+            out = call_tool(r.cfg, "cosmos_remember", {"text": "The universe erase flow treats an empty s3_key as nothing to delete, skipping the S3 call.", "category": "constraint"})
+            self.assertIn("already known", out["content"][0]["text"])
+            mems = Ledger(r.cfg.paths).load()
+            self.assertEqual(sum(1 for m in mems.values() if "s3_key" in m.text), 1)
+            self.assertEqual(next(m for m in mems.values() if "s3_key" in m.text).evidence_count, 2)

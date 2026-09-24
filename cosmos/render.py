@@ -49,7 +49,7 @@ def write_index(cfg: Config, mems: Dict[str, Memory]) -> Path:
     by_lane: Dict[str, Dict[str, List[Memory]]] = defaultdict(lambda: defaultdict(list))
     for m in mems.values():
         by_lane[m.lane or "general"][m.category].append(m)
-    lines = ["---", "tags: [\"cosmos\", \"moc\"]", "---", "", "# Ledger index", "",
+    lines = ["---", "type: Index", "title: Ledger index", "okf_version: \"0.2\"", "tags: [\"cosmos\", \"moc\"]", "---", "", "# Ledger index", "",
              f"{len(mems)} memories · {sum(1 for m in mems.values() if m.status=='active')} active · "
              f"{sum(1 for m in mems.values() if m.status=='contradicted')} contradicted · "
              f"{sum(1 for m in mems.values() if m.status=='stale-candidate')} stale candidates · {len(by_lane)} lanes", "",
@@ -65,6 +65,17 @@ def write_index(cfg: Config, mems: Dict[str, Memory]) -> Path:
     p = cfg.paths.ledger / "_index.md"
     p.parent.mkdir(parents=True, exist_ok=True)
     p.write_text("\n".join(lines))
+    # OKF reserves index.md at the bundle root: a plain directory listing with descriptions, progressive disclosure
+    root_lines = ["---", "okf_version: \"0.2\"", "---", "", f"# {cfg.paths.root.name} · team knowledge (cosmos)", "",
+                  "- [Ledger index by lane](_index.md) — every fact, grouped by feature lane",
+                  "- [Charter](../charter.md) — the team's working agreement",
+                  "- [Atlas](atlas/) — architecture drawn from the repository",
+                  "- [Journal](journal/) — what the team did, one line per agent turn; handoffs per branch",
+                  "- [Horizon](horizon/) — features mapped before coding", ""]
+    for cat in sorted({m.category for m in mems.values()}):
+        n = sum(1 for m in mems.values() if m.category == cat and m.status == "active")
+        root_lines.append(f"- [{cat}/]({cat}/) — {n} active {cat} note{'s' if n != 1 else ''}")
+    (cfg.paths.ledger / "index.md").write_text("\n".join(root_lines) + "\n")
     return p
 
 

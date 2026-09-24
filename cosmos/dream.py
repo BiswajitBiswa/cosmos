@@ -468,6 +468,14 @@ def dream(cfg: Config, use_llm: Optional[bool] = None, verbose: bool = False, re
     except Exception:
         pass
     _persist_run(cfg, report, started)
+    try:   # OKF log.md: chronological history of the bundle, newest first
+        lp = cfg.paths.ledger / "log.md"
+        old = lp.read_text() if lp.exists() else "# Log\n\n"
+        entry = f"## {t}\n\n**Update**: {report.summary()[:300]}\n\n"
+        body = old.split("\n", 2)[2] if old.startswith("# Log") else old
+        lp.write_text("# Log\n\n" + entry + body)
+    except Exception:
+        pass
     try:
         from .sync import sync_background
         sync_background(cfg, "cosmos: dream — " + report.summary()[:100])

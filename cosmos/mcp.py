@@ -62,6 +62,14 @@ def call_tool(cfg: Config, name: str, args: Dict[str, Any]) -> Dict[str, Any]:
             return _txt(f"cosmos_remember: `text` is {len(text)} characters; write the fact as one full sentence (what is true, where, why).")
         mid = make_id(text)
         rule = str(args.get("kind", "fact")) == "rule"
+        if mid not in mems:   # search before write: an existing near-duplicate is confirmed, not duplicated
+            from .retrieve import retrieve as _retrieve, tokens as _tokens
+            from .dream import jaccard as _jaccard
+            near = next((m for m in _retrieve(mems, text, k=5) if _jaccard(_tokens(m.text), _tokens(text)) >= 0.6), None)
+            if near is not None and not rule:
+                near.evidence_count += 1; near.updated = near.last_verified = today()
+                Ledger(cfg.paths).save(near)
+                return _txt(f"cosm◎s · already known as {near.id}: {near.text} — evidence count raised; nothing duplicated. To restate it, use kind=rule.")
         imp = args.get("importance")
         imp = min(1.0, max(0.3, float(imp))) if isinstance(imp, (int, float)) else (0.95 if rule else 0.7)
         m = mems.get(mid) or Memory(id=mid, text=text, category=str(args.get("category", "convention")), source="explicit" if rule else "agent",

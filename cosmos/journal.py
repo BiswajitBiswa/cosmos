@@ -122,7 +122,7 @@ def persist(cfg, entries: List[Dict], mems: Optional[Dict] = None) -> int:
         p = d / f"{day}.md"
         existing = p.read_text() if p.exists() else ""
         if not existing:
-            existing = f"---\nkind: journal\ndate: \"{day}\"\n---\n\n# Journal · {day}\n\nWhat the team did, one line per agent turn. Facts live in the ledger; this is the work.\n\n"
+            existing = f"---\ntype: Journal\nkind: journal\ndate: \"{day}\"\n---\n\n# Journal · {day}\n\nWhat the team did, one line per agent turn. Facts live in the ledger; this is the work.\n\n"
         lines = []
         for e in sorted(items, key=lambda x: x.get("ts", "")):
             oid = e.get("id", "")

@@ -38,7 +38,7 @@ def _write(cfg: Config, branch: str, body: str, kind: str, author: str) -> Path:
     d = _dir(cfg)
     d.mkdir(parents=True, exist_ok=True)
     p = d / f"{_slug(branch)}.md"
-    p.write_text(f"---\nkind: handoff\nbranch: \"{branch}\"\nby: \"{author}\"\nat: \"{now_iso()}\"\nhow: {kind}\n---\n\n{body.strip()}\n")
+    p.write_text(f"---\ntype: Handoff\nkind: handoff\nbranch: \"{branch}\"\nby: \"{author}\"\nat: \"{now_iso()}\"\nhow: {kind}\n---\n\n{body.strip()}\n")
     return p
 
 

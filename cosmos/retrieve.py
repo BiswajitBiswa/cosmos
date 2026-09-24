@@ -54,14 +54,54 @@ def _recency(mem: Memory) -> float:
     return max(0.3, 1.0 - days / 365.0)
 
 
-def score(mem: Memory, q_tokens: Set[str], q_paths: Set[str]) -> float:
-    m_tokens = tokens(mem.text) | set(t.lower() for t in mem.tags)
-    m_paths = path_tokens(mem.files)
-    overlap = len(q_tokens & m_tokens) / (len(q_tokens) ** 0.5 + 1) if q_tokens else 0.0
-    poverlap = len(q_paths & (m_paths | m_tokens)) / (len(q_paths) ** 0.5 + 1) if q_paths else 0.0
-    if overlap == 0 and poverlap == 0:
+_IDF_CACHE: Dict[int, Dict[str, float]] = {}
+
+
+def _doc_terms(mem: Memory) -> Dict[str, int]:
+    """Term frequencies of a note: its text, tags, lane and the path segments of its evidence files."""
+    counts: Dict[str, int] = {}
+    for t in list(tokens(mem.text)) + [t.lower() for t in mem.tags] + list(path_tokens(mem.files)) + ([mem.lane] if mem.lane else []):
+        counts[t] = counts.get(t, 0) + 1
+    return counts
+
+
+def _idf(mems: Dict[str, Memory]) -> Dict[str, float]:
+    """Inverse document frequency over the live ledger (BM25 flavour), cached per ledger identity."""
+    import math
+    key = id(mems)
+    if key in _IDF_CACHE and _IDF_CACHE[key].get("__n__") == float(len(mems)):
+        return _IDF_CACHE[key]
+    df: Dict[str, int] = {}
+    for m in mems.values():
+        for t in _doc_terms(m):
+            df[t] = df.get(t, 0) + 1
+    n = max(1, len(mems))
+    idf = {t: math.log(1 + (n - d + 0.5) / (d + 0.5)) for t, d in df.items()}
+    idf["__n__"] = float(len(mems))
+    _IDF_CACHE.clear(); _IDF_CACHE[key] = idf
+    return idf
+
+
+def score(mem: Memory, q_tokens: Set[str], q_paths: Set[str], idf: Optional[Dict[str, float]] = None, avgdl: float = 12.0) -> float:
+    """BM25 over note terms with a stronger weight on evidence-path matches, then scaled by confidence, importance and recency."""
+    terms = _doc_terms(mem)
+    if not terms:
         return 0.0
-    return (overlap * 1.0 + poverlap * 1.4) * (0.5 + mem.confidence) * (0.5 + mem.importance) * _recency(mem)
+    dl = sum(terms.values())
+    k1, b = 1.2, 0.5
+    def bm25(q: Set[str], weight: float) -> float:
+        s = 0.0
+        for t in q:
+            f = terms.get(t, 0)
+            if not f:
+                continue
+            w = (idf or {}).get(t, 1.0)
+            s += w * (f * (k1 + 1)) / (f + k1 * (1 - b + b * dl / avgdl)) * weight
+        return s
+    raw = bm25(q_tokens, 1.0) + bm25(q_paths, 1.6)
+    if raw == 0:
+        return 0.0
+    return raw * (0.5 + mem.confidence) * (0.5 + mem.importance) * _recency(mem)
 
 
 def retrieve(mems: Dict[str, Memory], query: str = "", paths: Optional[Iterable[str]] = None, k: int = 6, include_doubtful: bool = False) -> List[Memory]:
@@ -69,11 +109,13 @@ def retrieve(mems: Dict[str, Memory], query: str = "", paths: Optional[Iterable[
     a human on Verdicts, never something handed to an agent as knowledge (it would cite it)."""
     q_tokens = tokens(query)
     q_paths = path_tokens(paths or [])
+    idf = _idf(mems)
+    avgdl = max(1.0, sum(sum(_doc_terms(m).values()) for m in mems.values()) / max(1, len(mems)))
     ranked = []
     for m in mems.values():
         if m.status != "active" and not (include_doubtful and m.status in ("stale-candidate", "contradicted")):
             continue
-        s = score(m, q_tokens, q_paths)
+        s = score(m, q_tokens, q_paths, idf, avgdl)
         if s > 0:
             ranked.append((s, m))
     ranked.sort(key=lambda x: -x[0])

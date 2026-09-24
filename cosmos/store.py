@@ -60,10 +60,38 @@ class Memory:
     valid_to: str = ""                                           # when it stopped being true (set on supersede / retire)
     details: List[List[str]] = field(default_factory=list)      # [[label, text], ...] rendered as sections
 
-    # ----- markdown (Obsidian) -----
+    # ----- markdown (Obsidian-compatible, OKF v0.2-conformant) -----
+    OKF_STATUS = {"active": "stable", "stale-candidate": "draft", "contradicted": "draft", "superseded": "deprecated", "forgotten": "deprecated"}
+
+    def okf_frontmatter(self, stale_days: int = 180) -> Dict:
+        """The Open Knowledge Format view of this note: type, title, description, provenance, trust and freshness signals.
+        Any OKF consumer (Google's Knowledge Catalog, okf-agent-memory, a static viewer) can read the ledger as a bundle."""
+        from datetime import datetime, timedelta
+        by = f"human:{self.authors[0]}" if self.source == "explicit" and self.authors else f"cosmos/{self.source}"
+        verified = []
+        v = self.meta.get("verified", "")
+        if v.startswith("llm:"):
+            verified.append({"by": "cosmos-dream/model", "at": v[4:] + "T00:00:00Z"})
+        if self.meta.get("reviewed_by"):
+            verified.append({"by": f"human:{self.meta['reviewed_by']}", "at": (self.meta.get("reviewed_at") or self.updated) + "T00:00:00Z"})
+        try:
+            stale_after = (datetime.fromisoformat(self.last_verified) + timedelta(days=stale_days)).strftime("%Y-%m-%dT00:00:00Z")
+        except Exception:
+            stale_after = ""
+        fm = {"type": self.category.replace("-", " ").title(), "title": self.text[:120], "description": self.text,
+              "status": self.OKF_STATUS.get(self.status, "stable"),
+              "generated": {"by": by, "at": self.created + "T00:00:00Z"},
+              "sources": [{"resource": f, "title": f.rsplit("/", 1)[-1]} for f in self.files[:8]]}
+        if verified:
+            fm["verified"] = verified
+        if stale_after and self.status == "active":
+            fm["stale_after"] = stale_after
+        return fm
+
     def to_markdown(self) -> str:
-        fm = {
-            "id": self.id, "aliases": [self.id], "category": self.category, "lane": self.lane, "status": self.status,
+        okf = self.okf_frontmatter(self.meta_stale_days if hasattr(self, "meta_stale_days") else 180)
+        fm = {**okf,
+            "id": self.id, "aliases": [self.id], "category": self.category, "lane": self.lane, "cosmos_status": self.status,
             "confidence": round(self.confidence, 2), "importance": round(self.importance, 2),
             "source": self.source, "created": self.created, "updated": self.updated,
             "last_verified": self.last_verified, "evidence_count": self.evidence_count,
@@ -77,7 +105,7 @@ class Memory:
         for k, v in fm.items():
             if v is None or v == [] or v == "":
                 continue
-            lines.append(f"{k}: {json.dumps(v)}" if isinstance(v, (list, str)) else f"{k}: {v}")
+            lines.append(f"{k}: {json.dumps(v)}" if isinstance(v, (list, str, dict)) else f"{k}: {v}")
         lines.append("---")
         lines.append("")
         lines.append(f"# {self.text}")
@@ -136,7 +164,8 @@ class Memory:
             return None
         mem = Memory(
             id=str(fm["id"]), text=title.group(1).strip(), category=str(fm.get("category", "domain")),
-            status=str(fm.get("status", "active")), confidence=float(fm.get("confidence", 0.6)),
+            status=str(fm.get("cosmos_status") or (fm.get("status") if fm.get("status") in ("active", "stale-candidate", "contradicted", "superseded", "forgotten") else "active")),
+            confidence=float(fm.get("confidence", 0.6)),
             importance=float(fm.get("importance", 0.6)), source=str(fm.get("source", "observed")),
             created=str(fm.get("created", today())), updated=str(fm.get("updated", today())),
             last_verified=str(fm.get("last_verified", today())), evidence_count=int(fm.get("evidence_count", 1)),
