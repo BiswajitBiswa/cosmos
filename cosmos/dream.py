@@ -336,6 +336,7 @@ def dream(cfg: Config, use_llm: Optional[bool] = None, verbose: bool = False, re
         mem.tags = sorted(_auto_tags(mem))[:6]
         if o.get("lane"):
             mem.lane = str(o["lane"])
+            mem.meta["lane_by"] = "model"
         if o.get("curated"):
             mem.meta["curated"] = f"llm:{t}"
             mem.source = "llm"
@@ -457,6 +458,7 @@ def dream(cfg: Config, use_llm: Optional[bool] = None, verbose: bool = False, re
                     print(f"  llm refinement skipped: {e}")
 
     # ---- 6. lanes (LLM-assigned lanes win; paths fill the rest), related links + persist
+    _restore_model_lanes(mems, obs_store)
     from .lanes import assign_lanes
     assign_lanes(mems, cfg, only_missing=bool(report.llm_used))
     _link_related(mems)
@@ -504,6 +506,25 @@ def _flares_from_commits(cfg: Config, journals: List[Dict], mems: Dict[str, Memo
                         n += 1
                     except SystemExit:
                         pass
+    return n
+
+
+def _restore_model_lanes(mems: Dict[str, Memory], obs_store) -> int:
+    """A fact sitting in `general` whose source observation carried a model-chosen lane gets that lane back (earlier
+    heuristic dreams re-inferred lanes from paths and lost it). Idempotent."""
+    gen = {m.id: m for m in mems.values() if m.status != "forgotten" and (not m.lane or m.lane == "general") and m.meta.get("lane_by") != "model"}
+    if not gen:
+        return 0
+    n = 0
+    for o in obs_store.iter_all():
+        lane = o.get("lane")
+        if not lane or lane == "general":
+            continue
+        mid = make_id(" ".join(str(o.get("text", "")).split()))
+        m = gen.pop(mid, None)
+        if m is not None:
+            m.lane, m.meta["lane_by"] = str(lane), "model"
+            n += 1
     return n
 
 

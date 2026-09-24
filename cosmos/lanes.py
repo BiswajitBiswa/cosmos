@@ -154,6 +154,8 @@ def assign_lanes(mems: Dict[str, Memory], cfg: Config, only_missing: bool = True
         if fixed != m.files:
             m.files, only_missing = fixed, False
             n += 1
+        if m.meta.get("lane_by") == "model" and m.lane:
+            continue                                   # the model named this lane; paths never overrule it
         if only_missing and m.lane:
             continue
         lane = infer_lane(m.files, globs)

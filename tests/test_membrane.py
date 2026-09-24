@@ -1542,3 +1542,16 @@ class TestOKFGraph(unittest.TestCase):
             render_all(r.cfg, mems)
             root = (r.cfg.paths.ledger / "index.md").read_text()
             self.assertIn("[Lanes](lanes/)", root); self.assertIn("[Services](atlas/services/)", root)
+
+    def test_a_model_lane_survives_heuristic_dreams(self):
+        from cosmos.dream import _restore_model_lanes
+        from cosmos.lanes import assign_lanes
+        with Repo() as r:
+            m = Memory(id=make_id("Payments retry three times with backoff."), text="Payments retry three times with backoff.", category="convention", lane="general")
+            Ledger(r.cfg.paths).save(m)
+            Observations(r.cfg.paths).append([{"id": "obs_x1", "text": "Payments retry three times with backoff.", "category": "convention", "lane": "payments", "source": "observed", "files": [], "ts": "2026-09-24T00:00:00Z"}])
+            mems = Ledger(r.cfg.paths).load()
+            self.assertEqual(_restore_model_lanes(mems, Observations(r.cfg.paths)), 1)
+            self.assertEqual((mems[m.id].lane, mems[m.id].meta["lane_by"]), ("payments", "model"))
+            assign_lanes(mems, r.cfg, only_missing=False)
+            self.assertEqual(mems[m.id].lane, "payments", "path inference never overrules the model")
