@@ -1555,3 +1555,13 @@ class TestOKFGraph(unittest.TestCase):
             self.assertEqual((mems[m.id].lane, mems[m.id].meta["lane_by"]), ("payments", "model"))
             assign_lanes(mems, r.cfg, only_missing=False)
             self.assertEqual(mems[m.id].lane, "payments", "path inference never overrules the model")
+
+
+class TestImportErrors(unittest.TestCase):
+    def test_missing_findings_file_explains_instead_of_tracing(self):
+        with Repo() as r:
+            (r.root / "docs").mkdir(); (r.root / "docs" / "qa-findings.json").write_text("[]")
+            out = subprocess.run([sys.executable, "-m", "cosmos", "flares", "import", "findings.json", "--prefix", "QA"], cwd=r.root, capture_output=True, text=True, env={**os.environ, "PYTHONPATH": str(ROOT)})
+            self.assertEqual(out.returncode, 1)
+            self.assertNotIn("Traceback", out.stderr + out.stdout)
+            self.assertIn("no such file: findings.json", out.stdout); self.assertIn("docs/qa-findings.json", out.stdout)

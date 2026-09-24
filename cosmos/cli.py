@@ -694,7 +694,22 @@ def _find_finding(cfg, key: str) -> Optional[Memory]:
 def cmd_audit_import(a) -> int:
     from .audit import import_findings
     cfg = load_config(); _require(cfg)
-    new, upd, reg = import_findings(cfg, Path(a.file), a.prefix, a.source or "")
+    f = Path(a.file)
+    if not f.exists():
+        cands = sorted({str(p.relative_to(cfg.paths.root)) for pat in ("**/*finding*.json", "**/qa-*.json", "**/*audit*.json")
+                        for p in cfg.paths.root.glob(pat) if ".cosmos" not in p.parts and "node_modules" not in p.parts})[:8]
+        print(col("✗", "r"), f"no such file: {a.file}")
+        if cands:
+            print(col("  found instead:", "d")); [print(f"    cosmos flares import {c} --prefix {a.prefix}") for c in cands]
+        else:
+            print(col("  ", "d") + "cosmos flares import expects the JSON your QA / audit session produced: a list of findings with")
+            print(col("  ", "d") + "id, severity (critical|high|medium|low|note), title, area, locations (`path:line · path:line`) and sections [[label, text], …].")
+            print(col("  ", "d") + "No file yet? Type `flare: <what is wrong>` in any agent session, or call cosmos_flare over MCP, and skip the import.")
+        return 1
+    try:
+        new, upd, reg = import_findings(cfg, f, a.prefix, a.source or "")
+    except json.JSONDecodeError as e:
+        print(col("✗", "r"), f"{a.file} is not valid JSON: {e}"); return 1
     _finish(cfg, Ledger(cfg.paths).load())
     print(col("✓", "g"), f"imported {len(new)} new, {len(upd)} updated, {len(reg)} regressed finding(s) from {a.file}")
     for m in new[:10]:
