@@ -247,7 +247,7 @@ def cmd_hooks(a) -> int:
 
 def cmd_mcp(a) -> int:
     from .mcp import serve
-    cfg = load_config(); _require(cfg)
+    cfg = load_config(Path(a.root).expanduser().resolve() if getattr(a, "root", None) else None); _require(cfg)
     serve(cfg); return 0
 
 
@@ -884,7 +884,7 @@ def build_parser() -> argparse.ArgumentParser:
     s = sp.add_parser("status", help="quick status"); s.add_argument("--json", action="store_true"); s.set_defaults(fn=cmd_status)
     s = sp.add_parser("hook", help="(internal) Claude Code hook entrypoint, reads event JSON on stdin"); s.set_defaults(fn=cmd_hook)
     s = sp.add_parser("capture", help="capture from session logs: Claude Code, Codex, Gemini/Antigravity"); s.add_argument("--transcript"); s.add_argument("--agent", default="all", choices=["all", "claude", "codex", "gemini"]); s.add_argument("-v", "--verbose", action="store_true"); s.add_argument("--rebuild-journal", action="store_true", help="re-read whole transcripts and write the journal for work done before cosmos was installed"); s.add_argument("--days", type=int, default=14, help="when reading whole transcripts, only turns from the last N days are read by the model (default 14)"); s.add_argument("--reread", action="store_true", help="start again from the beginning of every transcript (with --days, the model reads only recent turns)"); s.set_defaults(fn=cmd_capture)
-    s = sp.add_parser("mcp", help="run the MCP server (stdio) — one point of contact for every agent"); s.set_defaults(fn=cmd_mcp)
+    s = sp.add_parser("mcp", help="run the MCP server (stdio) — one point of contact for every agent"); s.add_argument("--root", help="the repository to serve, when the server is not started inside it (Claude Desktop / Cowork)"); s.set_defaults(fn=cmd_mcp)
     s = sp.add_parser("connect", help="wire agents to cosmos: instruction files + MCP configs"); s.add_argument("agents", nargs="*", default=["all"], choices=["all", "claude", "codex", "gemini", "cursor", "copilot", "cline", "windsurf"]); s.add_argument("--write-user", action="store_true", help="also write ~/.codex/config.toml"); s.set_defaults(fn=cmd_connect)
     s = sp.add_parser("eval", help="recall eval: does the right fact reach the agent? recall@k over the ledger"); s.add_argument("-k", type=int, default=5); s.add_argument("--show", type=int, default=10); s.set_defaults(fn=cmd_eval)
     s = sp.add_parser("sync", help="commit and push the cosmos branch (dreams and the watcher do this for you)"); s.add_argument("--push", action="store_true"); s.add_argument("-m", "--message"); s.set_defaults(fn=cmd_sync)

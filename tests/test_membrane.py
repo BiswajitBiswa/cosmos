@@ -315,6 +315,41 @@ class TestCharterRepair(unittest.TestCase):
         self.assertEqual(normalize(TEMPLATE), TEMPLATE, "a well-formed charter is untouched")
 
 
+class TestCowork(unittest.TestCase):
+    def _session(self, base, host_folder, vm="calm-vm", lines=()):
+        org = base / "acct" / "org"
+        (org / "local_abc" / ".claude" / "projects" / "-x").mkdir(parents=True)
+        (org / "local_abc.json").write_text(json.dumps({"vmProcessName": vm, "userSelectedFolders": [str(host_folder)],
+                                                        "folderMountNames": {str(host_folder): host_folder.name}}))
+        t = org / "local_abc" / ".claude" / "projects" / "-x" / "s1.jsonl"
+        t.write_text("".join(json.dumps(l) + "\n" for l in lines))
+        return t
+
+    def test_cowork_session_over_a_parent_folder_is_found_mapped_and_scoped(self):
+        import cosmos.adapters as ad
+        with Repo() as r, tempfile.TemporaryDirectory() as base:
+            parent = r.root.parent
+            mnt = f"/sessions/calm-vm/mnt/{parent.name}"
+            def user(text): return {"type": "user", "cwd": "/private/var/empty", "message": {"role": "user", "content": text}}
+            def bash(cmd): return {"type": "assistant", "cwd": "/private/var/empty", "message": {"role": "assistant", "content": [{"type": "tool_use", "name": "mcp__workspace__bash", "input": {"command": cmd}}]}}
+            def edit(path): return {"type": "assistant", "cwd": "/private/var/empty", "message": {"role": "assistant", "content": [{"type": "tool_use", "name": "Edit", "input": {"file_path": path, "old_string": "a", "new_string": "b"}}]}}
+            t = self._session(Path(base), parent, lines=[
+                user("fix the opt-out check"), bash(f"cd {mnt}/{r.root.name} && git commit -m 'fix opt-out'"), edit(str(r.root / "svc" / "send.py")),
+                user("now write the marketing post"), bash(f"cd {mnt}/other-project && ls"),
+            ])
+            old = ad.COWORK_BASE
+            ad.COWORK_BASE = Path(base)
+            try:
+                self.assertIn(t, [p for p, _ in ad.find_claude_sessions(r.root)])
+                turns, _ = ad.read_session(t, "claude", 0, root=r.root)
+            finally:
+                ad.COWORK_BASE = old
+            self.assertEqual([x.text for x in turns if x.role == "user"], ["fix the opt-out check"], "the other project's exchange is left out")
+            self.assertIn(f"cd {r.root} &&", turns[1].commands[0], "sandbox paths are mapped to this machine")
+            from cosmos.journal import commits_in
+            self.assertEqual(commits_in([c for x in turns for c in x.commands]), ["fix opt-out"])
+
+
 class TestAudit(unittest.TestCase):
     FINDINGS = [
         {"id": "11", "severity": "critical", "title": "Review chain bypassable via `transition_lookup_to_stage`", "area": "Reviews",

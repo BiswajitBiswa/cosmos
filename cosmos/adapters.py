@@ -196,7 +196,8 @@ AGENTS = {
 
 
 def find_claude_sessions(root: Path) -> List[Tuple[Path, str]]:
-    """Every Claude Code transcript for this repo: main sessions and their subagents. Returns (path, session_id)."""
+    """Every Claude Code transcript for this repo: main sessions and their subagents, in every worktree, plus Cowork
+    sessions that were given this repo or a folder above it. Returns (path, session_id)."""
     from .transcript import worktrees
     out: List[Tuple[Path, str]] = []
     for base in worktrees(root):
@@ -205,12 +206,111 @@ def find_claude_sessions(root: Path) -> List[Tuple[Path, str]]:
             continue
         out += [(p, p.stem) for p in sorted(d.glob("*.jsonl"))]
         out += [(p, f"{p.parent.parent.name}/{p.stem}") for p in sorted(d.glob("*/subagents/*.jsonl"))]
+    return out + find_cowork_sessions(root)
+
+
+# ---------------------------------------------------------------- Cowork
+# Cowork runs Claude Code in a sandbox with its own settings folder per session, so neither user nor repo hooks run
+# there and its transcripts are not under ~/.claude. Each session keeps them in
+#   <base>/<account>/<org>/local_<id>/.claude/projects/<slug>/<session>.jsonl
+# beside a metadata file <base>/<account>/<org>/local_<id>.json that names the folders the person shared and the
+# names they are mounted under inside the sandbox (/sessions/<vm>/mnt/<name>/…).
+COWORK_BASE = Path.home() / "Library" / "Application Support" / "Claude" / "local-agent-mode-sessions"
+_COWORK_META: Dict[str, Tuple[float, Dict[str, Any]]] = {}
+
+
+def _cowork_meta_file(transcript: Path) -> Optional[Path]:
+    parts = transcript.parts
+    for i in range(len(parts) - 1):
+        if parts[i].startswith("local_") and parts[i + 1] == ".claude":
+            return Path(*parts[:i]) / (parts[i] + ".json")
+    return None
+
+
+def _cowork_meta(meta_file: Path) -> Dict[str, Any]:
+    try:
+        mt = meta_file.stat().st_mtime
+        hit = _COWORK_META.get(str(meta_file))
+        if hit and hit[0] == mt:
+            return hit[1]
+        data = json.loads(meta_file.read_text())
+        _COWORK_META[str(meta_file)] = (mt, data)
+        return data
+    except Exception:
+        return {}
+
+
+def cowork_path_map(transcript: Path) -> Dict[str, str]:
+    """Sandbox path prefix → the folder on this machine, for one Cowork transcript ({} for anything else)."""
+    mf = _cowork_meta_file(transcript)
+    m = _cowork_meta(mf) if mf else {}
+    vm = m.get("vmProcessName") or m.get("processName")
+    if not vm:
+        return {}
+    return {f"/sessions/{vm}/mnt/{name}": host for host, name in (m.get("folderMountNames") or {}).items()}
+
+
+def find_cowork_sessions(root: Path) -> List[Tuple[Path, str]]:
+    if not COWORK_BASE.exists():
+        return []
+    r = root.resolve()
+    out: List[Tuple[Path, str]] = []
+    for mf in COWORK_BASE.glob("*/*/local_*.json"):
+        m = _cowork_meta(mf)
+        if m.get("isArchived"):
+            continue
+        folders = [Path(f).resolve() for f in (m.get("userSelectedFolders") or []) if f]
+        if not any(r == f or f in r.parents for f in folders):
+            continue
+        d = mf.with_suffix("") / ".claude" / "projects"
+        out += [(p, p.stem) for p in sorted(d.glob("*/*.jsonl"))]
+        out += [(p, f"{p.parent.parent.name}/{p.stem}") for p in sorted(d.glob("*/*/subagents/*.jsonl"))]
     return out
 
 
-def read_session(path: Path, agent: str, offset: int = 0, until: Optional[int] = None) -> Tuple[List[Turn], int]:
+def _map_paths(turns: List[Turn], pm: Dict[str, str]) -> None:
+    def fix(s: str) -> str:
+        for vm_prefix, host in pm.items():
+            if vm_prefix in s:
+                s = s.replace(vm_prefix, host)
+        return s
+    for t in turns:
+        t.files = [fix(f) for f in t.files]
+        t.commands = [fix(c) for c in t.commands]
+        t.cwd = fix(t.cwd)
+
+
+def _scope_to_repo(turns: List[Turn], root: Path) -> List[Turn]:
+    """A Cowork session shared a folder above the repo, so it may be about several projects. Keep the exchanges
+    (a person's message and the agent's work after it) that touched this repo."""
+    roots = {str(root), str(root.resolve())}             # /var/… and /private/var/… are the same folder on macOS
+    keep: List[Turn] = []
+    block: List[Turn] = []
+
+    def touches(t: Turn) -> bool:
+        return any(any(f.startswith(r + "/") for f in t.files) or any(r in c for c in t.commands) or t.cwd.startswith(r) for r in roots)
+
+    def flush():
+        if any(touches(t) for t in block):
+            keep.extend(block)
+    for t in turns:
+        if t.role == "user" and block:
+            flush()
+            block = []
+        block.append(t)
+    flush()
+    return keep
+
+
+def read_session(path: Path, agent: str, offset: int = 0, until: Optional[int] = None, root: Optional[Path] = None) -> Tuple[List[Turn], int]:
     if agent == "claude":
-        return iter_turns(path, offset, sidechain="subagents" in path.parts, until=until)
+        turns, off = iter_turns(path, offset, sidechain="subagents" in path.parts, until=until)
+        pm = cowork_path_map(path)
+        if pm:
+            _map_paths(turns, pm)
+            if root is not None:
+                turns = _scope_to_repo(turns, root)
+        return turns, off
     if agent == "codex":
         return iter_codex_turns(path, offset)
     size = path.stat().st_size if path.exists() else 0

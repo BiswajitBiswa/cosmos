@@ -52,7 +52,7 @@ def _ask(turns: List[Turn]) -> str:
     for t in turns:
         if t.role == "user":
             text = " ".join(re.sub(r"\[Image: source: [^\]]*\]", " ", t.text).split())   # pasted screenshots are not the ask
-            if len(text) >= 4 and not text.startswith(("/", "<", "Stop hook feedback", "[Request interrupted", "Hook ")):
+            if len(text) >= 4 and not text.startswith(("/", "<", "Stop hook feedback", "[Request interrupted", "Hook ", "This session is being continued")):
                 return text[:240]
     return ""
 
@@ -92,7 +92,7 @@ def build(turns: List[Turn], root: Path) -> Optional[Dict]:
     return {"kind": "journal", "category": "workflow", "source": "journal", "score": 1.0,
             "text": " · ".join(parts), "ask": ask, "files": files, "commits": commits, "tests": tests,
             "pushes": pushes, "prs": prs, "turns": len(turns),
-            "branch": next((t.branch for t in reversed(turns) if t.branch), "") or git_branch(root),
+            "branch": next((t.branch for t in reversed(turns) if t.branch and t.branch != "HEAD"), "") or git_branch(root),   # Cowork records HEAD
             "turn_uuid": next((t.uuid for t in turns if t.uuid), ""), "signals": ["journal"]}
 
 

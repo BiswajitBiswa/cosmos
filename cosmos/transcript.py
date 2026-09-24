@@ -87,7 +87,7 @@ def iter_turns(path: Path, offset: int = 0, sidechain: bool = False, until: Opti
                             turn.edit_chars += sum(len(str(e.get("old_string", ""))) + len(str(e.get("new_string", ""))) for e in (inp.get("edits") or []) if isinstance(e, dict))
                         else:
                             turn.edit_chars += len(str(inp.get("old_string", ""))) + len(str(inp.get("new_string", "")))
-                    elif name == "Bash" and isinstance(inp, dict) and inp.get("command"):
+                    elif (name == "Bash" or name.endswith("__bash")) and isinstance(inp, dict) and inp.get("command"):   # Cowork: mcp__workspace__bash
                         turn.commands.append(str(inp["command"])[:4000])
             # tool_result-only user messages carry no prose; keep them out
             if turn.role == "user" and isinstance(content, list) and not turn.text.strip():

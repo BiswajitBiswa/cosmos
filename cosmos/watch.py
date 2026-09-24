@@ -16,6 +16,7 @@ from .config import Config
 from .store import State, now_iso
 
 LIVE_MINUTES = 60
+HISTORY_BYTES = 2_000_000          # an unseen transcript bigger than this is history, not a session that just began
 
 
 def _live_path(cfg: Config) -> Path:
@@ -28,6 +29,12 @@ def load_live(cfg: Config) -> Dict[str, Dict[str, Any]]:
         return json.loads(p.read_text()) if p.exists() else {}
     except Exception:
         return {}
+
+
+def _label(p: Path, agent: str) -> str:
+    """What the live view calls the tool: Cowork transcripts are Claude Code transcripts in a different place."""
+    from .adapters import cowork_path_map
+    return "cowork" if agent == "claude" and cowork_path_map(p) else agent
 
 
 def _summarise(turns, sid: str, agent: str, prev: Optional[Dict[str, Any]]) -> Dict[str, Any]:
@@ -74,14 +81,14 @@ def _recent_tail(cfg: Config, p: Path, sid: str, agent: str, live: Dict[str, Dic
         if key in live or time.time() - p.stat().st_mtime > LIVE_MINUTES * 60:
             return
         start = max(0, p.stat().st_size - 300_000)
-        turns, _ = read_session(p, agent, start)
+        turns, _ = read_session(p, agent, start, root=cfg.paths.root)
         turns = turns[-40:]
         if not turns:
             return
         root = cfg.paths.root
         for t in turns:
             t.files = [r for r in (relativize(f, root) for f in t.files) if not r.startswith(("/", "external/"))]
-        live[key] = _summarise(turns, sid, agent, None)
+        live[key] = _summarise(turns, sid, _label(p, agent), None)
     except Exception:
         pass
 
@@ -113,11 +120,20 @@ def tick(cfg: Config, agents: Optional[List[str]] = None, verbose: bool = False)
         if size <= before:
             _recent_tail(cfg, p, sid, agent, live)
             continue
-        turns, _ = read_session(p, agent, before)
+        if before == 0 and agent == "claude" and size > HISTORY_BYTES:
+            # a session first seen with a long history (a Cowork session, a new worktree): treat it like `cosmos init`
+            # does - journal for all of it, only the last days queued for the model, then follow it from the end
+            from .hooks import backfill_journal
+            backfill_journal(cfg, p, sid)
+            captured += capture(cfg, {"transcript_path": str(p), "session_id": sid, "hook_event_name": "manual", "cwd": str(root), "since_days": 14})
+            state = State(cfg.paths)
+            _recent_tail(cfg, p, sid, agent, live)
+            continue
+        turns, _ = read_session(p, agent, before, root=cfg.paths.root)
         if turns:
             for t in turns:
                 t.files = [r for r in (relativize(f, root) for f in t.files) if not r.startswith(("/", "external/"))]
-            live[key] = _summarise(turns, sid, agent, live.get(key))
+            live[key] = _summarise(turns, sid, _label(p, agent), live.get(key))
         else:
             _recent_tail(cfg, p, sid, agent, live)   # only system lines were appended (hook summaries): still live
         captured += capture(cfg, {"transcript_path": str(p), "session_id": sid, "hook_event_name": "watch", "cwd": str(root)}, agent)

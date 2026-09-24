@@ -49,12 +49,12 @@ def windows_waiting(state: State) -> int:
     return len(state.data.get("windows", []))
 
 
-def _turns_for(w: Dict) -> List[Turn]:
+def _turns_for(w: Dict, root: Optional[Path] = None) -> List[Turn]:
     from .adapters import read_session
     p = Path(w["path"])
     if not p.exists():
         return []
-    turns, _ = read_session(p, w.get("agent", "claude"), int(w["from"]), until=int(w["to"]))
+    turns, _ = read_session(p, w.get("agent", "claude"), int(w["from"]), until=int(w["to"]), root=root)
     since = w.get("since")
     if since:
         turns = [t for t in turns if not t.timestamp or t.timestamp >= since]
@@ -191,7 +191,7 @@ def read_windows(cfg: Config, prov, mems: Dict, state: State, store: Observation
         if used >= budget:
             remaining.append(w)
             continue
-        turns = _turns_for(w)
+        turns = _turns_for(w, cfg.paths.root)
         if not turns:
             continue                                   # transcript gone or nothing readable: drop the window
         chunks = excerpt_chunks(turns, cfg.paths.root)
@@ -237,7 +237,7 @@ def fallback_windows(cfg: Config, state: State, store: Observations, days: int =
         if w.get("ts", "") > cutoff:
             remaining.append(w)
             continue
-        turns = _turns_for(w)
+        turns = _turns_for(w, cfg.paths.root)
         root = cfg.paths.root
         for t in turns:
             t.files = [r for r in (relativize(f, root) for f in t.files) if not r.startswith(("/", "external/"))]

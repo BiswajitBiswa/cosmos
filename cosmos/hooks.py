@@ -51,7 +51,7 @@ def capture(cfg: Config, event: Dict[str, Any], agent: str = "claude") -> int:
         return 0
     state = State(cfg.paths)
     from .adapters import read_session
-    turns, new_off = read_session(Path(tp), agent, state.offset(f"{agent}:{sid}" if agent != "claude" else sid))
+    turns, new_off = read_session(Path(tp), agent, state.offset(f"{agent}:{sid}" if agent != "claude" else sid), root=cfg.paths.root)
     if not turns:
         return 0
     root = cfg.paths.root
@@ -108,7 +108,7 @@ def backfill_journal(cfg: Config, path: Path, sid: str, agent: str = "claude") -
     """Re-read a whole transcript and write one journal record per agent turn (a window from one user message to the
     next). Facts are not re-extracted. Idempotent: records carry deterministic ids and existing ones are skipped."""
     from .adapters import read_session
-    turns, _ = read_session(path, agent, 0)
+    turns, _ = read_session(path, agent, 0, root=cfg.paths.root)
     if not turns:
         return 0
     root = cfg.paths.root

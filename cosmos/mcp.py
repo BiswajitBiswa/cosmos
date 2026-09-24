@@ -172,7 +172,7 @@ def serve(cfg: Config) -> None:
                 if code_stamp() != stamp:                # cosmos was updated: serve this call from the new code
                     fresh_modules()
                     tools = importlib.import_module("cosmos.mcp").call_tool
-                    cfg = importlib.import_module("cosmos.config").load_config()
+                    cfg = importlib.import_module("cosmos.config").load_config(cfg.paths.root)
                     stamp = importlib.import_module("cosmos").code_stamp()
                 resp = tools(cfg, str(params.get("name")), params.get("arguments") or {})
             elif method.startswith("notifications/"):
