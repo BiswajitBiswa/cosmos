@@ -20,3 +20,20 @@ The Gate runs on Claude Code's **Stop** event. It looks at the current turn only
 When something is missing the hook exits **2** with that list; Claude continues, does the work, and stops again. `stop_hook_active` is honoured, so a turn is held at most once — no loops. Documentation-only edits are never gated. Everything else in cosmos still exits 0.
 
 Configuration lives in the charter frontmatter (`gate: {...}`) or `.cosmos/config.json → gate`: `enabled`, `require_tests`, `require_refs`, `test_patterns`, `code_globs`, `skip_globs`. `cosmos gate` shows the effective rules; `cosmos gate --transcript FILE` dry-runs it on a saved session.
+
+### Large changes
+
+A turn that edits `large_change_files` (5) or more code files, or `large_change_chars` (4,000) or more characters, runs the
+`large_change_checks` the repository configures. Each check names the files it applies to (`when`), the command patterns that
+satisfy it (`patterns`) and the command to suggest. The Gate holds the turn until a matching command ran:
+
+```json
+"large_change_checks": [
+  {"name": "dead-code scan (vulture)", "patterns": ["vulture"], "when": ["**/*.py"], "command": "python3 -m vulture src --min-confidence 80"},
+  {"name": "unused exports scan (knip)", "patterns": ["knip"], "when": ["web/**"], "command": "cd web && npx knip"}
+]
+```
+
+The agent removes the unused and redundant code it finds in what it touched, compacts duplicated logic, and names false positives
+(framework entry points, routes, fixtures) instead of deleting them.
+

@@ -441,6 +441,29 @@ class TestFolderAnchoredFacts(unittest.TestCase):
             self.assertNotIn("footer microcopy", file_context(r.cfg, {"session_id": "b", "tool_input": {"file_path": str(r.root / "api/main.py")}}))
 
 
+class TestGateLargeChange(unittest.TestCase):
+    def test_large_change_asks_for_the_dead_code_scan_until_it_ran(self):
+        import json as _j
+        from cosmos import charter
+        from cosmos.gate import evaluate
+        with Repo() as r:
+            charter.ensure(r.cfg)
+            cp = charter.path(r.cfg)
+            cp.write_text(cp.read_text().replace('"large_change_checks": []', '"large_change_checks": ' + _j.dumps(
+                [{"name": "dead-code scan", "patterns": ["vulture"], "when": ["**/*.py"], "command": "python3 -m vulture src"}])))
+            files = [str(r.root / f"src/m{i}.py") for i in range(6)]
+            t = r.transcript("big.jsonl", [_user("refactor"), _asst("Refactored `src/m0.py:1`.", files)])
+            res = evaluate(r.cfg, {"transcript_path": str(t), "session_id": "big"})
+            self.assertTrue(res["large"])
+            self.assertTrue(any("python3 -m vulture src" in x for x in res["reasons"]))
+            ran = {"type": "assistant", "uuid": "a-v", "sessionId": "big", "timestamp": "2026-09-17T10:00:02Z",
+                   "message": {"role": "assistant", "content": [{"type": "tool_use", "id": "v", "name": "Bash", "input": {"command": "python3 -m vulture src --min-confidence 80"}}]}}
+            t2 = r.transcript("big2.jsonl", [_user("refactor"), _asst("Refactored `src/m0.py:1`.", files), ran])
+            self.assertFalse(any("vulture" in x for x in evaluate(r.cfg, {"transcript_path": str(t2), "session_id": "big2"})["reasons"]))
+            small = r.transcript("small.jsonl", [_user("tweak"), _asst("Fixed `src/m0.py:1`.", files[:1])])
+            self.assertFalse(any("vulture" in x for x in evaluate(r.cfg, {"transcript_path": str(small), "session_id": "sm"})["reasons"]))
+
+
 class TestAudit(unittest.TestCase):
     FINDINGS = [
         {"id": "11", "severity": "critical", "title": "Review chain bypassable via `transition_lookup_to_stage`", "area": "Reviews",

@@ -70,6 +70,20 @@ def evaluate(cfg: Config, event: Dict[str, Any]) -> Dict[str, Any]:
     has_refs = bool(REF.search(last_text))
     if gc.get("require_tests", True) and not tests_ran and not small:
         result["reasons"].append(f"You edited {len(edited)} code file(s) but ran no tests this turn. Run the tests that cover: " + ", ".join(edited[:6]) + ". If none exist, say so explicitly and state what was NOT tested.")
+    large = len(edited) >= int(gc.get("large_change_files", 5)) or size >= int(gc.get("large_change_chars", 4000))
+    result["large"] = large
+    if large:
+        for chk in gc.get("large_change_checks", []) or []:
+            when = chk.get("when") or ["**/*"]
+            if not any(_matches(f, when) for f in edited):
+                continue
+            if any(any(p in c for p in chk.get("patterns", [])) for c in commands):
+                continue
+            result["reasons"].append(
+                f"This was a large change ({len(edited)} files, {size:,} characters edited). Run the {chk.get('name', 'scan')}"
+                + (f": `{chk['command']}`" if chk.get("command") else "") + ". Remove the unused and redundant code it finds in what you touched, "
+                "and compact duplicated logic you introduced. Name any result that is a false positive (framework entry points, "
+                "routes, fixtures) instead of deleting it.")
     if gc.get("require_refs", True) and not has_refs:
         result["reasons"].append("Point precisely: your summary has no `path/to/file.ext:line` references. Cite the exact location of each change you made.")
     # open findings on the edited files must not be silently ignored

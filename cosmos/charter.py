@@ -14,7 +14,7 @@ from .config import Config
 from .store import Memory
 
 TEMPLATE = """---
-gate: {"enabled": true, "require_tests": true, "require_refs": true, "reflect": true, "small_change_chars": 400, "small_change_files": 1, "test_patterns": ["pytest", "npm test", "npm run test", "pnpm test", "yarn test", "go test", "gradle test", "gradlew test", "mvn test", "cargo test", "jest", "vitest", "make test", "./manage.py test"], "code_globs": ["**/*.py", "**/*.ts", "**/*.tsx", "**/*.js", "**/*.kt", "**/*.java", "**/*.go", "**/*.rs", "**/*.rb"], "skip_globs": ["**/*.md", "**/*.json", "**/*.yml", "**/*.yaml", "docs/**", ".cosmos/**"]}
+gate: {"enabled": true, "require_tests": true, "require_refs": true, "reflect": true, "small_change_chars": 400, "small_change_files": 1, "large_change_chars": 4000, "large_change_files": 5, "large_change_checks": [], "test_patterns": ["pytest", "npm test", "npm run test", "pnpm test", "yarn test", "go test", "gradle test", "gradlew test", "mvn test", "cargo test", "jest", "vitest", "make test", "./manage.py test"], "code_globs": ["**/*.py", "**/*.ts", "**/*.tsx", "**/*.js", "**/*.jsx", "**/*.kt", "**/*.java", "**/*.go", "**/*.rs", "**/*.rb"], "skip_globs": ["**/*.md", "**/*.json", "**/*.yml", "**/*.yaml", "docs/**", ".cosmos/**"]}
 ---
 
 # Charter
