@@ -335,10 +335,12 @@ def file_context(cfg: Config, event: Dict[str, Any]) -> str:
         return ""
     mems = Ledger(cfg.paths).load()
     from .audit import OPEN_LIKE
-    flares = [m for m in mems.values() if m.category == "finding" and m.meta.get("finding_status", "open") in OPEN_LIKE
-              and any(rel.endswith(f) or f.endswith(rel) for f in m.files)]
-    facts = [m for m in retrieve(mems, rel.rsplit("/", 1)[-1], paths=[rel], k=int(cfg.get("retrieval.file_max", 4)))
-             if m.category != "finding" and m.status == "active" and any(rel.endswith(f) or f.endswith(rel) for f in m.files)]
+    def anchored(m: Memory) -> bool:                   # the file itself, or a folder that contains it (`frontend/src/`)
+        return any(rel.endswith(f) or f.endswith(rel) or (f.endswith("/") and ("/" + rel).find("/" + f) >= 0) for f in m.files)
+    flares = [m for m in mems.values() if m.category == "finding" and m.meta.get("finding_status", "open") in OPEN_LIKE and anchored(m)]
+    facts = sorted((m for m in mems.values() if m.category != "finding" and m.status == "active" and anchored(m)),
+                   key=lambda m: (m.source != "explicit", not any(f.endswith(rel) or rel.endswith(f) for f in m.files), -m.importance * m.confidence))
+    facts = facts[:int(cfg.get("retrieval.file_max", 4))]
     if not flares and not facts:
         return ""
     shown.append(rel)

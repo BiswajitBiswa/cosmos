@@ -426,6 +426,21 @@ class TestFlarePrefix(unittest.TestCase):
             self.assertEqual((stray.meta["audit_id"], stray.meta["severity"], stray.meta["finding_status"]), ("RET-c12345", "note", "note"))
 
 
+class TestFolderAnchoredFacts(unittest.TestCase):
+    def test_a_rule_anchored_to_a_folder_is_shown_before_editing_files_inside_it(self):
+        from cosmos.hooks import file_context
+        with Repo() as r:
+            (r.root / "web" / "src").mkdir(parents=True)
+            (r.root / "web" / "src" / "Card.jsx").write_text("x")
+            (r.root / "api").mkdir(exist_ok=True)
+            (r.root / "api" / "main.py").write_text("x")
+            m = Memory(id="mem_ui000001", text="UI cards end at the primary content: no footer microcopy", category="convention",
+                       source="explicit", files=["web/src/"])
+            Ledger(r.cfg.paths).save_all([m])
+            self.assertIn("footer microcopy", file_context(r.cfg, {"session_id": "a", "tool_input": {"file_path": str(r.root / "web/src/Card.jsx")}}))
+            self.assertNotIn("footer microcopy", file_context(r.cfg, {"session_id": "b", "tool_input": {"file_path": str(r.root / "api/main.py")}}))
+
+
 class TestAudit(unittest.TestCase):
     FINDINGS = [
         {"id": "11", "severity": "critical", "title": "Review chain bypassable via `transition_lookup_to_stage`", "area": "Reviews",
