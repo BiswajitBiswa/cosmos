@@ -503,7 +503,15 @@ def _name_findings(cfg: Config, mems: Dict[str, Memory]) -> int:
     """A finding the model wrote while reading a session has no flare id yet: give it one with the repo's prefix.
     Without a stated severity it is a note (a measurement, a verification) - kept, but never an open bug."""
     from .audit import flare_prefix
+    prefix = flare_prefix(cfg)
     n = 0
+    # a session flare renamed to the repo's prefix while a dream held the old copy: keep the renamed one
+    current = {m.meta.get("raw_id") for m in mems.values() if m.category == "finding" and m.meta.get("audit_id", "").startswith(prefix + "-")}
+    for m in [m for m in mems.values() if m.category == "finding" and m.meta.get("source_doc") == "mcp"
+              and not m.meta.get("audit_id", "").startswith(prefix + "-") and m.meta.get("raw_id") in current]:
+        Ledger(cfg.paths).delete(m.id)
+        del mems[m.id]
+        n += 1
     for m in mems.values():
         if m.category != "finding" or m.meta.get("audit_id"):
             continue
