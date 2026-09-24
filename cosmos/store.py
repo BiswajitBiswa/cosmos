@@ -88,8 +88,21 @@ class Memory:
             fm["stale_after"] = stale_after
         return fm
 
-    def to_markdown(self) -> str:
+    def link_targets(self) -> List[str]:
+        """Ids this note relates to, in link order: supersedes, superseded_by, contradicts, related."""
+        out: List[str] = []
+        for i in [self.supersedes, self.superseded_by, *self.contradicts, *self.related]:
+            if i and i not in out and i != self.id:
+                out.append(i)
+        return out
+
+    def to_markdown(self, paths: Optional[Dict[str, str]] = None) -> str:
+        """`paths` maps memory ids to bundle-relative note paths, so relationships become real OKF links."""
+        paths = paths or {}
         okf = self.okf_frontmatter(self.meta_stale_days if hasattr(self, "meta_stale_days") else 180)
+        links = ([f"/lanes/{self.lane}.md"] if self.lane and self.lane != "general" else []) + [paths[i] for i in self.link_targets() if i in paths]
+        if links:
+            okf["links"] = links
         fm = {**okf,
             "id": self.id, "aliases": [self.id], "category": self.category, "lane": self.lane, "cosmos_status": self.status,
             "confidence": round(self.confidence, 2), "importance": round(self.importance, 2),
@@ -133,6 +146,18 @@ class Memory:
             lines.append("")
             lines.append("## Related")
             lines.extend(f"- [[{r}]]" for r in self.related)
+        rel = []
+        if self.lane and self.lane != "general":
+            rel.append(f"- lane: [{self.lane}](/lanes/{self.lane}.md)")
+        for label, ids in (("supersedes", [self.supersedes] if self.supersedes else []), ("superseded by", [self.superseded_by] if self.superseded_by else []),
+                           ("contradicts", self.contradicts), ("related", self.related)):
+            for i in ids:
+                if i in paths:
+                    rel.append(f"- {label}: [{i}]({paths[i]})")
+        if rel:
+            lines.append("")
+            lines.append("## Links")
+            lines.extend(rel)
         if self.tags:
             lines.append("")
             lines.append(" ".join(f"#{t}" for t in self.tags))
@@ -206,7 +231,16 @@ class Ledger:
                 out[mem.id] = mem
         return out
 
-    def save(self, mem: Memory) -> Path:
+    def paths_by_id(self, mems: Optional[Iterable[Memory]] = None) -> Dict[str, str]:
+        """Bundle-relative path of every note, for OKF links (e.g. /constraint/mem_ab12-slug.md)."""
+        if mems is not None:
+            return {m.id: "/" + str(self._path_for(m).relative_to(self.dir)) for m in mems}
+        out: Dict[str, str] = {}
+        for p in self.dir.rglob("mem_*.md"):
+            out[p.name.split("-", 1)[0]] = "/" + str(p.relative_to(self.dir))
+        return out
+
+    def save(self, mem: Memory, paths: Optional[Dict[str, str]] = None) -> Path:
         # validity window follows the lifecycle: closed when a fact stops being true, reopened if it comes back
         if mem.status in ("superseded", "forgotten") and not mem.valid_to:
             mem.valid_to = today()
@@ -220,12 +254,14 @@ class Ledger:
                 old.unlink()
         p = self._path_for(mem)
         p.parent.mkdir(parents=True, exist_ok=True)
-        p.write_text(mem.to_markdown())
+        p.write_text(mem.to_markdown(paths if paths is not None else (self.paths_by_id() if mem.link_targets() else {})))
         return p
 
     def save_all(self, mems: Iterable[Memory]) -> None:
+        mems = list(mems)
+        paths = self.paths_by_id(mems)
         for m in mems:
-            self.save(m)
+            self.save(m, paths)
 
     def delete(self, mem_id: str) -> bool:
         ok = False

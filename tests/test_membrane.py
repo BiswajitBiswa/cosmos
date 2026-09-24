@@ -1514,3 +1514,31 @@ class TestOKFAndSearch(unittest.TestCase):
             self.assertTrue((j / "2026-09-01.md").read_text().startswith("---\ntype: Journal\nkind: journal"))
             self.assertTrue((a / "inventory.md").read_text().startswith("---\ntype: Diagram\ntitle: \"Atlas · Inventory\""))
             self.assertEqual(_okf_conform(r.cfg), 0, "idempotent")
+
+
+class TestOKFGraph(unittest.TestCase):
+    def test_lanes_and_services_are_linked_concepts(self):
+        from cosmos.render import render_all, write_lane_pages, write_service_pages
+        with Repo() as r:
+            (r.cfg.paths.ledger / "atlas").mkdir(parents=True)
+            (r.cfg.paths.ledger / "atlas" / "atlas.json").write_text(json.dumps({"apps": [{"name": "webserver", "dir": "src", "language": "typescript"}], "services": [{"name": "redis", "image": "redis:7", "compose": "docker-compose.yml", "ports": ["6379:6379"]}], "stores": []}))
+            a = Memory(id="mem_l1", text="Redis lock TTL is 30 seconds.", category="constraint", lane="locking", files=["src/redis-lock.ts"])
+            b = Memory(id="mem_l2", text="Locks were once 10 seconds.", category="constraint", lane="locking", files=["src/redis-lock.ts"], status="superseded", superseded_by="mem_l1")
+            a.supersedes = "mem_l2"
+            f = Memory(id="mem_f1", text="Lock never released on timeout", category="finding", lane="locking", files=["src/redis-lock.ts"], meta={"audit_id": "QA-3", "severity": "high", "finding_status": "open"})
+            led = Ledger(r.cfg.paths); led.save_all([a, b, f])
+            md = next(led.dir.rglob("mem_l1-*.md")).read_text()
+            self.assertIn('"/lanes/locking.md"', md, "a fact links to its lane")
+            self.assertIn("/constraint/mem_l2-", md, "and to the note it supersedes, by real path")
+            self.assertIn("## Links", md)
+            mems = led.load()
+            self.assertEqual(write_lane_pages(r.cfg, mems), 1)
+            lane = (r.cfg.paths.ledger / "lanes" / "locking.md").read_text()
+            self.assertTrue(lane.startswith("---\ntype: \"Lane\""))
+            self.assertIn("(/constraint/mem_l1-", lane); self.assertIn("QA-3", lane); self.assertIn("(/atlas/services/webserver.md)", lane)
+            self.assertEqual(write_service_pages(r.cfg, mems), 2)
+            svc = (r.cfg.paths.ledger / "atlas" / "services" / "webserver.md").read_text()
+            self.assertIn('resource: "/../../src"', svc); self.assertIn("(/lanes/locking.md)", svc); self.assertIn("mem_l1-", svc)
+            render_all(r.cfg, mems)
+            root = (r.cfg.paths.ledger / "index.md").read_text()
+            self.assertIn("[Lanes](lanes/)", root); self.assertIn("[Services](atlas/services/)", root)
