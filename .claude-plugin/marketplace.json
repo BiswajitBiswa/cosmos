@@ -1,0 +1,13 @@
+{
+  "name": "cosmos",
+  "owner": { "name": "cosmos" },
+  "metadata": { "description": "Team memory, rules and architecture for AI coding agents, kept in the repository." },
+  "plugins": [
+    {
+      "name": "cosmos",
+      "source": "./plugin",
+      "description": "Connects Claude Code and Cowork sessions to a repository's cosmos: the Charter, the Ledger of team facts, open flares, the Atlas and handoffs. Finds every shared folder that has .cosmos/ and serves it over MCP.",
+      "version": "0.1.0"
+    }
+  ]
+}

@@ -462,6 +462,38 @@ class TestGateLargeChange(unittest.TestCase):
             self.assertFalse(any("vulture" in x for x in evaluate(r.cfg, {"transcript_path": str(small), "session_id": "sm"})["reasons"]))
 
 
+class TestMidSession(unittest.TestCase):
+    def test_a_session_older_than_cosmos_is_briefed_on_its_next_prompt_once(self):
+        import contextlib, io
+        from cosmos import charter
+        from cosmos.hooks import handle
+        with Repo() as r:
+            charter.ensure(r.cfg)
+            ev = {"hook_event_name": "UserPromptSubmit", "session_id": "old-session", "cwd": str(r.root), "prompt": "fix the import"}
+            buf = io.StringIO()
+            with contextlib.redirect_stdout(buf):
+                handle(json.dumps(ev))
+            self.assertIn("CHARTER", buf.getvalue(), "the first prompt after cosmos appeared carries the briefing")
+            buf2 = io.StringIO()
+            with contextlib.redirect_stdout(buf2):
+                handle(json.dumps(ev))
+            self.assertNotIn("CHARTER", buf2.getvalue(), "only once per session")
+            buf3 = io.StringIO()
+            with contextlib.redirect_stdout(buf3):
+                handle(json.dumps({**ev, "hook_event_name": "SessionStart", "session_id": "new-session"}))
+                handle(json.dumps({**ev, "session_id": "new-session"}))
+            self.assertEqual(buf3.getvalue().count("CHARTER"), 1, "a session briefed at start is not briefed again")
+
+    def test_sandbox_view_never_touches_the_ledger_worktree(self):
+        from cosmos import sync
+        with Repo() as r:
+            cos = r.root / ".cosmos"
+            (cos / ".git").write_text("gitdir: /Users/someone-else/repo/.git/worktrees/-cosmos\n")
+            self.assertTrue(sync.foreign_view(r.root))
+            self.assertFalse(sync.repair(r.root)[0])
+            self.assertFalse(sync.commit(r.root, "x"))
+
+
 class TestAudit(unittest.TestCase):
     FINDINGS = [
         {"id": "11", "severity": "critical", "title": "Review chain bypassable via `transition_lookup_to_stage`", "area": "Reviews",

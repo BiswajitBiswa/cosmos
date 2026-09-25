@@ -241,6 +241,21 @@ def session_start(cfg: Config) -> str:
     return "\n\n".join(parts)
 
 
+def _briefed(cfg: Config, sid: str) -> bool:
+    return sid in (State(cfg.paths).data.get("briefed") or {})
+
+
+def _mark_briefed(cfg: Config, sid: str) -> None:
+    """Remember which sessions have had the session-start briefing (the newest 200)."""
+    if not sid:
+        return
+    st = State(cfg.paths)
+    b = st.data.get("briefed") or {}
+    b[sid] = now_iso()
+    st.data["briefed"] = dict(sorted(b.items(), key=lambda kv: kv[1])[-200:])
+    st.save()
+
+
 def prompt_context(cfg: Config, event: Dict[str, Any]) -> str:
     prompt = str(event.get("prompt", ""))
     if not prompt.strip():
@@ -375,11 +390,20 @@ def handle(stdin_text: str) -> int:
             if out:
                 print(out)
                 _log_inject(cfg, name, out)
+            _mark_briefed(cfg, event.get("session_id", ""))
             auto_refresh(cfg)
             if ensure_watcher(cfg):
                 _log(cfg, "watcher started")
         elif name == "UserPromptSubmit":
             out = prompt_context(cfg, event)
+            sid = event.get("session_id", "")
+            if sid and not _briefed(cfg, sid):
+                # cosmos arrived after this session started (init mid-session, or hooks added later): brief it now
+                late = session_start(cfg)
+                out = (late + "\n\n" + out) if (late and out) else (late or out)
+                _mark_briefed(cfg, sid)
+                if ensure_watcher(cfg):
+                    _log(cfg, "watcher started")
             if out:
                 print(out)
                 _log_inject(cfg, name, out)

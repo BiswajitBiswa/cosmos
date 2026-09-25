@@ -1,0 +1,79 @@
+#!/usr/bin/env python3
+"""Start the cosmos MCP server for the repository this session works in.
+
+The session may not start inside the repository: Cowork shares folders under ~/mnt/<name>/ and runs from elsewhere,
+and a folder shared at a parent (a workspace of several projects) holds the repository one level down. So: the
+project dir and the working directory and their parents first, then every shared folder and its children. The
+repository runs its own committed copy of cosmos (.cosmos/cosmosw), so the plugin never goes stale against it.
+With no cosmos repository in reach, a one-tool server says so instead of failing to start."""
+import glob
+import json
+import os
+import sys
+
+
+def candidates():
+    roots = []
+    for base in (os.environ.get("CLAUDE_PROJECT_DIR"), os.getcwd()):
+        p = os.path.abspath(base) if base else None
+        while p:
+            roots.append(p)
+            parent = os.path.dirname(p)
+            p = parent if parent != p else None
+    home = os.path.expanduser("~")
+    for pattern in ("mnt/*", "mnt/*/*", "mnt/*/*/*"):
+        roots += sorted(glob.glob(os.path.join(home, pattern)))
+    seen, out = set(), []
+    for d in roots:
+        if d not in seen and os.path.isfile(os.path.join(d, ".cosmos", "cosmosw")):
+            seen.add(d)
+            out.append(d)
+    return out
+
+
+def activity(repo):
+    stamps = [os.path.join(repo, ".cosmos", p) for p in ("state/live.json", "state/state.json", "ledger")]
+    return max((os.path.getmtime(s) for s in stamps if os.path.exists(s)), default=0)
+
+
+def stub():
+    """No repository with cosmos in reach: answer with one tool that says what to do."""
+    note = ("No folder shared with this session has cosmos (.cosmos/cosmosw). Share the repository folder, or run "
+            "`cosmos init` in it; the next message picks it up.")
+    tool = {"name": "cosmos_status", "description": "Whether a cosmos repository is connected to this session.",
+            "inputSchema": {"type": "object", "properties": {}}}
+    for line in sys.stdin:
+        try:
+            req = json.loads(line)
+        except ValueError:
+            continue
+        rid, method = req.get("id"), req.get("method", "")
+        if method == "initialize":
+            res = {"protocolVersion": (req.get("params") or {}).get("protocolVersion", "2025-06-18"), "capabilities": {"tools": {}},
+                   "serverInfo": {"name": "cosmos", "version": "0.1.0"}}
+        elif method == "tools/list":
+            res = {"tools": [tool]}
+        elif method == "tools/call":
+            res = {"content": [{"type": "text", "text": note}]}
+        elif method == "ping":
+            res = {}
+        else:
+            continue
+        if rid is not None:
+            sys.stdout.write(json.dumps({"jsonrpc": "2.0", "id": rid, "result": res}) + "\n")
+            sys.stdout.flush()
+
+
+def main():
+    found = candidates()
+    if not found:
+        return stub()
+    repo = max(found, key=activity)
+    wrapper = os.path.join(repo, ".cosmos", "cosmosw")
+    os.environ["COSMOS_NO_BACKGROUND"] = "1"            # no watcher or dream from inside a sandbox; the owning machine runs them
+    os.chdir(repo)                                      # every cosmos version finds its repository from the working directory
+    os.execv(sys.executable, [sys.executable, wrapper, "mcp"])
+
+
+if __name__ == "__main__":
+    main()

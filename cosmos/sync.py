@@ -67,6 +67,17 @@ def linked(root: Path) -> bool:
     return Path(target).is_dir()
 
 
+def foreign_view(root: Path) -> bool:
+    """This process sees the repository under a different path than the machine that attached .cosmos (a Cowork
+    sandbox mounts it under /sessions/…). Git bookkeeping from here would prune the real worktree record, so the
+    ledger is left to the machine that owns it."""
+    try:
+        target = (root / ".cosmos" / ".git").read_text().split("gitdir:", 1)[1].strip()
+    except (OSError, IndexError):
+        return False
+    return target.startswith("/") and not target.startswith(str(root.resolve()) + "/") and not target.startswith(str(root) + "/")
+
+
 def repair(root: Path) -> Tuple[bool, str]:
     """Re-register .cosmos as the worktree of the cosmos branch without touching its files: a fresh worktree record
     is created next to it, its link is moved into .cosmos, and the index is reset to the branch. What .cosmos holds
@@ -76,6 +87,8 @@ def repair(root: Path) -> Tuple[bool, str]:
     cos = root / ".cosmos"
     if not (cos / ".git").is_file() or linked(root):
         return True, "linked"
+    if foreign_view(root):
+        return False, "seen from a sandbox with other paths: left to the machine that owns the ledger"
     if not has_local_branch(root):
         if not has_remote_branch(root):
             return False, "no cosmos branch to attach to"
@@ -193,6 +206,8 @@ def migrate(root: Path) -> Tuple[bool, str]:
 
 def commit(root: Path, message: str) -> bool:
     """Commit whatever changed in the ledger worktree. Local and quick; safe to call often."""
+    if foreign_view(root):
+        return False                                   # the owning machine's watcher commits
     if not linked(root):
         repair(root)
     cos = root / ".cosmos"
@@ -210,6 +225,8 @@ def push(root: Path, timeout: int = 60) -> Tuple[bool, str]:
     """Bring the branch up to date and publish it. Concurrent teammates are the normal case: rebase first; if two
     people changed the same note, keep both sides' files (ours on conflict) and let the next dream reconcile."""
     cos = root / ".cosmos"
+    if foreign_view(root):
+        return False, "seen from a sandbox: the owning machine pushes"
     if not (cos / ".git").is_file():
         return False, "not attached"
     code, _ = _git(["remote", "get-url", "origin"], root)

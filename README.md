@@ -187,6 +187,12 @@ git clone <repo> && claude
 
 <p align="center"><sub>Claude Code · Cowork · Codex CLI · Codex Desktop · Gemini CLI · Antigravity · Cursor · GitHub Copilot · Cline · Windsurf · Obsidian</sub></p>
 
+### Cowork, and sessions that were already open
+
+**Cowork** runs Claude Code in a sandbox with its own settings, so a project's hooks and a local MCP server in Claude Desktop's config never reach it. The cosmos plugin does. This repository is also a plugin marketplace: in Cowork, add it as a marketplace (its GitHub `owner/cosmos` path) and install **cosmos**. The plugin finds every shared folder that has `.cosmos/`, one level down included (a workspace folder of several projects), and serves that repository's own copy of cosmos over MCP, so no install is needed inside the sandbox. Cowork starts a fresh process for each message, so the tools appear with your next message, in the session you already have open. The same plugin works in Claude Code: `/plugin marketplace add owner/cosmos`, then `/plugin install cosmos@cosmos`. Capture from Cowork needs no plugin: the watcher reads Cowork transcripts on the machine and maps the sandbox paths back.
+
+**Sessions older than cosmos.** The user-level hooks run in every repository and check for `.cosmos/` on each event, so a Claude Code session that was open before `cosmos init` starts capturing on its next turn, and its next prompt carries the briefing it missed at start (Charter, key facts, handoff, Atlas). Nothing to restart.
+
 ## Getting started
 
 **One person runs one command once. Everyone else clones.** Nothing else is a step: capture, reading, dreams, the watcher and the hook refresh happen by themselves.
