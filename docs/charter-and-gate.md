@@ -25,7 +25,9 @@ Configuration lives in the charter frontmatter (`gate: {...}`) or `.cosmos/confi
 
 A turn that edits `large_change_files` (5) or more code files, or `large_change_chars` (4,000) or more characters, runs the
 `large_change_checks` the repository configures. Each check names the files it applies to (`when`), the command patterns that
-satisfy it (`patterns`) and the command to suggest. The Gate holds the turn until a matching command ran:
+satisfy it (`patterns`) and the command to suggest. The Gate holds the turn until a matching command ran.
+
+Every repository gets two checks by default, from the Charter template: a vulture dead-code scan when Python changed and a knip scan (unused files, exports and dependencies) when JavaScript or TypeScript changed. A repository can replace them in its own `gate:` block, for example to scan only its source folders:
 
 ```json
 "large_change_checks": [
@@ -36,4 +38,3 @@ satisfy it (`patterns`) and the command to suggest. The Gate holds the turn unti
 
 The agent removes the unused and redundant code it finds in what it touched, compacts duplicated logic, and names false positives
 (framework entry points, routes, fixtures) instead of deleting them.
-

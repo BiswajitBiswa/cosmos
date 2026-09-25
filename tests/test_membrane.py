@@ -447,15 +447,13 @@ class TestGateLargeChange(unittest.TestCase):
         from cosmos import charter
         from cosmos.gate import evaluate
         with Repo() as r:
-            charter.ensure(r.cfg)
-            cp = charter.path(r.cfg)
-            cp.write_text(cp.read_text().replace('"large_change_checks": []', '"large_change_checks": ' + _j.dumps(
-                [{"name": "dead-code scan", "patterns": ["vulture"], "when": ["**/*.py"], "command": "python3 -m vulture src"}])))
+            charter.ensure(r.cfg)                           # the default Charter carries the vulture and knip checks
             files = [str(r.root / f"src/m{i}.py") for i in range(6)]
             t = r.transcript("big.jsonl", [_user("refactor"), _asst("Refactored `src/m0.py:1`.", files)])
             res = evaluate(r.cfg, {"transcript_path": str(t), "session_id": "big"})
             self.assertTrue(res["large"])
-            self.assertTrue(any("python3 -m vulture src" in x for x in res["reasons"]))
+            self.assertTrue(any("python3 -m vulture ." in x for x in res["reasons"]))
+            self.assertFalse(any("knip" in x for x in res["reasons"]), "no JavaScript touched, no knip")
             ran = {"type": "assistant", "uuid": "a-v", "sessionId": "big", "timestamp": "2026-09-17T10:00:02Z",
                    "message": {"role": "assistant", "content": [{"type": "tool_use", "id": "v", "name": "Bash", "input": {"command": "python3 -m vulture src --min-confidence 80"}}]}}
             t2 = r.transcript("big2.jsonl", [_user("refactor"), _asst("Refactored `src/m0.py:1`.", files), ran])
