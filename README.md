@@ -79,7 +79,7 @@ git clone <repo> && claude
 | 4 | **Ledger** | One markdown note per fact, with evidence. Committed. Opens as an Obsidian vault. |
 | 5 | **Gate & recall** | Before the agent edits a file it is told what the team knows about that file: open flares, constraints, rules. A turn that edits code is held once: tests, `file:line`, flares addressed, and *record what the team learned* via `cosmos_remember`. A commit message naming a flare closes it. Nothing is asked of the person. |
 
-> **Git is the database, on its own branch.** `.cosmos/` is a worktree of a `cosmos` branch inside your repository, ignored by every other branch: your feature branches never carry a ledger change, and nobody polices `.cosmos` out of a commit. The branch is committed and pushed by dreams and the watcher, merges like code, and a fresh clone attaches it on the first session start. No server, no account, no cloud.
+> **Git is the database, in your branch.** `.cosmos/` is ordinary committed files in the branch where you ran `cosmos init`, so every branch made from it carries the team memory and merging a branch shares it. cosmos commits `.cosmos/` to the current branch every 10 minutes while you work and after each dream, in its own commit that holds nothing else (amended while unpushed, so a session leaves one). It never pushes: the memory goes out with your branch. Append-only files (journal, log, observations) merge by union, so two branches do not conflict there. No server, no account, no cloud, and nothing beyond the repository itself and the open-source cosmos. (Prefer the ledger on a separate branch? `cosmos init --branch`.)
 
 ## Every feature, explained
 
@@ -210,8 +210,7 @@ cosmos flares import <findings.json> --prefix <ID-PREFIX>   # only if you have a
 
 ```bash
 cosmos charter edit
-git add .claude/settings.json .claude/commands .mcp.json CLAUDE.md AGENTS.md GEMINI.md .gitignore   # once; the ledger itself is on the cosmos branch
-git commit -m "cosmos: hooks and instruction files" && git push
+git push   # cosmos init already committed .cosmos/ and the agent wiring to this branch
 ```
 
 **3 · Everyone else clones and opens their agent.** No install, no setup. Claude Code, Codex, Cursor, Gemini CLI, Copilot, Cline or Cowork all read the same Charter, facts and tools; a committed wrapper runs cosmos from the repository. Sessions that were already open pick cosmos up on their next turn; Cowork gets the tools from the cosmos plugin.
@@ -234,7 +233,7 @@ git clone <repo> && cd <repo>
 | 1 | Initialise. This also reads every past session (all worktrees, subagents), writes their journal, marks recent history for the model, starts the first dream and the watcher | `cd <your-repo> && cosmos init` |
 | 2 | Bring in an existing audit, if there is one. If the file does not exist yet, cosmos asks before creating an empty one to fill in (`--yes` creates it without asking). | `cosmos flares import <findings.json> --prefix <ID-PREFIX> --source <report-name>` |
 | 3 | Look while the first dream finishes in the background | `cosmos ui` |
-| 4 | Agree the Charter, commit the wiring on a branch off your base branch | `cosmos charter edit` · `git checkout -b cosmos/init origin/<base-branch>` · add `.claude/settings.json .claude/commands .mcp.json CLAUDE.md AGENTS.md GEMINI.md .gitignore` · commit · `git push -u origin cosmos/init`. The ledger itself is on the `cosmos` branch, pushed by itself. |
+| 4 | Agree the Charter and push | `cosmos charter edit` · `git push`. `cosmos init` committed `.cosmos/` and the agent wiring to the branch you ran it on; run it on a branch off your base branch if you want it reviewed in a pull request. |
 | 5 | Sessions that were already open | nothing to restart: the next prompt carries the briefing; in Cowork, install the cosmos plugin once ([plugin](docs/plugin.md)) |
 | 6 | Teammates | `git pull`, then open their agent |
 
@@ -286,7 +285,7 @@ The tools we looked at either wanted a hosted service or solved one slice. We wa
 ## Layout
 
 ```
-.cosmos/              a worktree of the `cosmos` branch — ignored by your branches, pushed by itself
+.cosmos/              committed in your branch; cosmos commits it, you push it with the branch (state/ stays local)
   charter.md          the team's working agreement (injected first)
   ledger/             one markdown note per fact · finding/ (flares) · horizon/
   atlas/              inventory + Mermaid diagrams, fingerprints

@@ -17,4 +17,4 @@ This repository keeps its team memory in `.cosmos/`. Use it the way a new teamma
 - A large change (5+ files or 4,000+ characters): run a dead-code scan (vulture for Python, knip for JavaScript/TypeScript) and remove what is unused in what you touched.
 - Record what the team should keep: `cosmos_remember` for a decision with its reason, a constraint or a correction the user made (kind `rule` only for something the user stated as a rule). `cosmos_flare` for a bug you found, fixed or not, without asking. `cosmos_handoff` when you stop with work unfinished.
 
-**Never** merge, rebase or cherry-pick the `cosmos` branch into another branch, and leave it out when syncing a branch with the latest changes. It holds the team memory, not code. Do not run git commands inside `.cosmos/`; the machine that owns the repository commits and pushes it.
+`.cosmos/` is committed in the branch like code and cosmos commits it by itself: do not stage, revert or delete its files, and keep them when resolving a merge. If `.cosmos/` is a separate git worktree (the opt-in `cosmos` branch), never merge, rebase or cherry-pick that branch into another one.

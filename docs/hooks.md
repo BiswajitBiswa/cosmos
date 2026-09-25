@@ -15,15 +15,15 @@
 ```
 
 `<hook>` finds the repository's wrapper: in the project directory Claude Code passes to hooks; failing that, in the
-main checkout (a worktree on a branch that does not carry the wiring still reaches it); failing that, on a fresh clone,
-it attaches `.cosmos/` from `origin/cosmos` first. In a repository without cosmos it exits 0 silently. The user-level
+main checkout (a worktree on a branch that does not carry `.cosmos/` yet still reaches it). In a repository without
+cosmos it exits 0 silently. The user-level
 entry is what makes every worktree and every repository covered, including sessions that were already open when
 `cosmos init` ran.
 
 ## One entrypoint, dispatched on `hook_event_name`
 
 - **SessionStart** → the briefing: the Charter summary, the top facts, the branch's last handoff, the Atlas status and
-  any warning (for example, the `cosmos` branch merged into this branch). Also refreshes the vendored copy and starts the
+  any warning (in the opt-in separate-branch mode, that the `cosmos` branch was merged into this one). Also refreshes the vendored copy and starts the
   watcher if none runs.
 - **UserPromptSubmit** → facts ranked against the prompt (BM25 × confidence × importance × recency). A session that
   never got the briefing, because cosmos arrived after it started, gets it with this prompt, once.

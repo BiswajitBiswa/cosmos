@@ -17,6 +17,9 @@ from .config import Config
 
 BRANCH = "cosmos"
 IGNORE = "state/\n__pycache__/\n*.pyc\n"
+# append-only files: when two branches that both wrote to them are merged, keep both sides' lines instead of a conflict
+ATTRIBUTES = "observations/*.jsonl merge=union\nledger/journal/*.md merge=union\nledger/log.md merge=union\n"
+AUTHOR = ["-c", "user.name=cosmos", "-c", "user.email=cosmos@users.noreply.github.com"]
 
 
 def _git(args: List[str], cwd: Path, timeout: int = 30) -> Tuple[int, str]:
@@ -25,6 +28,84 @@ def _git(args: List[str], cwd: Path, timeout: int = 30) -> Tuple[int, str]:
         return r.returncode, (r.stdout + r.stderr).strip()
     except Exception as e:
         return 1, str(e)
+
+
+def write_inline_files(root: Path) -> None:
+    """.cosmos/.gitignore (machine-local state stays out) and .cosmos/.gitattributes (union merges)."""
+    cos = root / ".cosmos"
+    cos.mkdir(parents=True, exist_ok=True)
+    (cos / ".gitignore").write_text(IGNORE)
+    (cos / ".gitattributes").write_text(ATTRIBUTES)
+
+
+def unignore(root: Path) -> bool:
+    """Drop `.cosmos/` from the repository's .gitignore (left there by the ledger-branch mode). True when changed."""
+    gi = root / ".gitignore"
+    if not gi.exists():
+        return False
+    txt = gi.read_text()
+    drop = {".cosmos/", ".cosmos", "/.cosmos/", "/.cosmos", "# cosmos (merged from cosmos branch)", "/state/"}
+    lines = [l for l in txt.splitlines() if l.strip() not in drop]
+    new = "\n".join(lines).rstrip("\n") + "\n"
+    if new != txt:
+        gi.write_text(new)
+        return True
+    return False
+
+
+def _busy(root: Path) -> bool:
+    """A merge, rebase, cherry-pick, revert or bisect in progress, or a detached HEAD: not a moment to commit."""
+    for marker in ("MERGE_HEAD", "rebase-merge", "rebase-apply", "CHERRY_PICK_HEAD", "REVERT_HEAD", "BISECT_LOG"):
+        code, path = _git(["rev-parse", "--git-path", marker], root)
+        if code == 0 and path and (root / path.strip()).exists():
+            return True
+    return _git(["symbolic-ref", "-q", "HEAD"], root)[0] != 0
+
+
+def commit_inline(root: Path, message: str, extra: Optional[List[str]] = None) -> bool:
+    """Commit .cosmos/ (and `extra` paths) to the checked-out branch, and nothing else: whatever the developer has
+    staged stays staged and out of this commit. While the last commit is cosmos's own and not pushed yet, it is
+    amended, so a working session leaves one cosmos commit at the tip, not one every ten minutes. Never pushes."""
+    cos = root / ".cosmos"
+    if not cos.is_dir() or (cos / ".git").exists() or _busy(root):
+        return False
+    paths = [".cosmos"] + list(extra or [])
+    if _git(["add", "-A", "--"] + paths, root)[0] != 0:
+        return False
+    if _git(["diff", "--cached", "--quiet", "--"] + paths, root)[0] == 0:
+        return False
+    code, author = _git(["log", "-1", "--format=%ae"], root)
+    code2, remote = _git(["branch", "-r", "--contains", "HEAD"], root)
+    amend = code == 0 and author.strip() == "cosmos@users.noreply.github.com" and code2 == 0 and not remote.strip()
+    args = ["commit", "-q", "--no-verify", "-m", message, "--only"] + (["--amend"] if amend else []) + ["--"] + paths
+    return _git(AUTHOR + args, root)[0] == 0
+
+
+def to_inline(root: Path) -> Tuple[bool, str]:
+    """Bring the ledger from the `cosmos` branch into the checked-out branch: .cosmos/ becomes ordinary files,
+    committed with one path-limited commit. The `cosmos` branch itself is left alone."""
+    import shutil
+    cos = root / ".cosmos"
+    if not (cos / ".git").is_file():
+        write_inline_files(root)
+        changed = unignore(root)
+        return commit_inline(root, "cosmos: team memory in this branch", [".gitignore"] if changed else None) or True, "already in this branch"
+    if _busy(root):
+        return False, "finish the merge or rebase in progress first"
+    moving = root / ".cosmos.moving"
+    if moving.exists():
+        shutil.rmtree(moving)
+    cos.rename(moving)
+    try:
+        (moving / ".git").unlink()
+    except OSError:
+        pass
+    _git(["worktree", "prune"], root)
+    moving.rename(cos)
+    write_inline_files(root)
+    changed = unignore(root)
+    commit_inline(root, "cosmos: team memory in this branch", [".gitignore"] if changed else None)
+    return True, "moved into this branch"
 
 
 def is_branch_mode(cfg: Config) -> bool:
@@ -109,7 +190,10 @@ def repair(root: Path) -> Tuple[bool, str]:
 
 
 def merged_into_head(root: Path) -> str:
-    """The merge commit that brought the ledger branch into the checked-out branch ("" when it is not there)."""
+    """The merge commit that brought the ledger branch into the checked-out branch ("" when it is not there).
+    Only meaningful while .cosmos is a worktree of that branch."""
+    if not (root / ".cosmos" / ".git").is_file():
+        return ""
     code, first = _git(["rev-list", "--max-parents=0", BRANCH], root)
     first = first.strip().splitlines()[0] if code == 0 and first.strip() else ""
     if not first:
@@ -245,9 +329,10 @@ def push(root: Path, timeout: int = 60) -> Tuple[bool, str]:
 
 
 def sync_background(cfg: Config, message: str = "cosmos: dream") -> bool:
-    """Commit now (local), publish in a detached process (network). Used at the end of a dream and by the watcher."""
+    """Commit now (local), publish in a detached process (network). Used at the end of a dream and by the watcher.
+    In the default mode the ledger is part of the branch: it is committed there and goes out with the branch."""
     if not is_branch_mode(cfg):
-        return False
+        return bool(cfg.get("sync.commit", True)) and not os.environ.get("COSMOS_NO_BACKGROUND") and commit_inline(cfg.paths.root, message)
     commit(cfg.paths.root, message)
     if os.environ.get("COSMOS_NO_BACKGROUND") or not cfg.get("sync.auto_push", True):
         return False

@@ -28,10 +28,15 @@ Starts at 0.45 + 0.4·score for observed facts (0.9 explicit); +0.05 per re-obse
 
 ## Where the ledger lives
 
-`.cosmos/` is a git worktree of a branch named `cosmos`, ignored by every other branch; dreams and the watcher commit
-it and push it (`sync.auto_push`). It is team memory, not code: agents are told never to merge, rebase or cherry-pick
-it, and a session start warns, with the revert command, when the checked-out branch contains it. If git's record of the
-worktree disappears (a sandbox that sees the repository under another path can prune it), cosmos relinks `.cosmos/`
-before its next commit without touching the files. From such a sandbox cosmos never runs git on the ledger; the
-machine that owns it does.
+`.cosmos/` is ordinary committed files in the branch where `cosmos init` ran, so every branch made from it carries the
+team memory and merging a branch shares what was learned on it. cosmos commits `.cosmos/` to the checked-out branch every
+10 minutes while you work and after each dream, with a commit that holds only `.cosmos/` (whatever you have staged stays
+staged). While that commit is the branch tip and not pushed yet it is amended, so a working session leaves one cosmos
+commit, not dozens. It never commits during a merge, rebase, cherry-pick or on a detached HEAD, and it never pushes: the
+memory goes out when you push the branch. `.cosmos/state/` (read positions, live view, logs) stays on the machine.
+`.cosmos/.gitattributes` merges the append-only files (journal, log, observations) by union, so two branches that both
+recorded work do not conflict there; a fact two branches changed differently conflicts like code and the next dream
+reconciles whatever you keep. `sync.commit: false` in `.cosmos/config.json` turns the automatic commits off.
 
+**Opt-in: a separate branch.** `cosmos init --branch` keeps the ledger on its own `cosmos` branch instead (a worktree at
+`.cosmos/`, pushed by itself, ignored by code branches). `cosmos sync --inline` moves it back into the checked-out branch.

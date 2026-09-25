@@ -53,24 +53,25 @@ def cmd_init(a) -> int:
     root = find_repo_root(Path(a.path) if a.path else None)
     from . import sync as _sync
     branch_note = ""
-    if not a.no_branch and (root / ".git").exists():
+    if getattr(a, "branch", False) and (root / ".git").exists():
+        # opt-in: the ledger on its own `cosmos` branch, pushed by itself
         if (root / ".cosmos").exists() and not _sync.is_branch_mode(load_config(root)):
             ok, msg = _sync.migrate(root)
-            branch_note = f"ledger moved to the `cosmos` branch (.cosmos/ is a worktree of it; its removal from this branch is staged — commit it with your next change)" if ok else f"could not move the ledger to its own branch: {msg}"
         else:
             ok, msg = _sync.attach(root)
-            branch_note = "ledger lives on the `cosmos` branch (.cosmos/ is a worktree of it, ignored by your branches)" if ok else f"could not attach the ledger branch: {msg}"
+        branch_note = "ledger lives on the `cosmos` branch (.cosmos/ is a worktree of it)" if ok else f"could not attach the ledger branch: {msg}"
         _sync.ensure_ignored(root)
+    elif (root / ".cosmos" / ".git").is_file():
+        ok, msg = _sync.to_inline(root)
+        branch_note = "the ledger now lives in this branch (.cosmos/ is committed here and travels with every branch made from it)" if ok else f"could not move the ledger into this branch: {msg}"
     cfg = load_config(root)
     fresh = not cfg.paths.config.exists()
     cfg.paths.ensure()
     if fresh:
         cfg.save()
     if not _sync.is_branch_mode(cfg):
-        gi = root / ".gitignore"
-        txt = gi.read_text() if gi.exists() else ""
-        if ".cosmos/state/" not in txt and ".cosmos/" not in txt:
-            gi.write_text(txt.rstrip("\n") + ("\n" if txt else "") + ".cosmos/state/\n")
+        _sync.write_inline_files(root)                 # .cosmos/state/ stays local; append-only files merge by union
+        _sync.unignore(root)
     from .wrapper import hook_command, vendor, write_wrapper
     write_wrapper(cfg.paths.cosmos)
     if not a.no_vendor:
@@ -106,12 +107,18 @@ def cmd_init(a) -> int:
     if _sync.is_branch_mode(cfg):
         _sync.commit(root, "cosmos: init")
         _sync.sync_background(cfg, "cosmos: init")
+    elif (root / ".git").exists() and not os.environ.get("COSMOS_NO_BACKGROUND"):
+        wiring = [".gitignore", ".claude/settings.json", ".claude/commands", ".mcp.json", "CLAUDE.md", "AGENTS.md", "GEMINI.md",
+                  ".cursor/rules", ".cursor/mcp.json", ".gemini/settings.json", ".vscode/mcp.json", ".github/copilot-instructions.md",
+                  ".clinerules", ".windsurfrules"]
+        if _sync.commit_inline(root, "cosmos: init", [w for w in wiring if (root / w).exists()]):
+            branch_note = branch_note or "committed .cosmos/ to this branch: every branch made from it carries the team memory"
     print(col("✓", "g"), "cosmos", "initialized" if fresh else "already initialized", "in", root)
     if branch_note:
         print(col("✓", "g"), branch_note)
     print(col("✓", "g"), f".cosmos/charter.md (team working agreement + Gate rules) · /atlas command for Claude Code")
     print(col("✓", "g"), f"atlas built: {len(inv['apps'])} apps · {len(inv['services'])} services · {len(inv['stores'])} stores · {len(inv['k8s'])} k8s objects · {sum(len(a['endpoints']) for a in inv['api'])} endpoints")
-    print(col("✓", "g"), ".cosmos/  (config.json, ledger/, observations/, state/)" + (" · on branch `cosmos`, pushed by itself" if _sync.is_branch_mode(cfg) else ""))
+    print(col("✓", "g"), ".cosmos/  (config.json, ledger/, observations/, state/)" + (" · on branch `cosmos`, pushed by itself" if _sync.is_branch_mode(cfg) else " · committed in this branch; cosmos commits it every 10 minutes while you work, you push it with your branch"))
     print(col("✓", "g"), f".claude/settings.json hooks {'installed' if hooks_changed else 'present'} → `{command}`")
     print(col("✓", "g"), ".cosmos/cosmosw wrapper" + ("" if a.no_vendor else " + vendored copy → teammates need no install: git clone && claude"))
     print(col("✓", "g"), "instruction files for every agent (CLAUDE.md, AGENTS.md, GEMINI.md, Cursor, Copilot, Cline, Windsurf) · MCP configs → `cosmos mcp`")
@@ -212,11 +219,15 @@ def cmd_eval(a) -> int:
 
 
 def cmd_sync(a) -> int:
-    """Commit and publish the ledger branch (normally done for you by dreams and the watcher)."""
+    """Commit the ledger now (normally done for you by dreams and the watcher)."""
     from . import sync as _sync
     cfg = load_config(); _require(cfg)
+    if getattr(a, "inline", False):
+        ok, msg = _sync.to_inline(cfg.paths.root)
+        print(col("✓" if ok else "✗", "g" if ok else "r"), msg); return 0 if ok else 1
     if not _sync.is_branch_mode(cfg):
-        print(col("·", "d"), ".cosmos is tracked in this branch, not on its own branch (run `cosmos init` to move it)"); return 0
+        c = _sync.commit_inline(cfg.paths.root, a.message or "cosmos: team memory")
+        print(col("✓", "g"), ("committed .cosmos/ to this branch" if c else "nothing to commit") + " · it goes out when you push the branch"); return 0
     c = _sync.commit(cfg.paths.root, a.message or "cosmos: sync")
     if a.push:
         ok, out = _sync.push(cfg.paths.root)
@@ -895,14 +906,14 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--version", action="version", version=f"cosmos {__version__}")
     sp = p.add_subparsers(dest="cmd", required=True)
 
-    s = sp.add_parser("init", help="set up .cosmos/, hooks, CLAUDE.md/AGENTS.md block, Obsidian vault"); s.add_argument("path", nargs="?"); s.add_argument("--command", help="hook command override"); s.add_argument("--no-vendor", action="store_true", help="don't vendor cosmos into .cosmos/vendor (teammates must pip install)"); s.add_argument("--no-user-hooks", action="store_true", help="do not touch ~/.claude/settings.json"); s.add_argument("--no-seed", action="store_true", help="do not read past sessions or start the first dream"); s.add_argument("--no-branch", action="store_true", help="keep .cosmos/ tracked in the main tree instead of on its own branch"); s.set_defaults(fn=cmd_init)
+    s = sp.add_parser("init", help="set up .cosmos/, hooks, CLAUDE.md/AGENTS.md block, Obsidian vault"); s.add_argument("path", nargs="?"); s.add_argument("--command", help="hook command override"); s.add_argument("--no-vendor", action="store_true", help="don't vendor cosmos into .cosmos/vendor (teammates must pip install)"); s.add_argument("--no-user-hooks", action="store_true", help="do not touch ~/.claude/settings.json"); s.add_argument("--no-seed", action="store_true", help="do not read past sessions or start the first dream"); s.add_argument("--branch", action="store_true", help="keep the ledger on its own `cosmos` branch instead of in this branch"); s.add_argument("--no-branch", action="store_true", help=argparse.SUPPRESS); s.set_defaults(fn=cmd_init)
     s = sp.add_parser("status", help="quick status"); s.add_argument("--json", action="store_true"); s.set_defaults(fn=cmd_status)
     s = sp.add_parser("hook", help="(internal) Claude Code hook entrypoint, reads event JSON on stdin"); s.set_defaults(fn=cmd_hook)
     s = sp.add_parser("capture", help="capture from session logs: Claude Code, Codex, Gemini/Antigravity"); s.add_argument("--transcript"); s.add_argument("--agent", default="all", choices=["all", "claude", "codex", "gemini"]); s.add_argument("-v", "--verbose", action="store_true"); s.add_argument("--rebuild-journal", action="store_true", help="re-read whole transcripts and write the journal for work done before cosmos was installed"); s.add_argument("--days", type=int, default=14, help="when reading whole transcripts, only turns from the last N days are read by the model (default 14)"); s.add_argument("--reread", action="store_true", help="start again from the beginning of every transcript (with --days, the model reads only recent turns)"); s.set_defaults(fn=cmd_capture)
     s = sp.add_parser("mcp", help="run the MCP server (stdio) — one point of contact for every agent"); s.add_argument("--root", help="the repository to serve, when the server is not started inside it (Claude Desktop / Cowork)"); s.set_defaults(fn=cmd_mcp)
     s = sp.add_parser("connect", help="wire agents to cosmos: instruction files + MCP configs"); s.add_argument("agents", nargs="*", default=["all"], choices=["all", "claude", "codex", "gemini", "cursor", "copilot", "cline", "windsurf"]); s.add_argument("--write-user", action="store_true", help="also write ~/.codex/config.toml"); s.set_defaults(fn=cmd_connect)
     s = sp.add_parser("eval", help="recall eval: does the right fact reach the agent? recall@k over the ledger"); s.add_argument("-k", type=int, default=5); s.add_argument("--show", type=int, default=10); s.set_defaults(fn=cmd_eval)
-    s = sp.add_parser("sync", help="commit and push the cosmos branch (dreams and the watcher do this for you)"); s.add_argument("--push", action="store_true"); s.add_argument("-m", "--message"); s.set_defaults(fn=cmd_sync)
+    s = sp.add_parser("sync", help="commit the team memory now (dreams and the watcher do this for you)"); s.add_argument("--push", action="store_true", help="ledger-branch mode only: push the cosmos branch"); s.add_argument("--inline", action="store_true", help="move the ledger from the cosmos branch into this branch"); s.add_argument("-m", "--message"); s.set_defaults(fn=cmd_sync)
     s = sp.add_parser("watch", help="follow every agent's sessions on this machine (all worktrees, subagents; hooks not required)"); s.add_argument("--interval", type=int, default=30); s.add_argument("--once", action="store_true"); s.add_argument("--agent", choices=["all", "claude", "codex", "gemini"], default="all"); s.add_argument("--daemon", action="store_true", help=argparse.SUPPRESS); s.add_argument("--idle", type=int, default=120, help=argparse.SUPPRESS); s.set_defaults(fn=cmd_watch)
     s = sp.add_parser("hooks", help="install the Claude Code hooks at user level (~/.claude/settings.json) so any checkout or worktree is covered"); s.add_argument("--user", action="store_true", help="(default) user level"); s.set_defaults(fn=cmd_hooks)
     s = sp.add_parser("dream", help="consolidate observations into the ledger"); s.add_argument("--llm", action="store_true", help="force LLM refinement"); s.add_argument("--no-llm", action="store_true"); s.add_argument("--auto", action="store_true", help=argparse.SUPPRESS); s.add_argument("--recurate", action="store_true", help="ask the model to re-judge every existing fact against the current bar (keep · rewrite · retire)"); s.set_defaults(fn=cmd_dream)

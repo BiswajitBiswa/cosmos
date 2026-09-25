@@ -150,7 +150,7 @@ def tick(cfg: Config, agents: Optional[List[str]] = None, verbose: bool = False)
     _live_path(cfg).write_text(json.dumps(live, indent=1))
     try:   # the ledger branch stays committed and pushed while people work
         from .sync import is_branch_mode, sync_background
-        if is_branch_mode(cfg) and time.time() - float(state.data.get("last_sync", 0)) > 600:
+        if time.time() - float(state.data.get("last_sync", 0)) > 600:   # every 10 minutes: commit (and, on the cosmos branch, push)
             sync_background(cfg, "cosmos: journal and observations")
             state.data["last_sync"] = time.time(); state.save()
     except Exception:

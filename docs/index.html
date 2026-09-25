@@ -203,7 +203,7 @@ a{color:var(--warm2)}
     <div class="fs"><div class="n">4</div><span class="tag">git</span><b>Ledger</b><span>One markdown note per fact, with evidence. Committed. Opens as an Obsidian vault.</span></div>
     <div class="fs"><div class="n">5</div><span class="tag">automatic</span><b>Gate &amp; recall</b><span>Before the agent edits a file it sees what the team knows about it. A turn that edits code is held once: tests, <code>file:line</code>, flares addressed, and the agent records what it learned while it still has the context. A commit naming a flare closes it.</span></div>
   </div>
-  <div class="callout"><b>Git is the database, on its own branch.</b><p><code>.cosmos/</code> is a worktree of a <code>cosmos</code> branch inside your repository, ignored by every other branch: feature branches never carry a ledger change. Dreams and the watcher commit and push it; a fresh clone attaches it on the first session start. No server, no account, no cloud.</p></div>
+  <div class="callout"><b>Git is the database, in your branch.</b><p><code>.cosmos/</code> is ordinary committed files in the branch where you ran <code>cosmos init</code>: every branch made from it carries the team memory, and merging shares it. cosmos commits <code>.cosmos/</code> every 10 minutes while you work and after each dream, in its own commit; it never pushes, the memory goes out with your branch. Append-only files merge by union. No server, no account, no cloud, nothing beyond your repository and the open-source cosmos.</p></div>
 </div></section>
 
 <section id="features" class="sage"><div class="wrap">
@@ -262,8 +262,7 @@ cosmos init
 cosmos flares import &lt;findings.json&gt; --prefix &lt;ID-PREFIX&gt;   # only if you have an audit document</pre></div></div>
 <div class="step"><div class="num">2</div><div><b>Agree the Charter, then commit</b><p>Edit <code>.cosmos/charter.md</code> in a pull request — that is the team agreeing on one style. Commit and the memory becomes the team's.</p>
 <pre>cosmos charter edit
-git add .claude/settings.json .claude/commands .mcp.json CLAUDE.md AGENTS.md GEMINI.md .gitignore   # once; the ledger is on the cosmos branch
-git commit -m "cosmos: hooks and instruction files" &amp;&amp; git push</pre></div></div>
+git push   # cosmos init already committed .cosmos/ and the agent wiring to this branch</pre></div></div>
 <div class="step"><div class="num">3</div><div><b>Everyone else clones and opens their agent</b><p>No install, no setup — Claude Code, Codex, Cursor, Gemini CLI, Copilot, Cline or Cowork all read the same Charter, facts and tools. A committed wrapper runs cosmos from the repository. Sessions that were already open pick cosmos up on their next turn; Cowork gets the tools from the cosmos plugin.</p>
 <pre>git clone &lt;repo&gt; &amp;&amp; cd &lt;repo&gt;
 # open your agent: claude · codex · cursor . · gemini · …</pre></div></div>
@@ -280,9 +279,7 @@ git commit -m "cosmos: hooks and instruction files" &amp;&amp; git push</pre></d
 <pre>cosmos ui</pre></div></div>
 <div class="step"><div class="num">4</div><div><b>Agree the Charter, commit on a branch off your base branch</b>
 <pre>cosmos charter edit
-git checkout -b cosmos/init origin/&lt;base-branch&gt;
-git add .claude/settings.json .claude/commands .mcp.json CLAUDE.md AGENTS.md GEMINI.md .gitignore   # the ledger itself is on the cosmos branch
-git commit -m "cosmos: hooks and instruction files" &amp;&amp; git push -u origin cosmos/init</pre></div></div>
+git push   # init committed .cosmos/ and the wiring to this branch; run it on a branch off your base branch to review it in a PR</pre></div></div>
 <div class="step"><div class="num">5</div><div><b>Sessions that were already open, and Cowork</b><p>Nothing to restart in Claude Code: the next prompt carries the briefing the session missed. Cowork runs no hooks and reads no local MCP config, so it gets cosmos from the plugin: add this repository as a plugin marketplace and install <b>cosmos</b>. The tools appear with your next message.</p>
 <pre># Cowork: Plugins → add marketplace → BiswajitBiswa/cosmos → install cosmos
 # Claude Code (optional, same tools):

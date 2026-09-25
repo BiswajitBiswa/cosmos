@@ -522,6 +522,61 @@ class TestWrapperFromElsewhere(unittest.TestCase):
             self.assertIn("cosmos_recall", out.stdout)
 
 
+class TestInBranchLedger(unittest.TestCase):
+    def _git(self, root, *args):
+        return subprocess.run(["git", "-c", "user.email=t@t", "-c", "user.name=Dev", *args], cwd=root, capture_output=True, text=True)
+
+    def test_ledger_is_committed_in_the_branch_and_travels_with_new_branches(self):
+        from cosmos import sync
+        with Repo() as r:
+            self._git(r.root, "add", "src"); self._git(r.root, "commit", "-q", "-m", "code")
+            (r.root / "work.py").write_text("x = 1\n")
+            self._git(r.root, "add", "work.py")                      # the developer has something staged
+            sync.write_inline_files(r.root)
+            (r.cfg.paths.ledger).mkdir(parents=True, exist_ok=True)
+            (r.cfg.paths.ledger / "a.md").write_text("fact\n")
+            self.assertTrue(sync.commit_inline(r.root, "cosmos: one"))
+            files = self._git(r.root, "show", "--name-only", "--format=", "HEAD").stdout.split()
+            self.assertIn(".cosmos/ledger/a.md", files)
+            self.assertNotIn("work.py", files, "only .cosmos/ goes into cosmos's commit")
+            self.assertIn("work.py", self._git(r.root, "diff", "--cached", "--name-only").stdout, "still staged for the developer")
+            self.assertNotIn(".cosmos/state", " ".join(files))
+            (r.cfg.paths.ledger / "b.md").write_text("fact 2\n")
+            head = self._git(r.root, "rev-parse", "HEAD").stdout
+            self.assertTrue(sync.commit_inline(r.root, "cosmos: two"))
+            self.assertEqual(self._git(r.root, "rev-list", "--count", "HEAD").stdout.strip(), "2", "unpushed cosmos commit is amended, not stacked")
+            self.assertNotEqual(self._git(r.root, "rev-parse", "HEAD").stdout, head)
+            self._git(r.root, "checkout", "-q", "-b", "feature")
+            self.assertTrue((r.root / ".cosmos" / "ledger" / "b.md").exists(), "a branch made from it carries the memory")
+            self.assertIn("merge=union", (r.root / ".cosmos" / ".gitattributes").read_text())
+
+    def test_ledger_branch_is_brought_into_the_checked_out_branch(self):
+        from cosmos import sync
+        with Repo() as r:
+            self._git(r.root, "add", "src"); self._git(r.root, "commit", "-q", "-m", "code")
+            import shutil
+            shutil.rmtree(r.root / ".cosmos")
+            ok, _ = sync.attach(r.root)
+            self.assertTrue(ok and sync.linked(r.root))
+            (r.root / ".cosmos" / "ledger").mkdir(parents=True, exist_ok=True)
+            (r.root / ".cosmos" / "ledger" / "x.md").write_text("from the cosmos branch\n")
+            sync.commit(r.root, "on the branch")
+            ok, msg = sync.to_inline(r.root)
+            self.assertTrue(ok, msg)
+            self.assertFalse((r.root / ".cosmos" / ".git").exists())
+            self.assertIn(".cosmos/ledger/x.md", self._git(r.root, "ls-files", ".cosmos").stdout)
+            self.assertNotIn(".cosmos", (r.root / ".gitignore").read_text() if (r.root / ".gitignore").exists() else "")
+
+    def test_no_commit_during_a_merge_or_rebase(self):
+        from cosmos import sync
+        with Repo() as r:
+            self._git(r.root, "add", "src"); self._git(r.root, "commit", "-q", "-m", "code")
+            sync.write_inline_files(r.root)
+            gitdir = r.root / ".git"
+            (gitdir / "MERGE_HEAD").write_text(self._git(r.root, "rev-parse", "HEAD").stdout)
+            self.assertFalse(sync.commit_inline(r.root, "cosmos: x"))
+
+
 class TestAudit(unittest.TestCase):
     FINDINGS = [
         {"id": "11", "severity": "critical", "title": "Review chain bypassable via `transition_lookup_to_stage`", "area": "Reviews",
@@ -1561,11 +1616,11 @@ class TestLedgerBranch(unittest.TestCase):
             shown = subprocess.run(["git", "show", "cosmos:charter.md"], cwd=root, capture_output=True, text=True).stdout
             self.assertEqual(shown, "# Charter\n", "the ledger is on the cosmos branch")
 
-    def test_hook_attaches_a_fresh_clone_and_block_is_static(self):
+    def test_hook_never_creates_worktrees_and_block_is_static(self):
         from cosmos.wrapper import HOOK_CMD
         from cosmos.render import managed_block
-        self.assertIn("worktree add -q --track -B cosmos", HOOK_CMD)
-        self.assertIn("origin/cosmos", HOOK_CMD)
+        self.assertNotIn("worktree add", HOOK_CMD, "the ledger comes with the branch; the hook never attaches one")
+        self.assertIn("--git-common-dir", HOOK_CMD, "a worktree without .cosmos still reaches the main checkout's")
         b1 = managed_block({}, 10); b2 = managed_block({"m": Memory(id="mem_x", text="A volatile fact", category="decision")}, 10, None)
         self.assertEqual(b1, b2, "the block in CLAUDE.md never changes with the ledger")
 

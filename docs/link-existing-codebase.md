@@ -33,13 +33,13 @@ cosmos atlas                       # the inventory (init already ran it)
 cosmos atlas --deep                # optional: the model's deep pass now; otherwise the next dream starts it
 ```
 
-## 6. Agree the Charter, commit on a branch off your base branch
+## 6. Agree the Charter and push
 ```bash
 cosmos charter edit
-git checkout -b cosmos/init origin/<base-branch>
-git add .claude/settings.json .claude/commands .mcp.json CLAUDE.md AGENTS.md GEMINI.md .gitignore   # never .cosmos: it is the cosmos branch
-git commit -m "cosmos: charter, ledger, atlas, findings" && git push -u origin cosmos/init
+git push        # cosmos init committed .cosmos/ and the agent wiring to this branch
 ```
+Run `cosmos init` on a branch off your base branch if the team should review it in a pull request; once merged, every
+branch carries the memory.
 
 ## 7. Sessions that were already open
 Nothing to restart in Claude Code: the user-level hooks pick the repository up on the next turn, and the next prompt
