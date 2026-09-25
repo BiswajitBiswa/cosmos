@@ -510,6 +510,18 @@ class TestConsoleDocs(unittest.TestCase):
         self.assertEqual(len(titles), len(set(titles)), "section numbers are unique")
 
 
+class TestWrapperFromElsewhere(unittest.TestCase):
+    def test_mcp_through_the_wrapper_works_from_any_folder(self):
+        from cosmos.wrapper import write_wrapper
+        with Repo() as r:
+            w = write_wrapper(r.cfg.paths.cosmos)
+            env = {**os.environ, "COSMOS_NO_BACKGROUND": "1", "PYTHONPATH": str(Path(__file__).resolve().parent.parent)}
+            req = json.dumps({"jsonrpc": "2.0", "id": 1, "method": "tools/list", "params": {}}) + "\n"
+            out = subprocess.run([sys.executable, str(w), "mcp"], input=req, cwd="/", capture_output=True, text=True, env=env, timeout=20)
+            self.assertNotIn("not initialized", out.stdout + out.stderr)
+            self.assertIn("cosmos_recall", out.stdout)
+
+
 class TestAudit(unittest.TestCase):
     FINDINGS = [
         {"id": "11", "severity": "critical", "title": "Review chain bypassable via `transition_lookup_to_stage`", "area": "Reviews",

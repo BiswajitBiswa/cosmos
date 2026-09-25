@@ -18,6 +18,10 @@ WRAPPER = '''#!/usr/bin/env python3
 """cosmosw - runs cosmos without requiring an install (see .cosmos/vendor). Committed on purpose."""
 import os, sys
 here = os.path.dirname(os.path.abspath(__file__))
+repo = os.path.dirname(here)
+cwd = os.path.realpath(os.getcwd())
+if cwd != os.path.realpath(repo) and not cwd.startswith(os.path.realpath(repo) + os.sep):
+    os.chdir(repo)  # started from elsewhere (Claude Desktop, Cowork, a cron): this wrapper belongs to this repository
 try:
     import cosmos  # installed version wins
 except ImportError:
