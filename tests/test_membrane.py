@@ -651,6 +651,39 @@ class TestRenamedEvidence(unittest.TestCase):
             self.assertIn("mem_rn1", rep.revived)
 
 
+class TestEvalAutomated(unittest.TestCase):
+    def test_a_dream_that_changed_something_measures_and_names_a_drop(self):
+        import json as _j
+        from cosmos.dream import _eval_drop, DreamReport
+        with Repo() as r:
+            d = r.cfg.paths.state / "dreams"; d.mkdir(parents=True, exist_ok=True)
+            (d / "20260101T000000Z.json").write_text(_j.dumps({"recall_at_5": 0.9, "edit_hit": 0.8}))
+            rep = DreamReport(); rep.recall_at_5, rep.edit_hit = 0.9, 0.6
+            self.assertIn("before-edit recall fell 0.80 → 0.60", _eval_drop(r.cfg, rep))
+            rep.edit_hit = 0.78
+            self.assertEqual(_eval_drop(r.cfg, rep), "", "a small wobble is not a drop")
+            (r.root / "src" / "redis-lock.ts").write_text("export function acquireLock() {}\n")
+            Ledger(r.cfg.paths).save(Memory(id="mem_ev1", text="Locks use `acquireLock`", category="constraint", files=["src/redis-lock.ts"]))
+            from cosmos.store import Observations
+            Observations(r.cfg.paths).append([{"id": "obs_ev1", "text": "The lock TTL is thirty seconds in src/redis-lock.ts", "category": "constraint", "score": 0.9, "source": "observed", "files": ["src/redis-lock.ts"], "ts": "2026-09-25T00:00:00Z"}])
+            got = dream(r.cfg, use_llm=False)
+            self.assertIsNotNone(got.recall_at_5)
+            self.assertIsNotNone(got.edit_hit)
+
+
+class TestDocsComplete(unittest.TestCase):
+    def test_every_command_is_in_the_console_command_reference(self):
+        import re
+        root = Path(__file__).resolve().parent.parent
+        src = (root / "cosmos" / "cli.py").read_text()
+        ui = (root / "cosmos" / "ui.py").read_text()
+        seg = ui[ui.index("['cli','"):]
+        seg = seg[:seg.index("\n ['config'")]
+        cmds = sorted(set(re.findall(r'sp\.add_parser\("([a-z-]+)"', src)))
+        missing = [c for c in cmds if not re.search(r"<code>(cosmos )?%s[ <\[]" % re.escape(c), seg)]
+        self.assertEqual(missing, [], "document these in the console's Command reference (and README when user-facing)")
+
+
 class TestAudit(unittest.TestCase):
     FINDINGS = [
         {"id": "11", "severity": "critical", "title": "Review chain bypassable via `transition_lookup_to_stage`", "area": "Reviews",

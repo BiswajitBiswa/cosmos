@@ -27,8 +27,9 @@ entry is what makes every worktree and every repository covered, including sessi
   watcher if none runs.
 - **UserPromptSubmit** → facts ranked against the prompt (BM25 × confidence × importance × recency). A session that
   never got the briefing, because cosmos arrived after it started, gets it with this prompt, once.
-- **PreToolUse** (edits only) → what the team knows about the file about to change: open flares and active facts
-  anchored to the file or to a folder that contains it (`frontend/src/`), explicit rules first. Once per file per session.
+- **PreToolUse** (edits only) → what the team knows about the code about to change: open flares and explicit rules
+  anchored to the file or to a folder that contains it (`frontend/src/`), then the facts that match the edit itself (the
+  text it replaces and writes). Each fact once per session, so a later edit elsewhere in the file brings what is relevant there.
 - **Stop** → the Gate (see [charter and gate](charter-and-gate.md)); exit 2 holds the turn once with the exact list.
   Then capture: the turn's journal line (ask, files, commits, tests, branch) and a byte range of the transcript
   registered for the model to read at the next dream. The final message of an editing turn becomes the branch's handoff.

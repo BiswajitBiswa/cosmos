@@ -341,7 +341,7 @@ def _edit_text(inp: Dict[str, Any]) -> str:
     return " ".join(parts)[:4000]
 
 
-def file_context(cfg: Config, event: Dict[str, Any]) -> str:
+def file_context(cfg: Config, event: Dict[str, Any], mems: Optional[Dict[str, Memory]] = None, record: bool = True) -> str:
     """What the team knows about the code the agent is about to change: open flares on the file, its explicit rules,
     and the facts that match the edit itself (a file can carry a hundred facts; the one about the function being
     changed is the one that matters). Each fact and flare is shown once per session, so a later edit elsewhere in
@@ -355,8 +355,8 @@ def file_context(cfg: Config, event: Dict[str, Any]) -> str:
         return ""
     state = State(cfg.paths)
     sid = event.get("session_id", "") or "-"
-    shown = set(state.data.setdefault("shown_facts", {}).setdefault(sid, []))
-    mems = Ledger(cfg.paths).load()
+    shown = set(state.data.setdefault("shown_facts", {}).setdefault(sid, [])) if record else set()
+    mems = mems if mems is not None else Ledger(cfg.paths).load()
     from .audit import OPEN_LIKE
     def anchored(m: Memory) -> bool:                   # the file itself, or a folder that contains it (`frontend/src/`)
         return any(rel.endswith(f) or f.endswith(rel) or (f.endswith("/") and ("/" + rel).find("/" + f) >= 0) for f in m.files)
@@ -372,6 +372,8 @@ def file_context(cfg: Config, event: Dict[str, Any]) -> str:
     facts = (rules + matched)[:max(k, len(rules))]
     if not flares and not facts:
         return ""
+    if not record:
+        return _file_lines(rel, flares, facts)
     ids = state.data["shown_facts"][sid]
     ids += [m.id for m in flares + facts]
     if len(ids) > 600:
@@ -381,6 +383,10 @@ def file_context(cfg: Config, event: Dict[str, Any]) -> str:
         for old in list(sessions)[:-50]:
             del sessions[old]
     state.save()
+    return _file_lines(rel, flares, facts)
+
+
+def _file_lines(rel: str, flares: List[Memory], facts: List[Memory]) -> str:
     lines = [f"cosm◎s · before you change `{rel}`:"]
     lines += [f"- open flare {m.meta.get('audit_id')} [{m.meta.get('severity')}]: {m.text}" for m in flares]
     lines += [f"- {'rule' if m.source == 'explicit' else m.category}: {m.text}" for m in facts]

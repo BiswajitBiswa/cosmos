@@ -54,6 +54,8 @@ class DreamReport:
     git_commits: int = 0
     review_comments: int = 0
     recall_at_5: Optional[float] = None
+    edit_hit: Optional[float] = None
+    eval_drop: str = ""
 
     def changed(self) -> bool:
         """Whether this dream changed the team memory (an idle dream writes nothing, so it commits nothing)."""
@@ -67,7 +69,7 @@ class DreamReport:
                 "contradictions": [{"older": a, "newer": b} for a, b in self.contradictions],
                 "superseded": [{"old": a, "by": b} for a, b in self.superseded],
                 "stale": list(self.stale), "revived": list(self.revived), "llm_used": self.llm_used,
-                "observations_processed": self.observations_processed, "dropped": self.dropped, "recurated": self.recurated, "recurated_dropped": self.recurated_dropped, "journal_entries": self.journal_entries, "recall_at_5": self.recall_at_5, "git_commits": self.git_commits, "review_comments": self.review_comments, "windows_read": self.windows_read, "turns_read": self.turns_read, "windows_waiting": self.windows_waiting, "auto_memory_notes": self.auto_memory_notes, "fallback_windows": self.fallback_windows, "llm_available": self.llm_available, "summary": self.summary()}
+                "observations_processed": self.observations_processed, "dropped": self.dropped, "recurated": self.recurated, "recurated_dropped": self.recurated_dropped, "journal_entries": self.journal_entries, "recall_at_5": self.recall_at_5, "edit_hit": self.edit_hit, "eval_drop": self.eval_drop, "git_commits": self.git_commits, "review_comments": self.review_comments, "windows_read": self.windows_read, "turns_read": self.turns_read, "windows_waiting": self.windows_waiting, "auto_memory_notes": self.auto_memory_notes, "fallback_windows": self.fallback_windows, "llm_available": self.llm_available, "summary": self.summary()}
 
     def summary(self) -> str:
         return (f"{self.observations_processed} observations → {len(self.new)} new, {len(self.merged)} merged, "
@@ -83,6 +85,8 @@ class DreamReport:
                 + (f" · {self.flares_closed} flares marked fixed by commit messages" if self.flares_closed else "")
                 + (f" · model verified {self.verified} doubtful facts still true, retired {self.retired}" if (self.verified or self.retired) else "")
                 + (f" · recall@5 {self.recall_at_5:.2f}" if isinstance(self.recall_at_5, float) else "")
+                + (f" · before-edit {self.edit_hit:.2f}" if isinstance(self.edit_hit, float) else "")
+                + (f" · ⚠ {self.eval_drop}" if self.eval_drop else "")
                 + (f" · {self.git_commits} commits from git history" if self.git_commits else "")
                 + (f" · {self.review_comments} review comments offered" if self.review_comments else "")
                 + (f" · {len(self.revived)} came back with fresh evidence" if self.revived else "")
@@ -517,11 +521,14 @@ def dream(cfg: Config, use_llm: Optional[bool] = None, verbose: bool = False, re
     ledger.save_all(mems.values())
     state.mark_dreamed(seen_ids)
     state.save()
-    try:   # the number that tells whether retrieval got better or worse
-        from .eval import run as eval_run
-        report.recall_at_5 = eval_run(cfg).get("recall_at_k")
-    except Exception:
-        pass
+    if report.changed():   # the numbers that tell whether retrieval got better or worse (they cannot move otherwise)
+        try:
+            from .eval import run as eval_run, run_edits
+            report.recall_at_5 = eval_run(cfg, mems=mems).get("recall_at_k")
+            report.edit_hit = run_edits(cfg, mems=mems).get("hit_rate")
+            report.eval_drop = _eval_drop(cfg, report)
+        except Exception:
+            pass
     _okf_conform(cfg)
     _persist_run(cfg, report, started)
     if report.changed():   # OKF log.md: chronological history of the bundle, newest first (idle dreams leave no entry)
@@ -569,6 +576,24 @@ def _name_findings(cfg: Config, mems: Dict[str, Memory]) -> int:
                        "finding_status": "note" if sev == "note" else m.meta.get("finding_status", "open")})
         n += 1
     return n
+
+
+def _eval_drop(cfg: Config, report: "DreamReport", points: float = 0.05) -> str:
+    """Compare with the last dream that measured: a fall of 5 points or more in either number is named."""
+    import json
+    d = cfg.paths.state / "dreams"
+    for p in sorted(d.glob("*.json"), reverse=True) if d.exists() else []:
+        try:
+            prev = json.loads(p.read_text())
+        except Exception:
+            continue
+        if prev.get("recall_at_5") is None and prev.get("edit_hit") is None:
+            continue
+        drops = [f"{name} fell {old:.2f} → {new:.2f}" for name, old, new in
+                 (("recall@5", prev.get("recall_at_5"), report.recall_at_5), ("before-edit recall", prev.get("edit_hit"), report.edit_hit))
+                 if isinstance(old, (int, float)) and isinstance(new, (int, float)) and old - new >= points]
+        return "; ".join(drops)
+    return ""
 
 
 def _flares_from_commits(cfg: Config, journals: List[Dict], mems: Dict[str, Memory]) -> int:

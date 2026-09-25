@@ -26,6 +26,14 @@ All dates are absolute ISO dates. `created`, `updated`, `last_verified`. Stalene
 ## Confidence
 Starts at 0.45 + 0.4·score for observed facts (0.9 explicit); +0.05 per re-observation, +0.1 on `verify`; capped at 0.98/0.99.
 
+## Freshness
+
+A dream doubts a fact (status `stale-candidate`, shown on Verdicts, never handed to an agent) when none of its evidence
+files exist any more, or when an identifier it names is gone from its evidence files and from the rest of the code
+(the ledger itself is not searched: a fact cannot confirm itself). A file that was renamed or moved is followed through
+git's rename history and the fact points at the new path. When the evidence returns, the doubt is lifted by itself; a
+search that fails never counts as absence. Doubts the evidence cannot settle go to the model, then to a person.
+
 ## Where the ledger lives
 
 `.cosmos/` is ordinary committed files in the branch where `cosmos init` ran, so every branch made from it carries the

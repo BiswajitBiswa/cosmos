@@ -58,10 +58,16 @@ _IDF_CACHE: Dict[int, Dict[str, float]] = {}
 
 
 def _doc_terms(mem: Memory) -> Dict[str, int]:
-    """Term frequencies of a note: its text, tags, lane and the path segments of its evidence files."""
+    """Term frequencies of a note: its text, tags, lane and the path segments of its evidence files. Kept on the note
+    and recomputed only when one of those changes (a query scores every note; tokenising them each time dominated)."""
+    key = (mem.text, tuple(mem.tags), tuple(mem.files), mem.lane)
+    cached = mem.__dict__.get("_terms")
+    if cached and cached[0] == key:
+        return cached[1]
     counts: Dict[str, int] = {}
     for t in list(tokens(mem.text)) + [t.lower() for t in mem.tags] + list(path_tokens(mem.files)) + ([mem.lane] if mem.lane else []):
         counts[t] = counts.get(t, 0) + 1
+    mem.__dict__["_terms"] = (key, counts)
     return counts
 
 
@@ -78,6 +84,7 @@ def _idf(mems: Dict[str, Memory]) -> Dict[str, float]:
     n = max(1, len(mems))
     idf = {t: math.log(1 + (n - d + 0.5) / (d + 0.5)) for t, d in df.items()}
     idf["__n__"] = float(len(mems))
+    idf["__avgdl__"] = max(1.0, sum(sum(_doc_terms(m).values()) for m in mems.values()) / n)
     _IDF_CACHE.clear(); _IDF_CACHE[key] = idf
     return idf
 
@@ -110,7 +117,7 @@ def retrieve(mems: Dict[str, Memory], query: str = "", paths: Optional[Iterable[
     q_tokens = tokens(query)
     q_paths = path_tokens(paths or [])
     idf = _idf(mems)
-    avgdl = max(1.0, sum(sum(_doc_terms(m).values()) for m in mems.values()) / max(1, len(mems)))
+    avgdl = idf.get("__avgdl__") or max(1.0, sum(sum(_doc_terms(m).values()) for m in mems.values()) / max(1, len(mems)))
     ranked = []
     for m in mems.values():
         if m.status != "active" and not (include_doubtful and m.status in ("stale-candidate", "contradicted")):

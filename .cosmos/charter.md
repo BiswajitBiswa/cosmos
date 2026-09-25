@@ -23,6 +23,7 @@ Edit it in a pull request; do not tell your own AI a different style.
 ## How we review our own work
 - Before finishing: re-read the diff, check it against this charter, and state what was NOT tested.
 - Open findings on the files you touched are addressed or explicitly deferred with a reason.
+- A change to what cosmos does updates its docs in the same commit: README.md, the site (docs/index.html), the console's docs (cosmos/ui.py: sections, the Command reference, What happens by itself) and the guide in docs/ that covers it. Numbers in the docs are measured, never estimated. tests/test_membrane.py fails when a command is missing from the Command reference.
 
 ## Architecture rules
 - Add rules here as decisions are made (or type `remember: …` in a session; explicit rules outrank inferred ones).

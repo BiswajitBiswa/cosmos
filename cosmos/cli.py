@@ -544,6 +544,13 @@ def cmd_doctor(a) -> int:
         from .charter import check as charter_check
         bad = charter_check(cfg)
         line(not bad, "charter is grounded: every path it names exists" if not bad else f"charter names {len(bad)} path(s) that do not exist: " + ", ".join(bad[:4]))
+        import json as _j
+        runs = sorted((cfg.paths.state / "dreams").glob("*.json"), reverse=True) if (cfg.paths.state / "dreams").exists() else []
+        last = next((r for r in (_j.loads(p.read_text()) for p in runs[:30]) if r.get("recall_at_5") is not None or r.get("edit_hit") is not None), None)
+        if last:
+            fmt = lambda v: "–" if v is None else f"{v:.0%}"
+            line(not last.get("eval_drop"), f"retrieval, measured by the last dream: before an edit {fmt(last.get('edit_hit'))} · recall@5 {fmt(last.get('recall_at_5'))}"
+                 + (f" · ⚠ {last['eval_drop']}" if last.get("eval_drop") else ""))
         from .hooks import session_start
         start = session_start(cfg)
         print(col("  ·", "d"), f"a session start injects ≈{max(1, len(start) // 4)} tokens (charter summary, top facts, handoff, atlas status)")

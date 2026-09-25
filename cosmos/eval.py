@@ -7,7 +7,7 @@ questions the model wrote for the fact at dream time (`meta.eval_q`), when a mod
 """
 from __future__ import annotations
 
-from typing import Dict, List, Tuple
+from typing import Dict, List, Optional, Tuple
 
 from .config import Config
 from .retrieve import retrieve
@@ -59,26 +59,19 @@ def edit_cases(cfg: Config, mems: Dict[str, Memory], limit: int = 200) -> List[T
     return out
 
 
-def run_edits(cfg: Config) -> Dict:
-    """How often the fact about the code being changed is among those shown before the edit."""
-    from . import hooks
-    mems = Ledger(cfg.paths).load()
+def run_edits(cfg: Config, mems: Optional[Dict[str, Memory]] = None) -> Dict:
+    """How often the fact about the code being changed is among those shown before the edit (same selection as the
+    PreToolUse hook, nothing recorded)."""
+    from .hooks import file_context
+    mems = mems if mems is not None else Ledger(cfg.paths).load()
     cs = edit_cases(cfg, mems)
-    hits = 0
-    for n, (mid, f, text) in enumerate(cs):
-        sid = f"eval-{n}"
-        out = hooks.file_context(cfg, {"session_id": sid, "tool_input": {"file_path": str(cfg.paths.root / f), "old_string": text, "new_string": text}})
-        hits += mems[mid].text[:60] in out
-    from .store import State
-    st = State(cfg.paths)                              # eval sessions leave no trace
-    for n in range(len(cs)):
-        st.data.get("shown_facts", {}).pop(f"eval-{n}", None)
-    st.save()
+    hits = sum(mems[mid].text[:60] in file_context(cfg, {"session_id": "eval", "tool_input": {"file_path": str(cfg.paths.root / f), "old_string": text, "new_string": text}}, mems=mems, record=False)
+               for mid, f, text in cs)
     return {"cases": len(cs), "hit_rate": round(hits / len(cs), 3) if cs else None}
 
 
-def run(cfg: Config, k: int = 5) -> Dict:
-    mems = Ledger(cfg.paths).load()
+def run(cfg: Config, k: int = 5, mems: Optional[Dict[str, Memory]] = None) -> Dict:
+    mems = mems if mems is not None else Ledger(cfg.paths).load()
     cs = cases(mems)
     hits = 0
     misses: List[Tuple[str, str]] = []
