@@ -35,6 +35,16 @@ The JSON a Claude audit session already produces:
   "sections": [["What", "…"], ["Impact", "…"], ["Fix", "…"]]}]
 ```
 
+## Ids and the prefix
+
+A flare's id is `<PREFIX>-<raw id>`. The prefix given to `cosmos flares import --prefix` is saved in the repository's
+`.cosmos/config.json` (`flares.prefix`) and used for every flare filed later, including the ones agents file from a
+session with `cosmos_flare` or `flare: …`; flares already filed from sessions under the previous default are renamed to
+it. Flares imported under a prefix someone chose keep theirs. Without a saved prefix it is `QA`. A finding the model
+writes while reading a session gets an id with the same prefix and is a note (no lifecycle) unless it states a severity.
+`cosmos flares import` on a file that does not exist asks before creating an empty one to fill in (`--yes` skips the
+question).
+
 ## Commands
 ```bash
 cosmos flares import docs/qa-findings.json --prefix QA --source qa-flares.md

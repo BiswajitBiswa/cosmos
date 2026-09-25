@@ -29,26 +29,27 @@ cosmos ui                          # dreams run by themselves; force one with: c
 
 ## 5. Architecture
 ```bash
-cosmos atlas                       # deterministic pass
-# deep pass: /atlas in Claude Code, or paste .claude/commands/atlas.md into any agent
+cosmos atlas                       # the inventory (init already ran it)
+cosmos atlas --deep                # optional: the model's deep pass now; otherwise the next dream starts it
 ```
 
 ## 6. Agree the Charter, commit on a branch off your base branch
 ```bash
 cosmos charter edit
 git checkout -b cosmos/init origin/<base-branch>
-git add .cosmos .claude/settings.json .claude/commands .mcp.json CLAUDE.md AGENTS.md GEMINI.md .gitignore
+git add .claude/settings.json .claude/commands .mcp.json CLAUDE.md AGENTS.md GEMINI.md .gitignore   # never .cosmos: it is the cosmos branch
 git commit -m "cosmos: charter, ledger, atlas, findings" && git push -u origin cosmos/init
 ```
 
-## 7. Restart sessions that were already open
-```bash
-# hooks and MCP servers are read when a session starts — restart or resume the session in your agent
-```
+## 7. Sessions that were already open
+Nothing to restart in Claude Code: the user-level hooks pick the repository up on the next turn, and the next prompt
+carries the briefing the session missed. In Cowork, install the cosmos plugin once (this repository is its marketplace);
+the tools appear with the next message. MCP servers added to `.mcp.json` are read when a session starts, so agents that
+only use MCP (Codex, Gemini CLI) see the tools in their next session.
 
 ## 8. Teammates
 ```bash
 git pull   # then open your agent
 ```
 
-Transcripts live in `~/.claude/projects/<repo path, slashes → dashes>/` (Claude Code), `~/.codex/sessions/` (Codex), `~/.gemini/` (Gemini). They are read, never stored; secrets are redacted. `.claude/settings.local.json` is personal and untouched; `.cosmos/state/` is gitignored.
+Transcripts live in `~/.claude/projects/<repo path, slashes → dashes>/` (Claude Code), in each Cowork session's own folder under Claude Desktop's application data (Cowork), `~/.codex/sessions/` (Codex) and `~/.gemini/` (Gemini). They are read, never stored; secrets are redacted. `.claude/settings.local.json` is personal and untouched; `.cosmos/state/` is gitignored.

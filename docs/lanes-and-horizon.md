@@ -13,6 +13,12 @@ Lanes are not LLM-derived by default. `cosmos lanes --propose` prints a suggeste
 
 `cosmos lanes` (and the Lanes page) shows, per lane: facts, open findings, and the people who produced observations there in the last 30 days. Two or more people in one lane is flagged as **overlap** — visible before it becomes a merge conflict. The ledger index and CLAUDE.md are grouped by lane.
 
+Which lane a fact lands in, in order: a lane the team configured in `.cosmos/config.json` (`lanes`: lane → path globs)
+whose globs match the fact's files; otherwise the lane the model named when it read the session; otherwise one inferred
+from the paths. The Atlas deep pass proposes a `lanes` mapping in `.cosmos/ledger/atlas/lanes.md`, ready to paste. Only
+real paths count as evidence (commit prose and command flags never name a lane), a lane page exists only while the
+lane has something active, and pages of lanes that are gone are removed.
+
 ## Horizon — a feature enters with a map
 ```bash
 cosmos horizon "bulk invite with partial success" -f webserver/app/api/v1/endpoints/team_members.py

@@ -25,3 +25,13 @@ All dates are absolute ISO dates. `created`, `updated`, `last_verified`. Stalene
 
 ## Confidence
 Starts at 0.45 + 0.4·score for observed facts (0.9 explicit); +0.05 per re-observation, +0.1 on `verify`; capped at 0.98/0.99.
+
+## Where the ledger lives
+
+`.cosmos/` is a git worktree of a branch named `cosmos`, ignored by every other branch; dreams and the watcher commit
+it and push it (`sync.auto_push`). It is team memory, not code: agents are told never to merge, rebase or cherry-pick
+it, and a session start warns, with the revert command, when the checked-out branch contains it. If git's record of the
+worktree disappears (a sandbox that sees the repository under another path can prune it), cosmos relinks `.cosmos/`
+before its next commit without touching the files. From such a sandbox cosmos never runs git on the ledger; the
+machine that owns it does.
+
