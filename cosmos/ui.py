@@ -1051,7 +1051,7 @@ cosmos obsidian --vault ~/Obsidian/Team  # link several repos' ledgers into one 
   ledger/               Obsidian vault, one note per fact — committed
   observations/        sanitized JSONL, day-partitioned — committed (so CI can dream)
   state/               per-machine offsets, dream runs, hook.log, slack-posted.json — gitignored</pre>
-  <p><b>Privacy:</b> hooks always exit 0 and never block a session; transcripts are never stored; API keys, tokens (incl. Slack xox*/xapp-), passwords, private keys and credentials in URLs are redacted before persistence; nothing is sent anywhere unless you run <code>audit slack --send</code> or enable an LLM provider.</p>`]
+  <p><b>Privacy:</b> hooks always exit 0 and never block a session; transcripts are never stored; API keys, tokens (incl. Slack xox*/xapp-), passwords, private keys and credentials in URLs are redacted before persistence; nothing is sent anywhere unless you run <code>audit slack --send</code> or enable an LLM provider.</p>`],
  ['byitself','14 · What happens by itself',`
   <p>After <code>cosmos init</code> there are no steps. These run on their own:</p>
   <table><tr><th>what</th><th>when</th><th>where it lands</th></tr>

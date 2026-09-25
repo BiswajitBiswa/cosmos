@@ -494,6 +494,22 @@ class TestMidSession(unittest.TestCase):
             self.assertFalse(sync.commit(r.root, "x"))
 
 
+class TestConsoleDocs(unittest.TestCase):
+    def test_every_docs_section_is_a_separate_entry(self):
+        """`[...]` followed by `['id', ...]` without a comma is valid JavaScript (an index lookup) that makes the
+        entry undefined and blanks the whole Docs page - a syntax check does not catch it."""
+        import re
+        from cosmos.ui import HTML
+        body = HTML[HTML.index("const SECTIONS=["):]
+        body = body[:body.index("];\n")]
+        starts = [m.start() for m in re.finditer(r"\n \['[a-z]+','\d+ · ", body)]
+        self.assertGreater(len(starts), 10)
+        for s in starts[1:]:
+            self.assertTrue(body[:s].rstrip().endswith("`],"), "missing comma before " + body[s + 3:s + 30])
+        titles = [m.group(1) for m in re.finditer(r"\n \['[a-z]+','(\d+) · ", body)]
+        self.assertEqual(len(titles), len(set(titles)), "section numbers are unique")
+
+
 class TestAudit(unittest.TestCase):
     FINDINGS = [
         {"id": "11", "severity": "critical", "title": "Review chain bypassable via `transition_lookup_to_stage`", "area": "Reviews",
