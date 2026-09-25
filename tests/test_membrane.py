@@ -657,11 +657,13 @@ class TestEvalAutomated(unittest.TestCase):
         from cosmos.dream import _eval_drop, DreamReport
         with Repo() as r:
             d = r.cfg.paths.state / "dreams"; d.mkdir(parents=True, exist_ok=True)
-            (d / "20260101T000000Z.json").write_text(_j.dumps({"recall_at_5": 0.9, "edit_hit": 0.8}))
-            rep = DreamReport(); rep.recall_at_5, rep.edit_hit = 0.9, 0.6
+            (d / "20260101T000000Z.json").write_text(_j.dumps({"recall_at_5": 0.9, "edit_hit": 0.8, "eval_v": 2}))
+            rep = DreamReport(); rep.recall_at_5, rep.edit_hit, rep.eval_v = 0.9, 0.6, 2
             self.assertIn("before-edit recall fell 0.80 → 0.60", _eval_drop(r.cfg, rep))
             rep.edit_hit = 0.78
             self.assertEqual(_eval_drop(r.cfg, rep), "", "a small wobble is not a drop")
+            rep.edit_hit, rep.eval_v = 0.1, 3
+            self.assertEqual(_eval_drop(r.cfg, rep), "", "numbers measured another way are not compared")
             (r.root / "src" / "redis-lock.ts").write_text("export function acquireLock() {}\n")
             Ledger(r.cfg.paths).save(Memory(id="mem_ev1", text="Locks use `acquireLock`", category="constraint", files=["src/redis-lock.ts"]))
             from cosmos.store import Observations

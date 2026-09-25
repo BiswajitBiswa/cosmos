@@ -56,6 +56,7 @@ class DreamReport:
     recall_at_5: Optional[float] = None
     edit_hit: Optional[float] = None
     eval_drop: str = ""
+    eval_v: int = 0
 
     def changed(self) -> bool:
         """Whether this dream changed the team memory (an idle dream writes nothing, so it commits nothing)."""
@@ -69,7 +70,7 @@ class DreamReport:
                 "contradictions": [{"older": a, "newer": b} for a, b in self.contradictions],
                 "superseded": [{"old": a, "by": b} for a, b in self.superseded],
                 "stale": list(self.stale), "revived": list(self.revived), "llm_used": self.llm_used,
-                "observations_processed": self.observations_processed, "dropped": self.dropped, "recurated": self.recurated, "recurated_dropped": self.recurated_dropped, "journal_entries": self.journal_entries, "recall_at_5": self.recall_at_5, "edit_hit": self.edit_hit, "eval_drop": self.eval_drop, "git_commits": self.git_commits, "review_comments": self.review_comments, "windows_read": self.windows_read, "turns_read": self.turns_read, "windows_waiting": self.windows_waiting, "auto_memory_notes": self.auto_memory_notes, "fallback_windows": self.fallback_windows, "llm_available": self.llm_available, "summary": self.summary()}
+                "observations_processed": self.observations_processed, "dropped": self.dropped, "recurated": self.recurated, "recurated_dropped": self.recurated_dropped, "journal_entries": self.journal_entries, "recall_at_5": self.recall_at_5, "edit_hit": self.edit_hit, "eval_drop": self.eval_drop, "eval_v": self.eval_v, "git_commits": self.git_commits, "review_comments": self.review_comments, "windows_read": self.windows_read, "turns_read": self.turns_read, "windows_waiting": self.windows_waiting, "auto_memory_notes": self.auto_memory_notes, "fallback_windows": self.fallback_windows, "llm_available": self.llm_available, "summary": self.summary()}
 
     def summary(self) -> str:
         return (f"{self.observations_processed} observations → {len(self.new)} new, {len(self.merged)} merged, "
@@ -526,6 +527,8 @@ def dream(cfg: Config, use_llm: Optional[bool] = None, verbose: bool = False, re
             from .eval import run as eval_run, run_edits
             report.recall_at_5 = eval_run(cfg, mems=mems).get("recall_at_k")
             report.edit_hit = run_edits(cfg, mems=mems).get("hit_rate")
+            from .eval import EVAL_VERSION
+            report.eval_v = EVAL_VERSION
             report.eval_drop = _eval_drop(cfg, report)
         except Exception:
             pass
@@ -589,6 +592,8 @@ def _eval_drop(cfg: Config, report: "DreamReport", points: float = 0.05) -> str:
             continue
         if prev.get("recall_at_5") is None and prev.get("edit_hit") is None:
             continue
+        if prev.get("eval_v", 1) != report.eval_v:
+            return ""                                  # measured differently: no comparison
         drops = [f"{name} fell {old:.2f} → {new:.2f}" for name, old, new in
                  (("recall@5", prev.get("recall_at_5"), report.recall_at_5), ("before-edit recall", prev.get("edit_hit"), report.edit_hit))
                  if isinstance(old, (int, float)) and isinstance(new, (int, float)) and old - new >= points]

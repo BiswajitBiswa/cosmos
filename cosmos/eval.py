@@ -13,6 +13,9 @@ from .config import Config
 from .retrieve import retrieve
 from .store import Ledger, Memory
 
+# bump when what is measured changes: numbers are only compared within one version
+EVAL_VERSION = 2
+
 
 def cases(mems: Dict[str, Memory], limit: int = 300) -> List[Tuple[str, str, List[str]]]:
     """(fact id, question, paths) — the fact should be in the top k for that question."""
