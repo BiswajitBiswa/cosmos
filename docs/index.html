@@ -264,7 +264,7 @@ cosmos flares import &lt;findings.json&gt; --prefix &lt;ID-PREFIX&gt;   # only i
 <pre>cosmos charter edit
 git add .claude/settings.json .claude/commands .mcp.json CLAUDE.md AGENTS.md GEMINI.md .gitignore   # once; the ledger is on the cosmos branch
 git commit -m "cosmos: hooks and instruction files" &amp;&amp; git push</pre></div></div>
-<div class="step"><div class="num">3</div><div><b>Everyone else clones and opens their agent</b><p>No install, no setup — Claude Code, Codex, Cursor, Gemini CLI, Copilot, Cline or Cowork all read the same Charter, facts and tools. A committed wrapper runs cosmos from the repository. Sessions that were already open pick the hooks up after a restart.</p>
+<div class="step"><div class="num">3</div><div><b>Everyone else clones and opens their agent</b><p>No install, no setup — Claude Code, Codex, Cursor, Gemini CLI, Copilot, Cline or Cowork all read the same Charter, facts and tools. A committed wrapper runs cosmos from the repository. Sessions that were already open pick cosmos up on their next turn; Cowork gets the tools from the cosmos plugin.</p>
 <pre>git clone &lt;repo&gt; &amp;&amp; cd &lt;repo&gt;
 # open your agent: claude · codex · cursor . · gemini · …</pre></div></div>
 <div class="step"><div class="num">4</div><div><b>Look, now and then</b><p><code>cosmos ui</code> shows the live sessions, the ledger, the lanes, the flares and what waits for a human on Verdicts. Dreams run by themselves; commit <code>.cosmos</code> with your normal work and everyone gets it on the next <code>git pull</code>. Map a feature before coding with <code>cosmos horizon "…"</code> or on the Horizon page.</p></div></div>
@@ -283,8 +283,11 @@ git commit -m "cosmos: hooks and instruction files" &amp;&amp; git push</pre></d
 git checkout -b cosmos/init origin/&lt;base-branch&gt;
 git add .claude/settings.json .claude/commands .mcp.json CLAUDE.md AGENTS.md GEMINI.md .gitignore   # the ledger itself is on the cosmos branch
 git commit -m "cosmos: hooks and instruction files" &amp;&amp; git push -u origin cosmos/init</pre></div></div>
-<div class="step"><div class="num">5</div><div><b>Restart sessions that were already open</b>
-<pre># hooks are read when a session starts — restart or resume the session in your agent</pre></div></div>
+<div class="step"><div class="num">5</div><div><b>Sessions that were already open, and Cowork</b><p>Nothing to restart in Claude Code: the next prompt carries the briefing the session missed. Cowork runs no hooks and reads no local MCP config, so it gets cosmos from the plugin: add this repository as a plugin marketplace and install <b>cosmos</b>. The tools appear with your next message.</p>
+<pre># Cowork: Plugins → add marketplace → BiswajitBiswa/cosmos → install cosmos
+# Claude Code (optional, same tools):
+/plugin marketplace add BiswajitBiswa/cosmos
+/plugin install cosmos@cosmos</pre></div></div>
 <div class="step"><div class="num">6</div><div><b>Teammates</b>
 <pre>git pull   # then open your agent</pre></div></div>
   </div>

@@ -214,7 +214,7 @@ git add .claude/settings.json .claude/commands .mcp.json CLAUDE.md AGENTS.md GEM
 git commit -m "cosmos: hooks and instruction files" && git push
 ```
 
-**3 · Everyone else clones and opens their agent.** No install, no setup. Claude Code, Codex, Cursor, Gemini CLI, Copilot, Cline or Cowork all read the same Charter, facts and tools; a committed wrapper runs cosmos from the repository. Sessions that were already open pick the hooks up after a restart.
+**3 · Everyone else clones and opens their agent.** No install, no setup. Claude Code, Codex, Cursor, Gemini CLI, Copilot, Cline or Cowork all read the same Charter, facts and tools; a committed wrapper runs cosmos from the repository. Sessions that were already open pick cosmos up on their next turn; Cowork gets the tools from the cosmos plugin.
 
 ```bash
 git clone <repo> && cd <repo>
@@ -235,7 +235,7 @@ git clone <repo> && cd <repo>
 | 2 | Bring in an existing audit, if there is one. If the file does not exist yet, cosmos asks before creating an empty one to fill in (`--yes` creates it without asking). | `cosmos flares import <findings.json> --prefix <ID-PREFIX> --source <report-name>` |
 | 3 | Look while the first dream finishes in the background | `cosmos ui` |
 | 4 | Agree the Charter, commit the wiring on a branch off your base branch | `cosmos charter edit` · `git checkout -b cosmos/init origin/<base-branch>` · add `.claude/settings.json .claude/commands .mcp.json CLAUDE.md AGENTS.md GEMINI.md .gitignore` · commit · `git push -u origin cosmos/init`. The ledger itself is on the `cosmos` branch, pushed by itself. |
-| 5 | Restart sessions that were already open | hooks are read when a session starts |
+| 5 | Sessions that were already open | nothing to restart: the next prompt carries the briefing; in Cowork, install the cosmos plugin once ([plugin](docs/plugin.md)) |
 | 6 | Teammates | `git pull`, then open their agent |
 
 Transcripts live in `~/.claude/projects/<repo path, slashes → dashes>/` (Claude Code), `~/.codex/sessions/` (Codex), `~/.gemini/` (Gemini). They are read, never stored; secrets are redacted. `.claude/settings.local.json` is personal and untouched; `.cosmos/state/` is gitignored.
@@ -295,6 +295,6 @@ The tools we looked at either wanted a hosted service or solved one slice. We wa
   state/              gitignored: pending observations, dream runs
 ```
 
-Guides: [memory model](docs/memory-model.md) · [charter and gate](docs/charter-and-gate.md) · [lanes and horizon](docs/lanes-and-horizon.md) · [atlas](docs/atlas.md) · [audit and findings](docs/flares.md) · [hooks](docs/hooks.md) · [Obsidian](docs/obsidian.md) · [link an existing codebase](docs/link-existing-codebase.md)
+Guides: [plugin (Cowork, Claude Code)](docs/plugin.md) · [memory model](docs/memory-model.md) · [charter and gate](docs/charter-and-gate.md) · [lanes and horizon](docs/lanes-and-horizon.md) · [atlas](docs/atlas.md) · [audit and findings](docs/flares.md) · [hooks](docs/hooks.md) · [Obsidian](docs/obsidian.md) · [link an existing codebase](docs/link-existing-codebase.md)
 
 <p align="center"><sub>cosmos · MIT licence · Python 3.9+, standard library only · <code>cosmos doctor</code> checks a setup · <code>cosmos ui</code> opens the control room</sub></p>

@@ -936,10 +936,14 @@ function docs(){
   <p>One store, every tool. Claude Code, Codex (CLI and Desktop), Gemini CLI, Antigravity, Cursor, GitHub Copilot, Cline, Windsurf and Cowork all read the same Charter, Ledger and Atlas — three ways:</p>
   <table><tr><th>how</th><th>what</th><th>agents</th></tr>
   <tr><td>Instruction files</td><td>the same managed block written to <code>CLAUDE.md</code>, <code>AGENTS.md</code>, <code>GEMINI.md</code>, <code>.cursor/rules/cosmos.mdc</code>, <code>.github/copilot-instructions.md</code>, <code>.clinerules</code>, <code>.windsurfrules</code></td><td>all</td></tr>
-  <tr><td>MCP server</td><td><code>cosmos mcp</code> — tools: <code>cosmos_recall</code>, <code>cosmos_remember</code>, <code>cosmos_flare</code>, <code>cosmos_charter</code>, <code>cosmos_why</code>, <code>cosmos_horizon</code>, <code>cosmos_atlas</code>, <code>cosmos_lanes</code>. Configured by <code>cosmos connect</code> in <code>.mcp.json</code>, <code>.cursor/mcp.json</code>, <code>.gemini/settings.json</code>, <code>.vscode/mcp.json</code>; Codex via <code>~/.codex/config.toml</code>; Cowork via Settings → Connectors.</td><td>all MCP clients</td></tr>
-  <tr><td>Capture</td><td>Claude Code: hooks, automatic. Codex: <code>cosmos capture --agent codex</code> reads <code>~/.codex/sessions</code> rollouts (exact format). Gemini / Antigravity: best-effort JSON reader. Any agent: <code>cosmos_remember</code> over MCP.</td><td>Claude Code · Codex · Gemini · any via MCP</td></tr></table>
+  <tr><td>MCP server</td><td><code>cosmos mcp</code> — tools: <code>cosmos_recall</code>, <code>cosmos_remember</code>, <code>cosmos_flare</code>, <code>cosmos_charter</code>, <code>cosmos_why</code>, <code>cosmos_horizon</code>, <code>cosmos_atlas</code>, <code>cosmos_lanes</code>. Configured by <code>cosmos init</code> in <code>.mcp.json</code>, <code>.cursor/mcp.json</code>, <code>.gemini/settings.json</code>, <code>.vscode/mcp.json</code>; Codex via <code>~/.codex/config.toml</code>.</td><td>all MCP clients</td></tr>
+  <tr><td>Plugin</td><td>the cosmos plugin (this repository is its marketplace): finds the shared folder that has <code>.cosmos/</code>, one level down included, and serves that repository's own copy of cosmos. Cowork runs no hooks and reads no local MCP config, so this is how it gets the tools — from the next message.</td><td>Cowork · Claude Code (optional)</td></tr>
+  <tr><td>Capture</td><td>Claude Code: hooks, automatic. Cowork: the watcher reads its transcripts on this machine and maps the sandbox paths back. Codex: <code>cosmos capture --agent codex</code> reads <code>~/.codex/sessions</code> rollouts (exact format). Gemini / Antigravity: best-effort JSON reader. Any agent: <code>cosmos_remember</code> over MCP.</td><td>Claude Code · Codex · Gemini · any via MCP</td></tr></table>
   <pre>cosmos init                   # writes every agent's instruction file and MCP config; nothing else to run
-cosmos connect codex --write-user   # only Codex keeps its MCP config in ~/.codex/config.toml</pre>
+cosmos connect codex --write-user   # only Codex keeps its MCP config in ~/.codex/config.toml
+# Cowork: Plugins → add marketplace (this repository) → install cosmos
+/plugin marketplace add &lt;owner&gt;/cosmos   # Claude Code, optional
+/plugin install cosmos@cosmos</pre>
   <p><b>Capture is not a step.</b> Hooks record Claude Code turns; the watcher (started by <code>init</code> and by every session start) follows Claude Code, Codex and Gemini session files on this machine, all worktrees and subagents; the model reads what is new at the next dream, which starts by itself.</p>
   <p><b>Shareable:</b> everything is in <code>.cosmos/</code> and the instruction files — commit and push, and every teammate on every tool has it. <code>cosmos ui --static</code> makes a read-only snapshot page for people outside the repo.</p>`],
  ['link','2 · Link an existing codebase & past sessions',`
@@ -951,30 +955,31 @@ cosmos charter edit
 git checkout -b cosmos/init origin/&lt;base-branch&gt;
 git add .claude/settings.json .claude/commands .mcp.json CLAUDE.md AGENTS.md GEMINI.md .gitignore   # the ledger is on the cosmos branch
 git commit -m "cosmos: charter, ledger, atlas, findings" &amp;&amp; git push -u origin cosmos/init</pre>
-  <p><b>Already-open sessions</b> keep running without cosmos until restarted — hooks are read at session start: <code>claude --resume &lt;session-id&gt;</code>. Transcripts live in <code>~/.claude/projects/&lt;repo path, slashes → dashes&gt;/</code> (Claude Code), <code>~/.codex/sessions/</code> (Codex), <code>~/.gemini/</code> (Gemini). Transcripts are read, never stored; secrets are redacted.</p>`],
+  <p><b>Already-open sessions</b> need nothing: the user-level hooks pick the repository up on the next turn, and the next prompt carries the briefing the session missed. Cowork gets the tools from the cosmos plugin with its next message. Transcripts live in <code>~/.claude/projects/&lt;repo path, slashes → dashes&gt;/</code> (Claude Code), each Cowork session's own folder (Cowork), <code>~/.codex/sessions/</code> (Codex), <code>~/.gemini/</code> (Gemini). Transcripts are read, never stored; secrets are redacted.</p>`],
  ['start','3 · Getting started (a new repo)',`
   <div class="callout">Memory travels with the code. One person sets cosmos up and commits it; everyone else just clones.</div>
   <h3 class="small muted">FIRST PERSON ON THE REPO (once)</h3>
   <pre>pip install cosmos-dev
 cd ${repo}
 cosmos init
-git add .cosmos .claude/settings.json CLAUDE.md AGENTS.md .gitignore
-git commit -m "cosmos: ledger"</pre>
-  <p><code>cosmos init</code> creates <code>.cosmos/</code> (config, ledger, observations, a <code>cosmosw</code> wrapper + vendored copy), wires five hooks into <code>.claude/settings.json</code>, writes the managed block in <code>CLAUDE.md</code>/<code>AGENTS.md</code>, and makes the ledger an Obsidian vault.</p>
+git checkout -b cosmos/init origin/&lt;base-branch&gt;
+git add .claude/settings.json .claude/commands .mcp.json CLAUDE.md AGENTS.md GEMINI.md .gitignore   # never .cosmos
+git commit -m "cosmos: hooks and instruction files" &amp;&amp; git push -u origin cosmos/init</pre>
+  <p><code>cosmos init</code> creates <code>.cosmos/</code> (config, ledger, observations, a <code>cosmosw</code> wrapper + vendored copy), attaches it as a worktree of the <code>cosmos</code> branch (the ledger commits and pushes itself; it is never part of a code branch), wires six hook events into <code>.claude/settings.json</code> and <code>~/.claude/settings.json</code>, writes every agent's instruction file and MCP config, reads past sessions, starts the first dream and the watcher, and makes the ledger an Obsidian vault.</p>
   <h3 class="small muted">EVERYONE AFTER THAT</h3>
   <pre>git clone &lt;repo&gt; &amp;&amp; cd ${repo} &amp;&amp; claude</pre>
   <p>No install, no init. The hooks call <code>.cosmos/cosmosw</code>, which runs the vendored copy when <code>cosmos</code> is not installed. Their first session starts with the team's top facts already in context.</p>
   <p>Optional for the short command name: <code>pip install cosmos-dev</code>. Check the setup any time with <code>cosmos doctor</code>.</p>`],
  ['daily','4 · Daily use (nothing to do)',`
   ${step(1,'Work with Claude Code as usual','On <b>SessionStart</b> the top facts are injected. On every <b>UserPromptSubmit</b> the memories relevant to your prompt (by words and by the files they anchor to) are injected — including open findings on those files.')}
-  ${step(2,'Cosmos captures silently','On <b>Stop</b>, <b>PreCompact</b> and <b>SessionEnd</b> the transcript is read incrementally and durable facts are extracted: architecture, decisions, conventions, constraints, bug root causes, dependency limits, workflows, domain rules. Narration, questions and one-off tasks are dropped. Secrets are redacted before anything touches disk; transcripts are never stored.')}
+  ${step(2,'Cosmos captures silently','On <b>Stop</b>, <b>PreCompact</b> and <b>SessionEnd</b> the turn gets a journal line (ask, files, commits, tests, branch) and its transcript range is marked for the model, which reads it at the next dream and keeps only what the team should still know: decisions and their reasons, constraints, root causes, corrections. Secrets are redacted before anything touches disk; transcripts are never stored.')}
   ${step(3,'Force a memory when you want one','Type <code>remember: never modify prod schemas by hand</code> or <code>flare: /transitions has no role gate</code> in the chat — or use the <b>+ Remember</b> box on the Ledger page, or <code>cosmos remember "…" -c constraint</code>.')}
   ${step(4,'Ask why','<code>cosmos why redis</code> — evidence files, dates, who saw it, what it superseded. Or click any card here.')}`],
  ['dream','5 · Dreams (consolidation)',`
   <p>Observations pile up per developer. A <b>dream</b> turns them into the shared ledger: normalize → dedupe (same fact twice = one memory, evidence +1) → contradiction check → evidence-based supersession → staleness → optional LLM refinement → write notes, index, CLAUDE.md/AGENTS.md.</p>
-  <pre>cosmos dream            # or the "Run dream" button top-right
+  <pre>cosmos dream            # optional: dreams start by themselves when enough has gathered
 cosmos review           # what needs a human
-git add .cosmos CLAUDE.md AGENTS.md &amp;&amp; git commit -m "memory: dream" &amp;&amp; git push</pre>
+# nothing to commit: the dream commits the cosmos branch and pushes it</pre>
   <p>Run it when the Activity badge shows pending observations, or nightly in CI (a workflow example is in the README). Dreams are idempotent. Every run is recorded on the <b>Dreams</b> page.</p>
   <p><b>The model does the thinking.</b> Every dream sends new observations to the model, which keeps or drops each one, rewrites it, names its category and its feature lane; it also adjudicates contradictions and proposes lane mappings. Default provider is your <b>Claude Code login</b> (<code>claude -p</code>) — nothing to configure. Alternatives in <code>.cosmos/config.json → llm.provider</code>: <code>anthropic</code> (API key), <code>openai</code>, <code>ollama</code>, <code>none</code>. Every answer is validated against real ids, paths and enums before it touches the ledger. <code>cosmos doctor</code> shows which provider is live; without one, dreams run on heuristics and say so.</p>`],
  ['charter','6 · Charter & Gate',`
@@ -1047,7 +1052,7 @@ cosmos obsidian --vault ~/Obsidian/Team  # link several repos' ledgers into one 
   observations/        sanitized JSONL, day-partitioned — committed (so CI can dream)
   state/               per-machine offsets, dream runs, hook.log, slack-posted.json — gitignored</pre>
   <p><b>Privacy:</b> hooks always exit 0 and never block a session; transcripts are never stored; API keys, tokens (incl. Slack xox*/xapp-), passwords, private keys and credentials in URLs are redacted before persistence; nothing is sent anywhere unless you run <code>audit slack --send</code> or enable an LLM provider.</p>`]
- ['byitself','11 · What happens by itself',`
+ ['byitself','14 · What happens by itself',`
   <p>After <code>cosmos init</code> there are no steps. These run on their own:</p>
   <table><tr><th>what</th><th>when</th><th>where it lands</th></tr>
   <tr><td><b>Journal</b> — one line per agent turn: the ask, files edited, commits, tests ran</td><td>every turn (hooks) or every 30s (watcher)</td><td><code>.cosmos/ledger/journal/&lt;date&gt;.md</code></td></tr>
