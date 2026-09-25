@@ -200,6 +200,35 @@ def _clean_text(t) -> str:
     return " ".join(_MARKUP.split(str(t or ""))[0].split())
 
 
+_RENAMES: Dict[str, Dict[str, str]] = {}
+
+
+def _renames(root) -> Dict[str, str]:
+    """Old path → where it lives now, from git's rename history (a chain of renames is followed to its end).
+    Cached per process."""
+    key = str(root)
+    if key in _RENAMES:
+        return _RENAMES[key]
+    import subprocess
+    moves: Dict[str, str] = {}
+    try:
+        out = subprocess.run(["git", "log", "--all", "-M", "--diff-filter=R", "--name-status", "--format=", "--reverse"],
+                             cwd=root, capture_output=True, text=True, timeout=60).stdout
+        for line in out.splitlines():
+            p = line.split("\t")
+            if len(p) == 3 and p[0].startswith("R"):
+                moves[p[1]] = p[2]
+    except Exception:
+        pass
+    def end(f: str) -> str:
+        seen = set()
+        while f in moves and f not in seen:
+            seen.add(f); f = moves[f]
+        return f
+    _RENAMES[key] = {old: end(old) for old in moves}
+    return _RENAMES[key]
+
+
 def _present_in_repo(root, idents: List[str]) -> Set[str]:
     """Which of these identifiers appear anywhere in the repository (any worktree), in one git grep per worktree."""
     if not idents:
@@ -410,8 +439,9 @@ def dream(cfg: Config, use_llm: Optional[bool] = None, verbose: bool = False, re
     from .lanes import resolve_evidence
     for m in mems.values():
         if m.status in ("active", "stale-candidate") and m.files and _files_exist(root, m.files) is False:
-            fixed = [r for r in (resolve_evidence(root, f) for f in m.files) if r]
-            if fixed:                                  # the path was partial, or points into a sibling repo
+            moved = _renames(root)
+            fixed = [r for r in (resolve_evidence(root, moved.get(f, f)) for f in m.files) if r]
+            if fixed:                                  # renamed or moved since, the path was partial, or a sibling repo
                 m.files = list(dict.fromkeys(fixed))[:8]
         if m.status == "stale-candidate" and (m.reason or "").startswith("Stale candidate since") and m.files \
                 and ("evidence files" in (m.reason or "") or "no longer appears" in (m.reason or "")):

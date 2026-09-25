@@ -614,6 +614,43 @@ class TestBranchFriendly(unittest.TestCase):
         self.assertEqual([o.source for o in extract_from_turn(Turn(role="user", text="rule: never call the database from a controller"), imperatives=False)], ["explicit"])
 
 
+class TestEditAwareRecall(unittest.TestCase):
+    def test_the_fact_about_the_code_being_changed_is_shown_and_a_later_edit_brings_new_ones(self):
+        from cosmos.hooks import file_context
+        with Repo() as r:
+            (r.root / "api.py").write_text("def current_user(): pass\ndef send_whatsapp(): pass\n")
+            facts = [Memory(id=f"mem_f{i:03d}", text=f"Background note {i} about pagination and caching", category="domain", files=["api.py"], importance=0.9) for i in range(8)]
+            facts.append(Memory(id="mem_wa01", text="`send_whatsapp` must check opt-out before every send", category="constraint", files=["api.py"], importance=0.4))
+            facts.append(Memory(id="mem_cu01", text="`current_user` scopes every query to the business", category="constraint", files=["api.py"], importance=0.4))
+            Ledger(r.cfg.paths).save_all(facts)
+            ev = lambda code: {"session_id": "s", "tool_input": {"file_path": str(r.root / "api.py"), "old_string": code, "new_string": code + " "}}
+            first = file_context(r.cfg, ev("def send_whatsapp(): pass"))
+            self.assertIn("opt-out", first, "the fact about the edited function beats higher-importance generic notes")
+            second = file_context(r.cfg, ev("def current_user(): pass"))
+            self.assertIn("scopes every query", second, "a second edit in the same file brings what is relevant there")
+            self.assertNotIn("opt-out", second, "a fact already shown this session is not repeated")
+
+
+class TestRenamedEvidence(unittest.TestCase):
+    def test_a_fact_follows_its_file_through_a_rename(self):
+        from cosmos import dream as dm
+        with Repo() as r:
+            g = lambda *a: subprocess.run(["git", "-c", "user.email=t@t", "-c", "user.name=t", *a], cwd=r.root, check=True, capture_output=True)
+            (r.root / "web").mkdir()
+            (r.root / "web" / "OwnerWorkspace.jsx").write_text("export function Workspace() { return mountWorkspace(); }\n" * 5)
+            g("add", "web"); g("commit", "-q", "-m", "add")
+            g("mv", "web/OwnerWorkspace.jsx", "web/RetenWorkspace.jsx"); g("commit", "-q", "-m", "rename")
+            m = Memory(id="mem_rn1", text="The workspace mounts through `mountWorkspace`", category="architecture", files=["web/OwnerWorkspace.jsx"],
+                       status="stale-candidate", reason="Stale candidate since 2026-09-01: none of the evidence files exist anymore, in any worktree")
+            Ledger(r.cfg.paths).save(m)
+            dm._RENAMES.clear(); dm._TREE_CACHE.clear()
+            rep = dream(r.cfg, use_llm=False)
+            got = Ledger(r.cfg.paths).load()["mem_rn1"]
+            self.assertEqual(got.files, ["web/RetenWorkspace.jsx"])
+            self.assertEqual(got.status, "active")
+            self.assertIn("mem_rn1", rep.revived)
+
+
 class TestAudit(unittest.TestCase):
     FINDINGS = [
         {"id": "11", "severity": "critical", "title": "Review chain bypassable via `transition_lookup_to_stage`", "area": "Reviews",

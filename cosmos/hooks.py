@@ -334,9 +334,18 @@ def auto_refresh(cfg: Config) -> bool:
         return False
 
 
+def _edit_text(inp: Dict[str, Any]) -> str:
+    """The code an edit replaces and writes: what the agent is about to change, used to pick the facts that matter."""
+    parts = [str(inp.get(k, "")) for k in ("old_string", "new_string", "content", "new_source")]
+    parts += [str(e.get(k, "")) for e in (inp.get("edits") or []) if isinstance(e, dict) for k in ("old_string", "new_string")]
+    return " ".join(parts)[:4000]
+
+
 def file_context(cfg: Config, event: Dict[str, Any]) -> str:
-    """What the team knows about the file the agent is about to change: open flares, facts, rules anchored to it.
-    Shown once per file per session so it informs without nagging."""
+    """What the team knows about the code the agent is about to change: open flares on the file, its explicit rules,
+    and the facts that match the edit itself (a file can carry a hundred facts; the one about the function being
+    changed is the one that matters). Each fact and flare is shown once per session, so a later edit elsewhere in
+    the same file still brings what is relevant there."""
     inp = event.get("tool_input") or {}
     fp = inp.get("file_path") or inp.get("notebook_path")
     if not fp:
@@ -345,27 +354,36 @@ def file_context(cfg: Config, event: Dict[str, Any]) -> str:
     if rel.startswith(("/", "external/")):
         return ""
     state = State(cfg.paths)
-    sid = event.get("session_id", "")
-    shown = state.data.setdefault("shown", {}).setdefault(sid or "-", [])
-    if rel in shown:
-        return ""
+    sid = event.get("session_id", "") or "-"
+    shown = set(state.data.setdefault("shown_facts", {}).setdefault(sid, []))
     mems = Ledger(cfg.paths).load()
     from .audit import OPEN_LIKE
     def anchored(m: Memory) -> bool:                   # the file itself, or a folder that contains it (`frontend/src/`)
         return any(rel.endswith(f) or f.endswith(rel) or (f.endswith("/") and ("/" + rel).find("/" + f) >= 0) for f in m.files)
-    flares = [m for m in mems.values() if m.category == "finding" and m.meta.get("finding_status", "open") in OPEN_LIKE and anchored(m)]
-    facts = sorted((m for m in mems.values() if m.category != "finding" and m.status == "active" and anchored(m)),
-                   key=lambda m: (m.source != "explicit", not any(f.endswith(rel) or rel.endswith(f) for f in m.files), -m.importance * m.confidence))
-    facts = facts[:int(cfg.get("retrieval.file_max", 4))]
+    flares = [m for m in mems.values() if m.category == "finding" and m.meta.get("finding_status", "open") in OPEN_LIKE
+              and anchored(m) and m.id not in shown][:3]
+    pool = {m.id: m for m in mems.values() if m.category != "finding" and m.status == "active" and anchored(m) and m.id not in shown}
+    k = int(cfg.get("retrieval.file_max", 4))
+    rules = sorted((m for m in pool.values() if m.source == "explicit"), key=lambda m: -m.importance)[:2]
+    rest = {i: m for i, m in pool.items() if m not in rules}
+    matched = retrieve(rest, rel.rsplit("/", 1)[-1] + " " + _edit_text(inp), paths=[rel], k=k)
+    if len(matched) < k - len(rules):                  # nothing in the edit to match on (a new file): the weightiest
+        matched += [m for m in sorted(rest.values(), key=lambda m: -m.importance * m.confidence) if m not in matched]
+    facts = (rules + matched)[:max(k, len(rules))]
     if not flares and not facts:
         return ""
-    shown.append(rel)
-    if len(shown) > 400:
-        del shown[:200]
+    ids = state.data["shown_facts"][sid]
+    ids += [m.id for m in flares + facts]
+    if len(ids) > 600:
+        del ids[:300]
+    sessions = state.data["shown_facts"]
+    if len(sessions) > 50:                            # keep the newest sessions only
+        for old in list(sessions)[:-50]:
+            del sessions[old]
     state.save()
     lines = [f"cosm◎s · before you change `{rel}`:"]
-    lines += [f"- open flare {m.meta.get('audit_id')} [{m.meta.get('severity')}]: {m.text}" for m in flares[:3]]
-    lines += [f"- {m.category}: {m.text}" for m in facts[:4]]
+    lines += [f"- open flare {m.meta.get('audit_id')} [{m.meta.get('severity')}]: {m.text}" for m in flares]
+    lines += [f"- {'rule' if m.source == 'explicit' else m.category}: {m.text}" for m in facts]
     if flares:
         lines.append("Address or explicitly defer each open flare; a bug you fix here is filed fixed via cosmos_flare, without asking.")
     return "\n".join(lines)

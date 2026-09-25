@@ -213,6 +213,10 @@ def cmd_eval(a) -> int:
     if not r["cases"]:
         print(col("·", "d"), "no facts with evidence yet — nothing to measure"); return 0
     print(col("recall@%d" % r["k"], "B"), f"{r['recall_at_k']:.3f} over {r['cases']} cases · by file {r['by_kind']['file']} · by question {r['by_kind']['question']}")
+    from .eval import run_edits
+    ed = run_edits(cfg)
+    if ed["cases"]:
+        print(col("before an edit", "B"), f"{ed['hit_rate']:.3f} over {ed['cases']} edits: the fact about the code being changed is among those shown")
     for mid, q in r["misses"][:a.show]:
         print(col("  miss", "y"), f"{mid} ← {q[:100]}")
     return 0
