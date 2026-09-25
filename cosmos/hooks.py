@@ -70,7 +70,8 @@ def capture(cfg: Config, event: Dict[str, Any], agent: str = "claude") -> int:
                      and gc.get("enabled", True) and any(_code_file(f, gc) for t in turns for f in t.files))
         if not reflected:
             _reader.register_window(state, Path(tp), sid, agent, state.offset(f"{agent}:{sid}" if agent != "claude" else sid), new_off, event.get("since_days"))
-        obs = [o for o in extract(turns, float(cfg.get("capture.min_score", 0.5)), 10_000) if o.source == "explicit"]
+        # only what the person marked (remember: / rule: / flare:) is a rule now; the model reads the rest in context
+        obs = [o for o in extract(turns, float(cfg.get("capture.min_score", 0.5)), 10_000, imperatives=False) if o.source == "explicit"]
     else:
         obs = extract(turns, float(cfg.get("capture.min_score", 0.5)), int(cfg.get("capture.max_per_batch", 40)))
     author = git_author(root) if cfg.get("privacy.author", "git") == "git" else "anonymous"

@@ -18,7 +18,9 @@ from .config import Config
 BRANCH = "cosmos"
 IGNORE = "state/\n__pycache__/\n*.pyc\n"
 # append-only files: when two branches that both wrote to them are merged, keep both sides' lines instead of a conflict
-ATTRIBUTES = "observations/*.jsonl merge=union\nledger/journal/*.md merge=union\nledger/log.md merge=union\n"
+ATTRIBUTES = ("observations/*.jsonl merge=union\nledger/journal/*.md merge=union\nledger/log.md merge=union\n"
+              # generated pages: a merge keeps both sides and the next dream rewrites them whole
+              "ledger/_index.md merge=union\nledger/index.md merge=union\nledger/lanes/*.md merge=union\nledger/atlas/services/*.md merge=union\n")
 AUTHOR = ["-c", "user.name=cosmos", "-c", "user.email=cosmos@users.noreply.github.com"]
 
 

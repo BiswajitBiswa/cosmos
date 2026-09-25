@@ -55,6 +55,12 @@ class DreamReport:
     review_comments: int = 0
     recall_at_5: Optional[float] = None
 
+    def changed(self) -> bool:
+        """Whether this dream changed the team memory (an idle dream writes nothing, so it commits nothing)."""
+        return bool(self.new or self.merged or self.contradictions or self.superseded or self.stale or self.revived
+                    or self.dropped or self.recurated or self.journal_entries or self.windows_read or self.auto_memory_notes
+                    or self.flares_closed or self.verified or self.retired or self.git_commits or self.review_comments)
+
     def to_dict(self) -> Dict:
         return {"new": [{"id": m.id, "text": m.text, "category": m.category} for m in self.new],
                 "merged": [{"text": t, "into": i} for t, i in self.merged],
@@ -186,6 +192,14 @@ def _files_exist(root, files: List[str]) -> Optional[bool]:
     return any(f in tracked or f.lstrip("./") in tracked for f in files)
 
 
+_MARKUP = re.compile(r"</?(?:parameter|invoke|antml|function_calls)[^>]*>")
+
+
+def _clean_text(t) -> str:
+    """One line of fact text: whitespace collapsed, and anything after leaked tool-call markup dropped."""
+    return " ".join(_MARKUP.split(str(t or ""))[0].split())
+
+
 def _present_in_repo(root, idents: List[str]) -> Set[str]:
     """Which of these identifiers appear anywhere in the repository (any worktree), in one git grep per worktree."""
     if not idents:
@@ -198,10 +212,14 @@ def _present_in_repo(root, idents: List[str]) -> Set[str]:
     try:
         for wt in worktrees(root):
             try:
-                out = subprocess.run(["git", "grep", "-h", "-o", "-I", "-F", "-f", pat], cwd=wt, capture_output=True, text=True, timeout=60).stdout
-                found.update(l.strip() for l in out.splitlines() if l.strip())
+                # the ledger names every identifier it knows: searching it would confirm a fact by itself (and is slow)
+                r = subprocess.run(["git", "grep", "-h", "-o", "-I", "-F", "-f", pat, "--", ".", ":(exclude).cosmos"],
+                                   cwd=wt, capture_output=True, text=True, timeout=60)
+                if r.returncode not in (0, 1):
+                    return set(idents)                    # the search failed: unknown is not absent
+                found.update(l.strip() for l in r.stdout.splitlines() if l.strip())
             except Exception:
-                continue
+                return set(idents)
             if found >= set(idents):
                 break
     finally:
@@ -298,7 +316,7 @@ def dream(cfg: Config, use_llm: Optional[bool] = None, verbose: bool = False, re
     for o in pending:
         if o.get("kind") == "journal" and not o.get("curated"):
             continue   # raw work log without a model's rewrite is not a fact
-        text = " ".join(str(o.get("text", "")).split())
+        text = _clean_text(o.get("text", ""))
         if len(text) < 12:
             continue
         otoks = tokens(text)
@@ -476,14 +494,15 @@ def dream(cfg: Config, use_llm: Optional[bool] = None, verbose: bool = False, re
         pass
     _okf_conform(cfg)
     _persist_run(cfg, report, started)
-    try:   # OKF log.md: chronological history of the bundle, newest first
-        lp = cfg.paths.ledger / "log.md"
-        old = lp.read_text() if lp.exists() else "# Log\n\n"
-        entry = f"## {t}\n\n**Update**: {report.summary()[:300]}\n\n"
-        body = old.split("\n", 2)[2] if old.startswith("# Log") else old
-        lp.write_text("# Log\n\n" + entry + body)
-    except Exception:
-        pass
+    if report.changed():   # OKF log.md: chronological history of the bundle, newest first (idle dreams leave no entry)
+        try:
+            lp = cfg.paths.ledger / "log.md"
+            old = lp.read_text() if lp.exists() else "# Log\n\n"
+            entry = f"## {t}\n\n**Update**: {report.summary()[:300]}\n\n"
+            body = old.split("\n", 2)[2] if old.startswith("# Log") else old
+            lp.write_text("# Log\n\n" + entry + body)
+        except Exception:
+            pass
     try:   # the Atlas deep pass: the model follows the /atlas prompt in the background when the map is missing or has moved
         if want_llm is not False:
             from .atlas import deep_due, run_deep
@@ -631,7 +650,7 @@ def _llm_curate(prov, cfg: Config, pending: List[Dict], mems: Dict[str, Memory],
             if not a.get("keep", True):
                 dropped += 1
                 continue
-            text = " ".join(str(a.get("text") or o.get("text", "")).split())
+            text = _clean_text(a.get("text") or o.get("text", ""))
             if 12 <= len(text) <= 400:
                 o["text"] = text
             if a.get("category") in ("architecture", "decision", "convention", "constraint", "bug", "dependency", "workflow", "domain", "rejected"):
@@ -693,7 +712,7 @@ def _llm_verify_stale(prov, cfg: Config, facts: List[Memory], t: str, verbose: b
             v = a.get("verdict")
             if v == "still_true":
                 m.status, m.updated, m.last_verified = "active", t, t
-                text = " ".join(str(a.get("text") or "").split())
+                text = _clean_text(a.get("text") or "")
                 if 12 <= len(text) <= 400:
                     m.text = text
                 m.meta["verified"] = f"llm:{t}"
@@ -732,7 +751,7 @@ def _llm_recurate(prov, cfg: Config, facts: List[Memory], mems: Dict[str, Memory
                 m.reason = "Retired by LLM curation on " + t + (f": {a.get('why_dropped')}" if a.get("why_dropped") else "")
                 dropped += 1
                 continue
-            text = " ".join(str(a.get("text") or m.text).split())
+            text = _clean_text(a.get("text") or m.text)
             if 12 <= len(text) <= 400:
                 m.text = text
             if a.get("category") in ("architecture", "decision", "convention", "constraint", "bug", "dependency", "workflow", "domain", "rejected"):

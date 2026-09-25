@@ -189,8 +189,10 @@ class Memory:
         body = m.group(2)
         title = re.search(r"^# (.+)$", body, re.M)
         reason = ""
-        for line in body.splitlines():
-            if line.startswith("- ") and not line.startswith(("- Observed", "- Evidence file", "- Supersedes", "- Superseded", "- Contradicts", "- [[")):
+        why = re.search(r"^## Why we believe this\n(.*?)(?=^## |^#\w|\Z)", body, re.M | re.S)
+        for line in (why.group(1) if why else "").splitlines():
+            if line.startswith("- ") and not line.startswith(("- Observed", "- Evidence file", "- Supersedes", "- Superseded", "- Contradicts", "- [[")) \
+                    and not re.match(r"- (lane|supersedes|superseded by|contradicts|related): \[", line):   # a link a save once copied here
                 reason = line[2:].strip()
                 break
         if not title or "id" not in fm:

@@ -577,6 +577,43 @@ class TestInBranchLedger(unittest.TestCase):
             self.assertFalse(sync.commit_inline(r.root, "cosmos: x"))
 
 
+class TestBranchFriendly(unittest.TestCase):
+    def _commit_all(self, r):
+        from cosmos.sync import write_inline_files
+        write_inline_files(r.root)
+        subprocess.run(["git", "add", "-A"], cwd=r.root, check=True)
+        # authored as cosmos: git history from cosmos itself is not new work for the next dream
+        subprocess.run(["git", "-c", "user.email=cosmos@users.noreply.github.com", "-c", "user.name=cosmos", "commit", "-q", "-m", "x"], cwd=r.root, check=True)
+
+    def test_an_idle_dream_changes_no_file(self):
+        with Repo() as r:
+            Ledger(r.cfg.paths).save(Memory(id="mem_id1", text="Locks use `acquireLock` in src/redis-lock.ts", category="constraint", files=["src/redis-lock.ts"]))
+            (r.root / "src" / "redis-lock.ts").write_text("export function acquireLock() {}\n")
+            dream(r.cfg, use_llm=False)
+            self._commit_all(r)
+            dream(r.cfg, use_llm=False)
+            dirty = subprocess.run(["git", "status", "--porcelain"], cwd=r.root, capture_output=True, text=True).stdout
+            self.assertEqual(dirty.strip(), "", "nothing to commit after a dream with nothing new")
+
+    def test_identifiers_named_only_in_the_ledger_do_not_count_as_present(self):
+        from cosmos.dream import _present_in_repo
+        with Repo() as r:
+            (r.root / "src" / "api.py").write_text("from services.db_service import session\n")
+            Ledger(r.cfg.paths).save(Memory(id="mem_id2", text="`ghost_helper` builds sessions", category="architecture"))
+            self._commit_all(r)
+            self.assertEqual(_present_in_repo(r.root, ["db_service", "ghost_helper"]), {"db_service"})
+
+    def test_pasted_prompts_are_not_team_rules(self):
+        from cosmos.extract import extract_from_turn
+        from cosmos.transcript import Turn
+        pasted = Turn(role="user", text="You are a senior QA engineer. Never report style issues. Do not mechanically test every edge case.")
+        self.assertEqual(extract_from_turn(pasted), [])
+        typed = Turn(role="user", text="Never call the database from a controller.")
+        self.assertEqual([o.source for o in extract_from_turn(typed)], ["explicit"])
+        self.assertEqual(extract_from_turn(typed, imperatives=False), [], "with a model, only remember:/rule: are instant rules")
+        self.assertEqual([o.source for o in extract_from_turn(Turn(role="user", text="rule: never call the database from a controller"), imperatives=False)], ["explicit"])
+
+
 class TestAudit(unittest.TestCase):
     FINDINGS = [
         {"id": "11", "severity": "critical", "title": "Review chain bypassable via `transition_lookup_to_stage`", "area": "Reviews",

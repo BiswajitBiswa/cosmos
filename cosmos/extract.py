@@ -43,6 +43,8 @@ SESSION_PAST = re.compile(r"\b(was|were|got|has been|have been|is now|are now|al
 SPECIFIC = re.compile(r"(`[^`]+`|[\w\-/]+\.(py|ts|tsx|js|kt|java|go|rs|rb|md|json|ya?ml|toml|sql|sh)\b|\b[A-Z][a-z]+[A-Z]\w+\b|\b\w+_\w+\b|\b(Redis|Postgres|PostgreSQL|Kafka|Snowflake|ClickHouse|Mongo\w*|Docker|Kubernetes|Stripe|Authentik|GraphQL|gRPC|REST|S3|SQS|Lambda)\b|/[\w\-]+/[\w\-]+)")
 
 EXPLICIT_RULE = re.compile(r"^\s*(remember|cosmos|rule|convention|note to memory|finding|flare)\s*:\s*(.+)$", re.I | re.S)
+# user-role text a person did not type as a rule: role prompts they pasted, text the agent injected
+INJECTED = re.compile(r"^\s*(you are (a|an|the)\b|act as\b|base directory for this skill|this session is being continued|caveat:|\[image|#+ |---)", re.I)
 IMPERATIVE_RULE = re.compile(r"^\s*(always|never|do not|don't|from now on|going forward)\b", re.I)
 
 MAX_LEN = 320
@@ -103,7 +105,7 @@ def classify(sentence: str) -> Tuple[float, Optional[str], List[str]]:
     return min(score, 1.0), cat, names
 
 
-def extract_from_turn(turn: Turn, prev_files: Optional[List[str]] = None, min_score: float = 0.5) -> List[Observation]:
+def extract_from_turn(turn: Turn, prev_files: Optional[List[str]] = None, min_score: float = 0.5, imperatives: bool = True) -> List[Observation]:
     obs: List[Observation] = []
     files = list(dict.fromkeys((turn.files or []) + (prev_files or [])))[:6]
 
@@ -119,8 +121,8 @@ def extract_from_turn(turn: Turn, prev_files: Optional[List[str]] = None, min_sc
                     cat = "finding"
                 obs.append(Observation(body, cat or "convention", 0.95, "explicit", files, sig, turn.uuid))
             return obs
-        if len(raw) > 1200 or "<" in raw and ">" in raw:
-            return obs    # a pasted document / injected tool text, not a developer stating a rule
+        if not imperatives or len(raw) > 1200 or "<" in raw and ">" in raw or INJECTED.match(raw):
+            return obs    # a pasted prompt, a skill, a continuation summary: not a developer stating a team rule
         for s in split_sentences(clean_markdown(raw)):
             if IMPERATIVE_RULE.match(s) and MIN_LEN <= len(s) <= MAX_LEN:
                 _, cat, sig = classify(s)
@@ -150,11 +152,11 @@ def extract_from_turn(turn: Turn, prev_files: Optional[List[str]] = None, min_sc
     return obs
 
 
-def extract(turns: List[Turn], min_score: float = 0.5, max_per_batch: int = 40) -> List[Observation]:
+def extract(turns: List[Turn], min_score: float = 0.5, max_per_batch: int = 40, imperatives: bool = True) -> List[Observation]:
     out: List[Observation] = []
     prev_files: List[str] = []
     for t in turns:
-        out.extend(extract_from_turn(t, prev_files, min_score))
+        out.extend(extract_from_turn(t, prev_files, min_score, imperatives))
         if t.files:
             prev_files = t.files
     explicit = [o for o in out if o.source == "explicit"]
