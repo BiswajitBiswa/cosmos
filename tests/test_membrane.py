@@ -685,6 +685,34 @@ class TestExcel(unittest.TestCase):
             self.assertTrue(zipfile.is_zipfile(r.root / "f.xlsx"))
 
 
+class TestConcurrentSaves(unittest.TestCase):
+    """A dream (or any long-running process) loads the ledger, another session changes a flare meanwhile, then the
+    first one saves everything: the other session's change must survive (seen in RETEN: ~50 pr_open flares reverted)."""
+    def test_a_stale_whole_ledger_save_keeps_the_newer_lifecycle(self):
+        from cosmos.audit import set_status
+        with Repo() as r:
+            L = Ledger(r.cfg.paths)
+            L.save_all([Memory(id="mem_fl1", text="Wallet charge accepts negative amounts", category="finding",
+                               meta={"audit_id": "DEV-1", "severity": "high", "finding_status": "claimed"}),
+                        Memory(id="mem_fl2", text="Opt-out ignored on bulk send", category="finding",
+                               meta={"audit_id": "DEV-2", "severity": "high", "finding_status": "open"}),
+                        Memory(id="mem_fa1", text="Locks use Redis", category="constraint")])
+            dream_view = Ledger(r.cfg.paths).load()                        # the dream starts
+            other = Ledger(r.cfg.paths).load()                             # another session, meanwhile
+            set_status(r.cfg, other["mem_fl1"], "pr_open", "PR 12", commit="a1a38124", branch="qa/fixes")
+            set_status(r.cfg, other["mem_fl2"], "claimed", "on it")
+            dream_view["mem_fl2"].lane = "messaging"                       # the dream changes something else on fl2
+            dream_view["mem_fa1"].evidence_count += 1                      # and a note nobody else touched
+            Ledger(r.cfg.paths).save_all(dream_view.values())              # the dream ends
+            now = Ledger(r.cfg.paths).load()
+            self.assertEqual((now["mem_fl1"].meta["finding_status"], now["mem_fl1"].meta["pr_open_commit"]), ("pr_open", "a1a38124"))
+            self.assertEqual((now["mem_fl2"].meta["finding_status"], now["mem_fl2"].lane), ("claimed", "messaging"), "both changes kept")
+            self.assertEqual(now["mem_fa1"].evidence_count, 2)
+            now["mem_fl1"].meta["finding_status"] = "fixed"                # a later change by the loader itself still saves
+            Ledger(r.cfg.paths).save_all(now.values())
+            self.assertEqual(Ledger(r.cfg.paths).load()["mem_fl1"].meta["finding_status"], "fixed")
+
+
 class TestDoctorEntrypoints(unittest.TestCase):
     def test_a_launcher_left_by_another_python_is_named_with_its_fix(self):
         from cosmos.cli import entrypoints
