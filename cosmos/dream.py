@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import json
 import re
+from collections import defaultdict
 from dataclasses import dataclass, field
 from datetime import date
 from typing import Dict, List, Optional, Set, Tuple
@@ -137,6 +138,37 @@ def looks_contradictory(a: Memory, b: Memory) -> bool:
 
 
 _IDENT = re.compile(r"`([A-Za-z_][A-Za-z0-9_./-]{4,})`|\b([A-Za-z_]*[a-z][A-Za-z0-9]*_[A-Za-z0-9_]{2,}|[A-Z_]{2,}[A-Z0-9_]{4,}|[a-z]+[A-Z][A-Za-z0-9]{3,})\b")
+
+
+def named_identifiers(m: Memory) -> List[str]:
+    """The code identifiers a fact names (snake_case, CONSTANTS, camelCase, backticked), five characters or more."""
+    names: List[str] = []
+    for a, b in _IDENT.findall(m.text):
+        n = (a or b).strip()
+        if n and n not in names and "/" not in n and "." not in n.strip(".") and len(n) >= 5:
+            names.append(n)
+    return names
+
+
+def rename_targets(root) -> Dict[str, Set[str]]:
+    """Old path → every place git history moved it to (each chain of renames followed to its end). More than one
+    place means the history split (a file copied or moved differently on two branches): ambiguous."""
+    import subprocess
+    moves: Dict[str, Set[str]] = defaultdict(set)
+    try:
+        out = subprocess.run(["git", "log", "--all", "-M", "--diff-filter=R", "--name-status", "--format="],
+                             cwd=root, capture_output=True, text=True, timeout=60).stdout
+    except (OSError, subprocess.SubprocessError):
+        return {}
+    for line in out.splitlines():
+        p = line.split("\t")
+        if len(p) == 3 and p[0].startswith("R"):
+            moves[p[1]].add(p[2])
+    def ends(f: str, seen: Set[str]) -> Set[str]:
+        if f not in moves or f in seen:
+            return {f}
+        return set().union(*(ends(n, seen | {f}) for n in moves[f]))
+    return {old: ends(old, set()) - {old} for old in moves}
 
 
 def _missing_identifiers(root, m: Memory) -> List[str]:

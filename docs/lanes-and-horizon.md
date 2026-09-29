@@ -37,8 +37,15 @@ The result is saved as `.cosmos/ledger/horizon/<date>-<slug>.md` — reviewable 
 ## Lane aliases
 
 Lanes named by the model drift into near-duplicates (`deploy`, `deploy-config`, `deployment-config`). Fold them in
-`.cosmos/config.json`; exact names or globs, applied to every fact at the next dream and to the lane report at once:
+`.cosmos/config.json` (`lane_aliases`, also read as `lanes_alias`); exact names first, then globs. The lane report,
+`cosmos lanes`, the MCP `cosmos_lanes` tool and the lane pages under `ledger/lanes/` use the canonical name at once
+(an alias has no page of its own); every fact is re-filed at the next dream:
 
 ```json
 "lane_aliases": {"deploy": "deployment", "deploy-config": "deployment", "chat-*": "ask-reten", "loyalty": "rewards-loyalty"}
 ```
+
+`cosmos lanes --propose` lists near-duplicates it can see — one name's words (each cut to six letters, so *deploy* and
+*deployment* match) are the leading words of another's — folded into the lane with the most facts; `--write` saves
+them with the lanes, keeping any alias the team already wrote. Siblings that only share a first word (`audit-api`,
+`audit-cost`) are left apart: they are separate lanes on purpose.

@@ -61,6 +61,9 @@ reconciled by the next dream.
 ## Evidence that moved
 
 A dream follows git's renames for a fact whose files are gone. `cosmos review --repoint` does it for every stale fact
-at once, including ones flagged before the rename was followed: it prints what it would change, and with `--yes` brings
-a fact back only when its files exist again and every identifier it names is still in the code. Doubts about age are
-never cleared this way.
+at once, including ones flagged before the rename was followed. Each missing file is looked up in git's rename history
+(all branches, chains followed to the end), then in the tree by name. It reports three counts: **repointed** (files
+rewritten; *verified* when every identifier the fact names is found in the files at the new path, which brings the
+fact back), **still stale** (no new place, or an identifier is not there) and **ambiguous** (the file went to more
+than one place, e.g. renamed differently on two branches — left for a human). A dry run until `--yes`; doubts about age
+are never cleared this way.
