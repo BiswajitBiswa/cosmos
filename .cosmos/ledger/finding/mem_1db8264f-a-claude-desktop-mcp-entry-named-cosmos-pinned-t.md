@@ -24,12 +24,16 @@ tags: ["finding", "medium"]
 authors: ["Biswajit Tripathy"]
 valid_from: "2026-09-29"
 meta_audit_id: "DEV-desktop-mcp-pinned"
-meta_finding_status: "open"
+meta_finding_status: "fixed"
+meta_fixed_commit: "0c11381"
+meta_fixed_on: "2026-09-29"
 meta_found_commit: "3f80c40"
 meta_locations: "`cosmos/cli.py:302`"
 meta_raw_id: "desktop-mcp-pinned"
 meta_severity: "medium"
 meta_source_doc: "session-2026-09-29"
+meta_status_at: "2026-09-29"
+meta_status_note: "desktop entry renamed cosmos-retent on this machine; doctor names a pinned entry; connect advises cosmos-<repo>"
 ---
 
 # A Claude Desktop MCP entry named cosmos pinned to one repo sends every Desktop session's cosmos_remember/cosmos_flare to that repo's ledger
@@ -44,7 +48,7 @@ meta_source_doc: "session-2026-09-29"
 ## Why we believe this
 - Observed 1× (first 2026-09-29, last 2026-09-29); source: explicit
 - Evidence file: `cosmos/cli.py`
-- Imported from session-2026-09-29 on 2026-09-29
+- Marked fixed on 2026-09-29: desktop entry renamed cosmos-retent on this machine; doctor names a pinned entry; connect advises cosmos-<repo>
 
 ## Related
 - [[mem_498078e0]]

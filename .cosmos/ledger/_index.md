@@ -7,7 +7,7 @@ tags: ["cosmos", "moc"]
 
 # Ledger index
 
-21 memories · 19 active · 0 contradicted · 1 stale candidates · 4 lanes
+22 memories · 20 active · 0 contradicted · 1 stale candidates · 4 lanes
 
 Charter: [[charter]] · Atlas: [[inventory]] · [[containers]] · [[deployment]] · [[api]]
 
@@ -42,6 +42,7 @@ Charter: [[charter]] · Atlas: [[inventory]] · [[containers]] · [[deployment]]
 - [[mem_6381abbc-cosmos-is-stdlib-only-the-anthropic-sdk-is-an-op|cosmos is stdlib-only; the anthropic SDK is an optional extra and every feature must work without it.]]
 ### Finding
 - [[mem_ac19fa4c-a-whole-ledger-save-from-a-process-that-loaded-e|A whole-ledger save from a process that loaded earlier (a dream, the console, an MCP call) wrote every note back and reverted flare lifecycle changes made meanwhile]]
+- [[mem_f2ac4098-a-token-pasted-in-a-prompt-was-written-verbatim|A token pasted in a prompt was written verbatim into the journal (`ask`) and the live view, and committed with .cosmos]]
 
 ## Lane · plugin
 ### Constraint
