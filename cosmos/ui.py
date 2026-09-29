@@ -817,7 +817,7 @@ function horizon(){
     <div class="tl" style="margin:16px 0 8px">brief · optional</div>
     <textarea id="inb" rows="6" placeholder="Paste the PRD, ticket, Slack thread or acceptance criteria here…" style="width:100%;resize:vertical"></textarea>
     <div class="tl" style="margin:16px 0 8px">documents · optional</div>
-    <div class="drop" id="drop"><input type="file" id="infile" multiple style="display:none"><svg viewBox="0 0 24 24">${XI.imp}</svg><div>Drop files here or <a href="#" id="pickfiles" style="color:var(--acc)">browse</a><div class="small dim">specs, notes, exports — text is read in your browser and saved with the intake; nothing is uploaded anywhere else</div></div></div>
+    <div class="drop" id="drop"><input type="file" id="infile" multiple style="display:none"><svg viewBox="0 0 24 24">${XI.imp}</svg><div>Drop files here or <a href="#" id="pickfiles" style="color:var(--acc)">browse</a><div class="small dim">specs, notes, exports — text is read in your browser and saved with the horizon note; nothing is uploaded anywhere else</div></div></div>
     <div id="attlist" class="chips" style="margin-top:8px">${attached.map((a,i)=>`<span class="chip on" data-rm="${i}">${esc(a.name)} · ${Math.round(a.text.length/1000)}k ✕</span>`).join('')}</div>
    </div>
    <div class="ifcol">
@@ -828,7 +828,7 @@ function horizon(){
    </div>
   </div>
   <div class="row" style="margin:14px 0 24px"><button class="btn primary" id="mapit">Map it</button><span class="small dim" id="mapnote">${S.charter?'the model will write an impact assessment from what it finds':''}</span></div>
-  <div class="${cur?'split':''}"><div>${I.map(x=>`<div class="intk" data-intake="${esc(x.file)}"><b>${esc(x.title)}</b><div class="small dim">${x.created} · lanes ${esc(x.lanes)}</div></div>`).join('')||'<div class="empty">No intakes yet.</div>'}</div>
+  <div class="${cur?'split':''}"><div>${I.map(x=>`<div class="intk" data-intake="${esc(x.file)}"><b>${esc(x.title)}</b><div class="small dim">${x.created} · lanes ${esc(x.lanes)}</div></div>`).join('')||'<div class="empty">No horizon notes yet.</div>'}</div>
   ${cur?`<div class="card sticky mdtxt"><div class="row" style="justify-content:space-between"><b>${esc(cur.title)}</b><button class="btn sm" data-close>✕</button></div>${mdlite(cur.body.replace(/^---[\s\S]*?---\n/,''))}</div>`:''}</div>`;
  // repo browser
  async function showTree(rel){pickPath=rel;const items=await tree(rel);const parts=rel?rel.split('/'):[];
@@ -1045,9 +1045,10 @@ cosmos gate            # effective rules
 cosmos gate --transcript ~/.claude/projects/&lt;repo&gt;/&lt;session&gt;.jsonl   # dry run</pre>`],
  ['atlas','7 · Atlas & Lanes',`
   <p><b>Atlas</b> — architecture generated from the repository: manifests, docker-compose, k8s, Terraform, OpenAPI, <code>.env.example</code>, README → inventory, containers and deployment diagrams (Mermaid), API surface. Every source is hashed; when the code moves and the picture does not, everyone sees <i>drift</i> at SessionStart, in dreams and on the Atlas page. <code>/atlas</code> in Claude Code runs the deeper LLM pass (dependency index, data flows, proposed lanes).</p>
-  <p><b>Lanes</b> — every fact, finding and diagram is filed under the feature/module it belongs to, inferred from its files (or configured in <code>config.json → lanes</code>). The Lanes page shows facts, open findings and the people active in each lane over the last 30 days, and flags overlap.</p>
+  <p><b>Lanes</b> — every fact, finding and diagram is filed under the feature/module it belongs to, inferred from its files (or configured in <code>config.json → lanes</code>). The Lanes page shows facts, open findings and the people active in each lane over the last 30 days, and flags overlap. Near-duplicate names (<code>deploy</code>, <code>deploy-config</code>, <code>deployment</code>) fold into one with <code>lane_aliases</code> in <code>config.json</code> — the lane pages, this page and <code>cosmos_lanes</code> use the canonical name; <code>cosmos lanes --propose</code> suggests the aliases. The Atlas also reads routes declared in code (FastAPI, Flask, Express) when there is no OpenAPI spec, and draws every diagram of a document; one Mermaid cannot parse is shown as text with its error.</p>
   <pre>cosmos atlas            # build · cosmos atlas --check   # drift
-cosmos lanes [--days 30]</pre>`],
+cosmos lanes [--days 30] · cosmos lanes --propose [--write]
+cosmos review --repoint [--yes]   # stale facts whose files moved</pre>`],
  ['horizon','8 · Horizon',`
   <p>A feature enters with a map, not a Slack message. <code>cosmos horizon "bulk invite with partial success" -f path/hint.py</code> answers, from what the repo already knows: lanes touched (with overlap warnings), recorded decisions it collides with, open flares in the way, who has been working there, a suggested owner. Saved under <code>.cosmos/ledger/horizon/</code> so the PR that implements the feature carries its own impact note.</p>`],
  ['approve','9 · Verdicts (the human gate)',`
@@ -1108,7 +1109,7 @@ cosmos obsidian --vault ~/Obsidian/Team  # link several repos' ledgers into one 
   <p class="small dim">Teammates without an install: prefix with <code>.cosmos/cosmosw</code>, e.g. <code>.cosmos/cosmosw status</code>. <code>ModuleNotFoundError: No module named 'cosmos'</code> means the first <code>cosmos</code> on PATH belongs to another Python: <code>python3 .cosmos/cosmosw doctor</code> names it and the fix. <code>COSMOS_NO_PUSH=1</code> stops every push cosmos could make.</p>`],
  ['config','13 · Configuration & layout',`
   <pre>${esc(JSON.stringify(S.config,null,2))}</pre>
-  <p><code>.cosmos/config.json</code> — committed. Notable keys: <code>capture.min_score</code> (extraction threshold), <code>privacy.author</code> (<i>git</i> | <i>anonymous</i>), <code>retrieval.session_start_max</code> / <code>prompt_max</code>, <code>dream.staleness_days</code> per category, <code>ignore</code> globs (facts anchored only on ignored paths are dropped).</p>
+  <p><code>.cosmos/config.json</code> — committed. Notable keys: <code>capture.min_score</code> (extraction threshold), <code>privacy.author</code> (<i>git</i> | <i>anonymous</i>), <code>retrieval.session_start_max</code> / <code>prompt_max</code>, <code>dream.staleness_days</code> per category, <code>ignore</code> globs (facts anchored only on ignored paths are dropped), <code>lanes</code> (lane → path globs), <code>lane_aliases</code> (near-duplicate lane → canonical; <code>cosmos lanes --propose</code> suggests them), <code>flares.stages</code> / <code>flares.stage</code> / <code>flares.project</code> / <code>flares.prefix</code> (flare ids by lifecycle stage), <code>playbooks.ignore</code> / <code>playbooks.paths</code>.</p>
   <pre>.cosmos/
   config.json          committed
   cosmosw            wrapper (committed) · vendor/ vendored copy
