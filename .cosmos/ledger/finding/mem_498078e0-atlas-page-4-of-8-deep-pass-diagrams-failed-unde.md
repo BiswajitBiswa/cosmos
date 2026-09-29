@@ -6,9 +6,11 @@ status: "stable"
 generated: {"by": "human:Biswajit Tripathy", "at": "2026-09-29T00:00:00Z"}
 sources: [{"resource": "cosmos/ui.py", "title": "ui.py"}, {"resource": "cosmos/atlas.py", "title": "atlas.py"}]
 stale_after: "2027-03-28T00:00:00Z"
+links: ["/lanes/cosmos.md", "/finding/mem_10ab2ec4-console-docs-said-horizon-notes-are-saved-in-cos.md", "/finding/mem_1db8264f-a-claude-desktop-mcp-entry-named-cosmos-pinned-t.md", "/finding/mem_5790a327-cosmos-connect-with-no-agent-argument-failed-arg.md", "/finding/mem_5b583e8d-cosmosw-always-prefers-an-installed-cosmos-over.md", "/finding/mem_9391c461-atlas-reported-0-endpoints-for-apps-without-an-o.md"]
 id: "mem_498078e0"
 aliases: ["mem_498078e0"]
 category: "finding"
+lane: "cosmos"
 cosmos_status: "active"
 confidence: 0.9
 importance: 0.65
@@ -43,5 +45,20 @@ meta_source_doc: "session-2026-09-29"
 - Evidence file: `cosmos/ui.py`
 - Evidence file: `cosmos/atlas.py`
 - Imported from session-2026-09-29 on 2026-09-29
+
+## Related
+- [[mem_10ab2ec4]]
+- [[mem_1db8264f]]
+- [[mem_5790a327]]
+- [[mem_5b583e8d]]
+- [[mem_9391c461]]
+
+## Links
+- lane: [cosmos](/lanes/cosmos.md)
+- related: [mem_10ab2ec4](/finding/mem_10ab2ec4-console-docs-said-horizon-notes-are-saved-in-cos.md)
+- related: [mem_1db8264f](/finding/mem_1db8264f-a-claude-desktop-mcp-entry-named-cosmos-pinned-t.md)
+- related: [mem_5790a327](/finding/mem_5790a327-cosmos-connect-with-no-agent-argument-failed-arg.md)
+- related: [mem_5b583e8d](/finding/mem_5b583e8d-cosmosw-always-prefers-an-installed-cosmos-over.md)
+- related: [mem_9391c461](/finding/mem_9391c461-atlas-reported-0-endpoints-for-apps-without-an-o.md)
 
 #finding #medium #console

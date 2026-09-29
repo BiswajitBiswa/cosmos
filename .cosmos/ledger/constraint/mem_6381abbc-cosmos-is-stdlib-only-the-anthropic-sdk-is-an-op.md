@@ -6,7 +6,7 @@ status: "stable"
 generated: {"by": "human:Biswajit Tripathy", "at": "2026-09-21T00:00:00Z"}
 sources: [{"resource": "pyproject.toml", "title": "pyproject.toml"}]
 stale_after: "2027-03-20T00:00:00Z"
-links: ["/constraint/mem_62468362-cosmos-dev-is-not-published-on-pypi-404-on-2026.md"]
+links: ["/constraint/mem_2518367d-cosmos-is-on-pypi-as-cosmos-dev-0-1-0-published.md", "/constraint/mem_62468362-cosmos-dev-is-not-published-on-pypi-404-on-2026.md"]
 id: "mem_6381abbc"
 aliases: ["mem_6381abbc"]
 category: "constraint"
@@ -33,7 +33,9 @@ valid_from: "2026-09-21"
 - Evidence file: `pyproject.toml`
 
 ## Related
+- [[mem_2518367d]]
 - [[mem_62468362]]
 
 ## Links
+- related: [mem_2518367d](/constraint/mem_2518367d-cosmos-is-on-pypi-as-cosmos-dev-0-1-0-published.md)
 - related: [mem_62468362](/constraint/mem_62468362-cosmos-dev-is-not-published-on-pypi-404-on-2026.md)
