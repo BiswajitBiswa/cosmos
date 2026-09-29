@@ -713,7 +713,91 @@ class TestConcurrentSaves(unittest.TestCase):
             self.assertEqual(Ledger(r.cfg.paths).load()["mem_fl1"].meta["finding_status"], "fixed")
 
 
+class TestPastedTokens(unittest.TestCase):
+    def test_a_token_pasted_in_a_prompt_never_reaches_the_journal_or_the_live_view(self):
+        from cosmos import privacy
+        from cosmos.watch import _summarise as live_entry
+        gh = "ghp_" + "Pt2RvmjHk1JZSTt724fk1cE4zFN1k83wkPDZ"[:36]
+        pypi = "pypi-" + "AgEIcHlwaS5vcmcCJDBjNWVkOTE0LTNjYjctNDE0ZC04OTMyLTcxNzBiZjEyNzNiYgACKlsz"
+        for tok in (gh, pypi, "npm_" + "a1B2c3D4e5F6g7H8i9J0k1L2m3N4o5P6q7R8"):
+            self.assertNotIn(tok, privacy.redact(f"below is a temp token {tok} use it")[0])
+        with Repo() as r:
+            t = r.transcript("t.jsonl", [_user(f"sync to main, here is a temp github pat {gh}"), _asst("pushed", files=[str(r.root / "src" / "redis-lock.ts")])])
+            r.capture(t, "s1")
+            self.assertNotIn(gh, "".join(p.read_text() for p in r.cfg.paths.observations.glob("*.jsonl")))
+            e = live_entry([Turn("user", f"use {pypi} to publish", [], [], "2026-09-29T10:00:00Z", "u1")], "s1", "claude", None)
+            self.assertNotIn(pypi, json.dumps(e))
+
+
+class TestWrapperPicksTheNewerCopy(unittest.TestCase):
+    def test_an_older_install_does_not_shadow_the_repositorys_copy(self):
+        from cosmos.wrapper import write_wrapper
+        with tempfile.TemporaryDirectory() as d:
+            d = Path(d)
+            def fake(where, version, label):
+                pkg = where / "cosmos"
+                pkg.mkdir(parents=True)
+                (pkg / "__init__.py").write_text(f'__version__ = "{version}"\n')
+                (pkg / "cli.py").write_text(f"def main():\n    print('{label}')\n    return 0\n")
+            repo = d / "repo"; (repo / ".cosmos").mkdir(parents=True)
+            w = write_wrapper(repo / ".cosmos")
+            fake(repo / ".cosmos" / "vendor", "0.1.2", "vendored")
+            def run(installed_version):
+                site = d / f"site-{installed_version}"
+                fake(site, installed_version, "installed")
+                env = {**os.environ, "PYTHONPATH": str(site)}
+                return subprocess.run([sys.executable, str(w), "status"], cwd=repo, capture_output=True, text=True, env=env).stdout.strip()
+            self.assertEqual(run("0.1.0"), "vendored", "a stale install loses to the newer vendored copy")
+            self.assertEqual(run("0.1.2"), "installed", "same version: the install (an editable checkout) wins")
+            self.assertEqual(run("0.2.0"), "installed")
+
+
+class TestLaneAliasesAndRepoint(unittest.TestCase):
+    def test_aliases_fold_lanes_and_moved_evidence_is_followed(self):
+        from cosmos.cli import main
+        from cosmos.lanes import assign_lanes, lane_report
+        with Repo() as r:
+            _git(r.root, "config", "user.email", "t@example.com")
+            (r.root / "src" / "deploy.py").write_text("def render_deploy():\n    return 1\n")
+            _git(r.root, "add", "-A"); _git(r.root, "commit", "-q", "-m", "one")
+            (r.root / "scripts").mkdir()
+            _git(r.root, "mv", "src/deploy.py", "scripts/render_deploy.py")
+            _git(r.root, "commit", "-q", "-m", "move")
+            data = json.loads(r.cfg.paths.config.read_text()); data["lane_aliases"] = {"deploy-config": "deployment", "chat-*": "ask-reten"}
+            r.cfg.paths.config.write_text(json.dumps(data))
+            cfg = load_config(r.root)
+            mems = {"mem_a": Memory(id="mem_a", text="Deploys go through `render_deploy`", category="workflow", files=["src/deploy.py"], lane="deploy-config",
+                                    status="stale-candidate", reason="Stale candidate since 2026-09-01: none of the evidence files exist anymore"),
+                    "mem_b": Memory(id="mem_b", text="Chat answers come from the NLQ parser", category="architecture", lane="chat-nlp", meta={"lane_by": "model"}),
+                    "mem_c": Memory(id="mem_c", text="Old `vanished_fn` does X", category="workflow", files=["src/gone.py"], status="stale-candidate")}
+            assign_lanes(mems, cfg)
+            self.assertEqual((mems["mem_a"].lane, mems["mem_b"].lane), ("deployment", "ask-reten"))
+            self.assertIn("ask-reten", [x["lane"] for x in lane_report(cfg, mems, [])])
+            Ledger(cfg.paths).save_all(mems.values())
+            cwd = os.getcwd(); os.chdir(r.root)
+            try:
+                self.assertEqual(main(["review", "--repoint"]), 0)
+                self.assertEqual(Ledger(cfg.paths).load()["mem_a"].status, "stale-candidate", "a dry run changes nothing")
+                self.assertEqual(main(["review", "--repoint", "--yes"]), 0)
+            finally:
+                os.chdir(cwd)
+            now = Ledger(cfg.paths).load()
+            self.assertEqual((now["mem_a"].status, now["mem_a"].files), ("active", ["scripts/render_deploy.py"]))
+            self.assertEqual(now["mem_c"].status, "stale-candidate", "nothing to follow: it stays for a human")
+
+
 class TestDoctorEntrypoints(unittest.TestCase):
+    def test_a_desktop_entry_named_cosmos_for_another_repo_is_named(self):
+        from cosmos.cli import desktop_pins
+        with Repo() as r, tempfile.TemporaryDirectory() as d:
+            conf = Path(d) / "claude_desktop_config.json"
+            conf.write_text(json.dumps({"mcpServers": {"cosmos": {"command": "python3", "args": ["/elsewhere/retent/.cosmos/cosmosw", "mcp"]}}}))
+            self.assertIn("/elsewhere/retent", desktop_pins(r.root, conf)[0])
+            conf.write_text(json.dumps({"mcpServers": {"cosmos-retent": {"command": "python3", "args": ["/elsewhere/retent/.cosmos/cosmosw", "mcp"]}}}))
+            self.assertEqual(desktop_pins(r.root, conf), [])
+            conf.write_text(json.dumps({"mcpServers": {"cosmos": {"command": "python3", "args": [str(r.root / ".cosmos" / "cosmosw"), "mcp"]}}}))
+            self.assertEqual(desktop_pins(r.root, conf), [], "pointing at this repository is fine")
+
     def test_a_launcher_left_by_another_python_is_named_with_its_fix(self):
         from cosmos.cli import entrypoints
         with tempfile.TemporaryDirectory() as d:

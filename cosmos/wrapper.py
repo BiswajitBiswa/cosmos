@@ -12,7 +12,7 @@ from pathlib import Path
 HOOK_CMD = ('d="${CLAUDE_PROJECT_DIR:-.}"; [ -f "$d/.cosmos/cosmosw" ] || d="$(dirname "$(git -C "$d" rev-parse --path-format=absolute '
             '--git-common-dir 2>/dev/null)")"; [ -f "$d/.cosmos/cosmosw" ] && exec python3 "$d/.cosmos/cosmosw" hook; exit 0')
 
-WRAPPER = '''#!/usr/bin/env python3
+WRAPPER = r'''#!/usr/bin/env python3
 """cosmosw - runs cosmos without requiring an install (see .cosmos/vendor). Committed on purpose."""
 import os, sys
 here = os.path.dirname(os.path.abspath(__file__))
@@ -20,10 +20,21 @@ repo = os.path.dirname(here)
 cwd = os.path.realpath(os.getcwd())
 if cwd != os.path.realpath(repo) and not cwd.startswith(os.path.realpath(repo) + os.sep):
     os.chdir(repo)  # started from elsewhere (Claude Desktop, Cowork, a cron): this wrapper belongs to this repository
+import importlib.util, re
+def _ver(init):
+    try:
+        m = re.search(r'__version__\s*=\s*["\']([^"\']+)', open(init).read())
+    except (OSError, TypeError):
+        return ()
+    return tuple(int(x) for x in re.findall(r"\d+", m.group(1))[:4]) if m else ()
+vendor = os.path.join(here, "vendor")
+spec = importlib.util.find_spec("cosmos")
+if _ver(os.path.join(vendor, "cosmos", "__init__.py")) > _ver(spec.origin if spec else None):
+    sys.path.insert(0, vendor)  # the repository's copy is newer than the installed one (or there is none): it wins
 try:
-    import cosmos  # installed version wins
+    import cosmos  # otherwise the installed version
 except ImportError:
-    sys.path.insert(0, os.path.join(here, "vendor"))
+    sys.path.insert(0, vendor)
     try:
         import cosmos  # vendored copy shipped with the repo
     except ImportError:

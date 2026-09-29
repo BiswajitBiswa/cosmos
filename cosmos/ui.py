@@ -1069,7 +1069,7 @@ cosmos obsidian --vault ~/Obsidian/Team  # link several repos' ledgers into one 
   <tr><td><code>cosmos ui</code> [<code>--static</code>] · <code>ledger --obsidian</code></td><td>this control room · read-only snapshot HTML · open the vault</td></tr>
   <tr><td><code>cosmos capture [--transcript F]</code></td><td>backfill from existing Claude transcripts of this repo</td></tr>
   <tr><td><code>cosmos dream [--llm|--no-llm]</code></td><td>consolidate observations into the ledger</td></tr>
-  <tr><td><code>cosmos review</code></td><td>list contradictions and stale candidates</td></tr>
+  <tr><td><code>cosmos review [--repoint [--yes]]</code></td><td>list contradictions and stale candidates · <code>--repoint</code>: stale facts whose files moved follow git's renames and come back when every identifier they name is still in the code (dry run until <code>--yes</code>)</td></tr>
   <tr><td><code>cosmos remember "…" [-c CAT] [-f FILE]</code></td><td>add an explicit rule (highest priority)</td></tr>
   <tr><td><code>cosmos why &lt;id|text&gt;</code> · <code>search &lt;q&gt; [-f FILE]</code></td><td>explain a fact · rank facts for a query / file</td></tr>
   <tr><td><code>cosmos verify ID [--resolve]</code> · <code>forget ID</code></td><td>mark verified (and supersede what it contradicts) · retire</td></tr>

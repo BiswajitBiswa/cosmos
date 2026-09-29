@@ -57,3 +57,10 @@ written over a newer file, and a note both changed keeps this process's fields (
 file's for everything else. A dream that ran for minutes therefore cannot put a flare that another session moved to
 `pr_open` back to `open`. Files merge by union in git for the append-only parts; a note edited on two branches is
 reconciled by the next dream.
+
+## Evidence that moved
+
+A dream follows git's renames for a fact whose files are gone. `cosmos review --repoint` does it for every stale fact
+at once, including ones flagged before the rename was followed: it prints what it would change, and with `--yes` brings
+a fact back only when its files exist again and every identifier it names is still in the code. Doubts about age are
+never cleared this way.

@@ -94,6 +94,7 @@ def capture(cfg: Config, event: Dict[str, Any], agent: str = "claude") -> int:
         if j:
             j["files"] = [f for f in j["files"] if not path_ignored(f, globs)]
             text, _ = redact(j["text"])
+            j["ask"] = redact(j.get("ask") or "")[0]          # the person's words, kept verbatim otherwise: a pasted token must not be
             j.update({"id": "obs_" + hashlib.sha1((text + sid + j["turn_uuid"] + (turns[0].timestamp or "")).encode()).hexdigest()[:10],
                       "text": text, "ts": now_iso(), "author": author, "agent": agent, "session": _session_tag(sid),
                       "commit": git_head(root), "event": event.get("hook_event_name", "")})
@@ -132,6 +133,7 @@ def backfill_journal(cfg: Config, path: Path, sid: str, agent: str = "claude") -
             continue                      # backfill keeps work, not every question ever asked
         j["files"] = [f for f in j["files"] if not path_ignored(f, globs)]
         text, _ = redact(j["text"])
+        j["ask"] = redact(j.get("ask") or "")[0]
         ts = next((t.timestamp for t in reversed(w) if t.timestamp), "") or now_iso()
         oid = "obs_" + hashlib.sha1((text + sid + j["turn_uuid"] + (w[0].timestamp or "")).encode()).hexdigest()[:10]
         if oid in have:

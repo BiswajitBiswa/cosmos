@@ -123,7 +123,10 @@ def cmd_init(a) -> int:
     print(col("✓", "g"), f"user-level hooks {'installed' if user_hooks else 'present'} in ~/.claude/settings.json → every worktree and checkout is covered")
     if seeded:
         print(col("✓", "g"), seeded + " · first dream running in the background")
-    print(col("✓", "g"), "watcher running in the background: follows Claude Code, Codex and Gemini sessions here; dreams start themselves")
+    if os.environ.get("COSMOS_NO_BACKGROUND") or a.no_seed:
+        print(col("·", "d"), "watcher not started (COSMOS_NO_BACKGROUND or --no-seed): the next session start, `cosmos ui` or `cosmos watch` starts it")
+    else:
+        print(col("✓", "g"), "watcher running in the background: follows Claude Code, Codex and Gemini sessions here; dreams start themselves")
     print()
     print("That is all. Work with your agent. Look at it with:  cosmos ui")
     return 0
@@ -292,7 +295,7 @@ def cmd_connect(a) -> int:
             n = write_codex_prompts(); print(col("✓", "g"), f"Codex: {len(n)} prompt(s) in ~/.codex/prompts → /prompts:cosmos-recall, /prompts:cosmos-flare …")
         else:
             print(col("  Codex", "B"), "reads MCP servers from ~/.codex/config.toml and prompts from ~/.codex/prompts — add (or run `cosmos connect codex --write-user`, which also writes the /prompts:cosmos-… commands):\n" + "\n".join("    " + l for l in codex_snippet(cfg.paths.root).splitlines()))
-    print(col("  Cowork / Claude Desktop", "B"), "reads CLAUDE.md in the project; add the same MCP entry under Settings → Connectors (command python3, args .cosmos/cosmosw mcp).")
+    print(col("  Cowork / Claude Desktop", "B"), f"Code sessions get the tools from .mcp.json or the plugin. A Desktop chat needs an entry in its own config: name it cosmos-{cfg.paths.root.name}, never plain cosmos (a pinned `cosmos` shadows every project's own server): command python3, args {cfg.paths.cosmos / 'cosmosw'} mcp.")
     print(col("  capture", "d"), "Claude Code: automatic via hooks · Codex / Gemini: `cosmos capture --agent all` reads their session logs · everyone: cosmos_remember / cosmos_flare tools via MCP")
     return 0
 
@@ -463,6 +466,8 @@ def cmd_search(a) -> int:
 def cmd_review(a) -> int:
     cfg = load_config(); _require(cfg)
     mems = Ledger(cfg.paths).load()
+    if getattr(a, "repoint", False):
+        return _review_repoint(cfg, mems, a.yes)
     issues = [m for m in mems.values() if m.status in ("contradicted", "stale-candidate")]
     if not issues:
         print(col("✓ nothing to review", "g")); return 0
@@ -476,6 +481,45 @@ def cmd_review(a) -> int:
         if m.reason:
             print(col(f"  {m.reason}", "d"))
         print(col(f"  cosmos verify {m.id} --resolve   |   cosmos forget {m.id}", "d"))
+    return 0
+
+
+def _review_repoint(cfg, mems, apply: bool) -> int:
+    """Stale facts whose evidence only moved: follow git's renames (and partial paths) to where the files are now, and
+    bring a fact back only when every identifier it names is still in the code. Age-based doubts are left alone."""
+    from .dream import _files_exist, _missing_identifiers, _present_in_repo, _renames
+    from .lanes import resolve_evidence
+    root, t = cfg.paths.root, today()
+    moved = _renames(root)
+    stale = [m for m in mems.values() if m.status == "stale-candidate" and m.files and _files_exist(root, m.files) is False]
+    plans = []
+    for m in stale:
+        new = list(dict.fromkeys(r for r in (resolve_evidence(root, moved.get(f, f)) for f in m.files) if r))[:8]
+        plans.append((m, new))
+    from dataclasses import replace
+    trial = {m.id: replace(m, files=new) for m, new in plans if new}
+    idents = {mid: _missing_identifiers(root, x) for mid, x in trial.items()}
+    present = _present_in_repo(root, sorted({i for v in idents.values() for i in v}))
+    back, repointed, still = [], [], []
+    for m, new in plans:
+        if not new:
+            still.append(m); continue
+        gone = [i for i in idents.get(m.id, []) if i not in present]
+        (repointed if gone else back).append((m, new, gone))
+    print(col(f"{len(stale)} stale fact(s) whose evidence files are gone:", "B"),
+          f"{len(back)} come back (files found, every identifier still in the code) · {len(repointed)} re-pointed but still doubtful · {len(still)} with no new location")
+    for m, new, gone in (back + repointed)[:12]:
+        print(f"  {'↺' if not gone else '→'} {m.id} {m.text[:70]}")
+        print(col(f"      {', '.join(m.files[:2])}  →  {', '.join(new[:2])}" + (f"   (`{gone[0]}` not found)" if gone else ""), "d"))
+    if not apply:
+        print(col("dry run — `cosmos review --repoint --yes` applies it", "d")); return 0
+    for m, new, gone in back + repointed:
+        m.files = new
+        if not gone:
+            m.status, m.updated, m.last_verified = "active", t, t
+            m.reason = f"Evidence re-pointed on {t} (moved files followed through git); every identifier still present"
+    _finish(cfg, mems)
+    print(col("✓", "g"), f"{len(back)} fact(s) back · {len(repointed)} re-pointed, still for a human in Verdicts")
     return 0
 
 
@@ -523,6 +567,14 @@ def cmd_doctor(a) -> int:
     line(shutil.which("claude") is not None, "claude CLI on PATH")
     for path, good, msg in entrypoints():
         line(good, msg)
+    for msg in desktop_pins(cfg.paths.root):
+        line(False, msg)
+    vend = cfg.paths.cosmos / "vendor" / "cosmos" / "__init__.py"
+    if vend.exists():
+        import re as _re
+        vv = (_re.search(r'__version__\s*=\s*"([^"]+)"', vend.read_text()) or [None, "?"])[1]
+        print(col("  ·", "d"), f"this repository's copy (.cosmos/vendor) is {vv}; this cosmos is {__version__}"
+              + (" — the wrapper runs the newer one; `cosmos update` refreshes the vendored copy" if vv != __version__ else ""))
     from .providers import get_provider, provider_reason
     prov = get_provider(cfg.get("llm", {}) or {})
     why = provider_reason(cfg.get("llm", {}) or {})
@@ -592,6 +644,25 @@ def cmd_doctor(a) -> int:
         for t in tail:
             print(col("   " + t, "d"))
     return 0 if ok else 1
+
+
+DESKTOP_CONFIG = Path.home() / "Library" / "Application Support" / "Claude" / "claude_desktop_config.json"
+
+
+def desktop_pins(root: Path, config: Path = None) -> List[str]:
+    """A Claude Desktop MCP entry named `cosmos` that serves another repository: in every Desktop session it takes the
+    name of the project's own server, so cosmos_remember / cosmos_flare land in that other repository's ledger."""
+    p = config or DESKTOP_CONFIG
+    try:
+        servers = json.loads(p.read_text()).get("mcpServers", {}) if p.exists() else {}
+    except (OSError, ValueError):
+        return []
+    entry = servers.get("cosmos") or {}
+    target = next((a for a in entry.get("args", []) if a.endswith("cosmosw")), "")
+    if not target or Path(target).resolve().parent.parent == root.resolve():
+        return []
+    return [f"Claude Desktop's MCP entry `cosmos` serves {Path(target).parent.parent}: in Desktop sessions here, cosmos tools write there. "
+            f"Rename it in {p} (e.g. cosmos-{Path(target).parent.parent.name})"]
 
 
 def _script_python(path: str) -> str:
@@ -1002,7 +1073,8 @@ def cmd_audit_slack(a) -> int:
     fs = [m for m in findings(Ledger(cfg.paths).load(), None, a.severity) if m.meta.get("finding_status", "open") in PUBLISHABLE]
     state = PostState(cfg.paths.state / "slack-posted.json")
     if a.seed_state:
-        n = state.seed_from(Path(a.seed_state), a.prefix); state.save()
+        from .audit import flare_prefix
+        n = state.seed_from(Path(a.seed_state), a.prefix or flare_prefix(cfg)); state.save()
         print(col("✓", "g"), f"seeded {n} already-posted id(s) from {a.seed_state}")
     if a.validate:
         errs = validate_cards(SlackClient(None), fs)
@@ -1068,7 +1140,7 @@ def build_parser() -> argparse.ArgumentParser:
     s = sp.add_parser("verify", help="mark a memory verified today"); s.add_argument("id"); s.add_argument("--resolve", action="store_true", help="also supersede whatever it contradicts"); s.set_defaults(fn=cmd_verify)
     s = sp.add_parser("why", help="explain a memory: evidence, timeline, contradictions"); s.add_argument("query", nargs="+"); s.set_defaults(fn=cmd_why)
     s = sp.add_parser("search", help="rank memories for a query / file"); s.add_argument("query", nargs="*"); s.add_argument("-f", "--file", action="append"); s.add_argument("-k", type=int, default=8); s.add_argument("--json", action="store_true"); s.set_defaults(fn=cmd_search)
-    s = sp.add_parser("review", help="list contradictions and stale candidates"); s.set_defaults(fn=cmd_review)
+    s = sp.add_parser("review", help="list contradictions and stale candidates; --repoint follows moved evidence"); s.add_argument("--repoint", action="store_true", help="stale facts whose files moved: follow git's renames, revive what still holds (dry run)"); s.add_argument("--yes", action="store_true", help="with --repoint: apply"); s.set_defaults(fn=cmd_review)
     s = sp.add_parser("health", help="memory quality metrics"); s.set_defaults(fn=cmd_health)
     s = sp.add_parser("render", help="rewrite CLAUDE.md/AGENTS.md block and ledger index"); s.set_defaults(fn=cmd_render)
     s = sp.add_parser("doctor", help="check the installation"); s.set_defaults(fn=cmd_doctor)
@@ -1106,7 +1178,7 @@ def build_parser() -> argparse.ArgumentParser:
     x = au.add_parser("lint", help="flag repository filter keys that are not real model columns (AST; see docs/flares.md)"); x.add_argument("--repo-base"); x.add_argument("--crud-glob"); x.add_argument("--module-prefix"); x.add_argument("--roots", nargs="*"); x.add_argument("--sys-path", nargs="*"); x.add_argument("--json", action="store_true"); x.set_defaults(fn=cmd_audit_lint)
     x = au.add_parser("export", help="export findings: JSON (same schema as import) or an Excel sheet"); x.add_argument("-o", "--out"); x.add_argument("--format", choices=["json", "xlsx"], default="json", help="xlsx: an Excel sheet (also chosen by an .xlsx --out)"); x.add_argument("--status", choices=FST); x.add_argument("--severity", choices=SEVS); x.set_defaults(fn=cmd_audit_export)
     x = au.add_parser("report", help="regenerate the audit report from the ledger"); x.add_argument("--format", choices=["md", "slack"], default="md"); x.add_argument("-o", "--out"); x.add_argument("--status", choices=FST); x.add_argument("--severity", choices=SEVS); x.set_defaults(fn=cmd_audit_report)
-    x = au.add_parser("slack", help="publish open findings as Block Kit cards (dry run unless --send)"); x.add_argument("--send", action="store_true"); x.add_argument("--status", action="store_true", help="what is posted vs pending"); x.add_argument("--validate", action="store_true", help="blocks.validate every card (no token needed)"); x.add_argument("--all", action="store_true", help="repost everything"); x.add_argument("--channel"); x.add_argument("--seed-state", help="import a legacy .slack-posted.json"); x.add_argument("--prefix", default="QA"); x.add_argument("--severity", choices=SEVS)
+    x = au.add_parser("slack", help="publish open findings as Block Kit cards (dry run unless --send)"); x.add_argument("--send", action="store_true"); x.add_argument("--status", action="store_true", help="what is posted vs pending"); x.add_argument("--validate", action="store_true", help="blocks.validate every card (no token needed)"); x.add_argument("--all", action="store_true", help="repost everything"); x.add_argument("--channel"); x.add_argument("--seed-state", help="import a legacy .slack-posted.json"); x.add_argument("--prefix", help="with --seed-state: the prefix the legacy ids used (default: the prefix new flares get here)"); x.add_argument("--severity", choices=SEVS)
     x.add_argument("--convert", action="store_true", help="rewrite already-posted messages in place as cards (chat.update)"); x.add_argument("--dry", action="store_true"); x.add_argument("--only", help="one audit id"); x.add_argument("--ts", help="message ts or permalink (skips channels:history)")
     x.set_defaults(fn=cmd_audit_slack)
     return p

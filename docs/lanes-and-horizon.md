@@ -33,3 +33,12 @@ Before any code is written, cosmos answers from the ledger and observations alre
 - **Related facts**
 
 The result is saved as `.cosmos/ledger/horizon/<date>-<slug>.md` — reviewable in the PR that implements the feature — and listed on the Horizon page, where a request can also be typed directly.
+
+## Lane aliases
+
+Lanes named by the model drift into near-duplicates (`deploy`, `deploy-config`, `deployment-config`). Fold them in
+`.cosmos/config.json`; exact names or globs, applied to every fact at the next dream and to the lane report at once:
+
+```json
+"lane_aliases": {"deploy": "deployment", "deploy-config": "deployment", "chat-*": "ask-reten", "loyalty": "rewards-loyalty"}
+```

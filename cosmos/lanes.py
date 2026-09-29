@@ -34,6 +34,18 @@ def clean_lane(name: str) -> str:
 DOC_DIRS = {"docs", "doc", "references", "reference", "adr", "rfcs", "wiki"}
 
 
+def canonical_lane(name: str, cfg: Config) -> str:
+    """lane_aliases in config.json folds near-duplicate names into one: {"deploy-config": "deployment", "chat-*": "ask-reten"}."""
+    import fnmatch
+    aliases = cfg.get("lane_aliases") or {}
+    if not name or not isinstance(aliases, dict):
+        return name
+    if name in aliases:
+        return clean_lane(aliases[name]) or name
+    hit = next((to for pat, to in aliases.items() if any(ch in pat for ch in "*?[") and fnmatch.fnmatch(name, pat)), "")
+    return (clean_lane(hit) or name) if hit else name
+
+
 def configured_lane(files: Iterable[str], lane_globs: Optional[Dict[str, List[str]]]) -> str:
     """The lane the team configured for these files ("" when no configured glob matches)."""
     files = [f.replace("\\", "/") for f in files if looks_like_path(f)]
@@ -199,6 +211,11 @@ def assign_lanes(mems: Dict[str, Memory], cfg: Config, only_missing: bool = True
         if lane != m.lane:
             m.lane = lane
             n += 1
+    for m in mems.values():                            # the team's aliases outrank every name above
+        canon = canonical_lane(m.lane, cfg)
+        if canon != m.lane:
+            m.lane = canon
+            n += 1
     return n
 
 
@@ -269,7 +286,7 @@ def lane_report(cfg: Config, mems: Dict[str, Memory], observations: Iterable[Dic
     for m in mems.values():
         if m.status in ("superseded", "forgotten"):
             continue
-        L = lanes[m.lane or GENERAL]
+        L = lanes[canonical_lane(m.lane, cfg) or GENERAL]
         if m.category == "finding":
             L["findings"] += 1
             if m.meta.get("finding_status", "open") in OPEN_LIKE:
