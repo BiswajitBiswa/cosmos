@@ -1,0 +1,10 @@
+---
+description: "cosmos here: is it working, what is open, what waits for a human"
+---
+<!-- written by cosmos (`cosmos connect` rewrites it; delete this line to keep your own version) -->
+Report the state of this repository's cosmos in under 15 lines.
+1. Run `python3 .cosmos/cosmosw doctor` and `python3 .cosmos/cosmosw status`. Name anything marked ✗ and the one command that fixes it.
+2. Open flares: `python3 .cosmos/cosmosw flares list --status open` (count by severity, name the critical/high ones) and the prefix a new flare gets here (`python3 .cosmos/cosmosw flares stage`).
+3. Architecture drift: `python3 .cosmos/cosmosw atlas --check`.
+4. What waits for a human: `python3 .cosmos/cosmosw review` (contradictions, stale facts) — the count and the top three.
+End with the single next step you recommend. $ARGUMENTS

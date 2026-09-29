@@ -152,7 +152,7 @@ a{color:var(--warm2)}
     <div class="cta"><a class="btn primary" href="#start">Get Started</a><a class="btn ghost" href="#honest">Honest assessment →</a></div>
   </div>
   <div class="cmds">
-    <div class="cmd"><div class="who">first person on the repo · once</div><code>pip install cosmos-dev<br>cosmos init</code></div>
+    <div class="cmd"><div class="who">first person on the repo · once</div><code>python3 -m pip install &quot;git+https://github.com/BiswajitBiswa/cosmos&quot;<br>cosmos init</code></div>
     <div class="cmd gold"><div class="who">everyone after that</div><code>git clone &lt;repo&gt; &amp;&amp; claude</code></div>
   </div>
 </div></header>
@@ -256,10 +256,10 @@ a{color:var(--warm2)}
   <div class="head"><div class="eyebrow">steps to follow</div><h2>Getting started</h2><p>One person runs one command once. Everyone else clones. Capture, reading, dreams, the watcher and hook refreshes happen by themselves.</p></div>
   <div class="steps">
 <div class="step"><div class="num">1</div><div><b><code>cosmos init</code>, once</b><p>Creates <code>.cosmos/</code> with the Charter, the Ledger, the first Atlas and the <code>/atlas</code> prompt; wires hooks at repo and user level (every worktree is covered), MCP configs and the instruction files of every agent; reads the sessions this repo already had, writes their journal, marks the recent ones for the model, and starts the first dream and the watcher in the background.</p>
-<pre>pip install cosmos-dev
+<pre>python3 -m pip install &quot;git+https://github.com/BiswajitBiswa/cosmos&quot;
 cd &lt;your-repo&gt;
 cosmos init
-cosmos flares import &lt;findings.json&gt; --prefix &lt;ID-PREFIX&gt;   # only if you have an audit document</pre></div></div>
+cosmos flares import &lt;findings.json&gt;   # only if you have an audit document</pre></div></div>
 <div class="step"><div class="num">2</div><div><b>Agree the Charter, then commit</b><p>Edit <code>.cosmos/charter.md</code> in a pull request — that is the team agreeing on one style. Commit and the memory becomes the team's.</p>
 <pre>cosmos charter edit
 git push   # cosmos init already committed .cosmos/ and the agent wiring to this branch</pre></div></div>
@@ -274,17 +274,17 @@ git push   # cosmos init already committed .cosmos/ and the agent wiring to this
 <div class="step"><div class="num">1</div><div><b>Initialise</b><p>Reads every past session (all worktrees, subagents), writes their journal, marks recent history for the model, starts the first dream and the watcher.</p>
 <pre>cd &lt;your-repo&gt; &amp;&amp; cosmos init</pre></div></div>
 <div class="step"><div class="num">2</div><div><b>Bring in an existing audit, if there is one</b><p>If the file does not exist yet, cosmos asks before creating an empty one to fill in (<code>--yes</code> creates it without asking).</p>
-<pre>cosmos flares import &lt;findings.json&gt; --prefix &lt;ID-PREFIX&gt; --source &lt;report-name&gt;</pre></div></div>
+<pre>cosmos flares import &lt;findings.json&gt; --source &lt;report-name&gt;</pre></div></div>
 <div class="step"><div class="num">3</div><div><b>Look while the first dream finishes in the background</b>
 <pre>cosmos ui</pre></div></div>
 <div class="step"><div class="num">4</div><div><b>Agree the Charter, commit on a branch off your base branch</b>
 <pre>cosmos charter edit
 git push   # init committed .cosmos/ and the wiring to this branch; run it on a branch off your base branch to review it in a PR</pre></div></div>
-<div class="step"><div class="num">5</div><div><b>Sessions that were already open, and Cowork</b><p>Nothing to restart in Claude Code: the next prompt carries the briefing the session missed. Cowork runs no hooks and reads no local MCP config, so it gets cosmos from the plugin: add this repository as a plugin marketplace and install <b>cosmos</b>. The tools appear with your next message.</p>
-<pre># Cowork: Plugins → add marketplace → BiswajitBiswa/cosmos → install cosmos
-# Claude Code (optional, same tools):
-/plugin marketplace add BiswajitBiswa/cosmos
-/plugin install cosmos@cosmos</pre></div></div>
+<div class="step"><div class="num">5</div><div><b>Sessions that were already open, and Cowork</b><p>Nothing to restart in Claude Code: the next prompt carries the briefing the session missed. Cowork runs no hooks and reads no local MCP config, so it gets cosmos from the plugin: add this repository as a plugin marketplace and install <code>cosmos</code>. The tools appear with your next message. A project's own playbooks (a master QA protocol, a runbook) become commands for every agent by themselves; <code>cosmos playbooks add qa</code> starts one. <code>/plugin</code> is a command of the Claude Code CLI only: in the Claude desktop app use its Plugins screen, or run the two <code>claude plugin</code> lines below in any terminal.</p>
+<pre># Cowork / Claude desktop app: Plugins → add marketplace → BiswajitBiswa/cosmos → install cosmos
+# any terminal (same as /plugin … inside the Claude Code CLI):
+claude plugin marketplace add BiswajitBiswa/cosmos
+claude plugin install cosmos@cosmos</pre></div></div>
 <div class="step"><div class="num">6</div><div><b>Teammates</b>
 <pre>git pull   # then open your agent</pre></div></div>
   </div>

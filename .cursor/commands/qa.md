@@ -1,0 +1,10 @@
+<!-- written by cosmos (`cosmos connect` rewrites it; delete this line to keep your own version) -->
+# /qa: Run a QA pass: protocol, open flares, tests, new flares
+
+Run a QA pass on this repository. Scope: (the text the person typed after the command)
+1. Read the Charter (`cosmos_charter`) and the team's QA protocol: `cosmos_recall` with the task "QA protocol" (rules in the qa lane). Follow it over this outline.
+2. Resume, do not restart: list flares that are open, claimed or pr_open (`python3 .cosmos/cosmosw flares list`); continue the claimed ones first.
+3. Check the scope: read the code, run the tests that cover it, reproduce before you file.
+4. File each new problem with `cosmos_flare` (title, severity, `path:line`, what, impact, fix). The prefix follows the lifecycle stage (`python3 .cosmos/cosmosw flares stage`): never set one by hand.
+5. For every flare you touched, set its status (`python3 .cosmos/cosmosw flares claim|pr-open|fix <id> "<note>"`, with `--commit/--branch` when the fix lives in another worktree).
+6. End with a table: flare id · severity · status · one line — and what you did NOT check.

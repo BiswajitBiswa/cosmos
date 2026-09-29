@@ -2,7 +2,8 @@
 
 Read side - the managed block is written to each agent's instruction file (CLAUDE.md, AGENTS.md, GEMINI.md,
 .cursor/rules, .github/copilot-instructions.md, .clinerules, .windsurfrules). Tool side - project-scoped MCP
-configs point every agent at `cosmos mcp`. Capture side - Claude Code via hooks; Codex, Gemini and others via
+configs point every agent at `cosmos mcp`; the same slash commands (/recall, /flare, /qa …) are written for every
+agent that reads project commands (cosmos/commands.py). Capture side - Claude Code via hooks; Codex, Gemini and others via
 `cosmos capture --agent …` reading their session logs.
 """
 from __future__ import annotations
@@ -53,6 +54,8 @@ def connect(cfg: Config, agents: List[str]) -> List[str]:
     if "copilot" in agents:
         if _merge_json(root / ".vscode" / "mcp.json", "servers", "cosmos", {**entry, "type": "stdio"}):
             done.append(".vscode/mcp.json (Copilot)")
+    from .commands import write_commands
+    write_commands(root, agents, cfg)                 # the catalogue and the repository's playbooks; reported by commands.status()
     return done
 
 

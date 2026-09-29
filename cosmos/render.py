@@ -33,6 +33,9 @@ def managed_block(mems: Dict[str, Memory], k: int, cfg: Optional[Config] = None)
                  "reads those two files or calls `cosmos_recall` before changing code it did not write.")
     lines.append("")
     lines.append("`cosmos why <id>` explains a fact · `remember: …` adds a rule · `flare: …` files a flare · `cosmos horizon \"…\"` maps a feature before coding")
+    if cfg is not None and (cfg.paths.root / ".claude" / "commands" / "recall.md").exists():   # only once `cosmos connect` wrote them
+        lines.append("Slash commands (Claude Code, Gemini CLI, Cursor, Copilot, Windsurf; Codex: /prompts:cosmos-…): /cosmos /recall /remember /flare /flares /qa "
+                     "/reconcile /lanes /horizon /handoff /atlas. Asked for one where it is not installed, do what `.claude/commands/<name>.md` says.")
     lines.append(END)
     return "\n".join(lines)
 

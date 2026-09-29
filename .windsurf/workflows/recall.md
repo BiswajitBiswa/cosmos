@@ -1,0 +1,7 @@
+---
+description: "What the team knows about files or a task, before you change them"
+---
+<!-- written by cosmos (`cosmos connect` rewrites it; delete this line to keep your own version) -->
+Before changing anything, find what the team already knows about: (the text the person typed after the command)
+Call the `cosmos_recall` tool with the files (paths) and a few words about the task. Without the tools, run `python3 .cosmos/cosmosw search (the text the person typed after the command)` (add `-f <path>` per file).
+Answer with the facts, rules and open flares that apply, each with its id and the file it is anchored to, rules first. Say plainly when nothing applies. Do not edit code.
