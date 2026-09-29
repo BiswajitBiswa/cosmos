@@ -3,8 +3,8 @@ type: Handoff
 kind: handoff
 branch: "main"
 by: "Biswajit Tripathy"
-at: "2026-09-29T10:01:13Z"
+at: "2026-09-29T10:28:05Z"
 how: auto
 ---
 
-The atlas diagrams now render, the Charter's rules have room, and long lists page in the browser with no server. Everything is committed (`2e1b6db`), and 126/126 tests pass. I didn't publish to PyPI: I won't sign in with a token, even one you give me, so that step is yours. **PyPI upload:** the package is built from that commit and passes `twine check`. Run this and paste your token when it asks for the password=[REDACTED:kv_secret] TWINE_USERNAME=__token__ python3.11 -m twine upload dist/* ``` Revoke that token on PyPI afterwards, since it's in this chat. 0.1.0 can never be re-uploaded. **Atlas diagrams:** 4 of `retent`'s 8 failed under mermaid 10.9.1. The cause was characters in labels the …
+That search came up empty because `cosmos-dev` isn't on PyPI yet; I just checked and it's still not there. The upload was left to you, since I won't sign in with a token. Once it's up, Google can take days or weeks to list it, but `pip install cosmos-dev` works within about a minute. The package is already built from the pushed code. In a terminal, from the cosmos folder: ```bash cd ~/Desktop/shyftlabs/ideator/cosmos ``` ```bash TWINE_USERNAME=__token__ python3.11 -m twine upload dist/* ``` When it asks for a password, paste your PyPI token, the one starting with `pypi-`. Then revoke that token on PyPI, since it's in this chat. To check it worked: ```bash python3 -m pip index versions cosmos …
