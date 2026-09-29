@@ -993,7 +993,7 @@ git push              <span style="color:var(--dim)"># init committed .cosmos/ a
  ['start','3 · Getting started (a new repo)',`
   <div class="callout">Memory travels with the code. One person sets cosmos up and commits it; everyone else just clones.</div>
   <h3 class="small muted">FIRST PERSON ON THE REPO (once)</h3>
-  <pre>python3 -m pip install "git+https://github.com/BiswajitBiswa/cosmos"
+  <pre>python3 -m pip install cosmos-dev
 cd ${repo}
 cosmos init
 git checkout -b cosmos/init origin/&lt;base-branch&gt;
@@ -1003,7 +1003,7 @@ git commit -m "cosmos: hooks and instruction files" &amp;&amp; git push -u origi
   <h3 class="small muted">EVERYONE AFTER THAT</h3>
   <pre>git clone &lt;repo&gt; &amp;&amp; cd ${repo} &amp;&amp; claude</pre>
   <p>No install, no init. The hooks call <code>.cosmos/cosmosw</code>, which runs the vendored copy when <code>cosmos</code> is not installed. Their first session starts with the team's top facts already in context.</p>
-  <p>Optional for the short command name: <code>python3 -m pip install "git+https://github.com/BiswajitBiswa/cosmos"</code>. Check the setup any time with <code>cosmos doctor</code>.</p>`],
+  <p>Optional for the short command name: <code>python3 -m pip install cosmos-dev</code>. Check the setup any time with <code>cosmos doctor</code>.</p>`],
  ['daily','4 · Daily use (nothing to do)',`
   ${step(1,'Work with Claude Code as usual','On <b>SessionStart</b> the top facts are injected. On every <b>UserPromptSubmit</b> the memories relevant to your prompt (by words and by the files they anchor to) are injected — including open findings on those files.')}
   ${step(2,'Cosmos captures silently','On <b>Stop</b>, <b>PreCompact</b> and <b>SessionEnd</b> the turn gets a journal line (ask, files, commits, tests, branch) and its transcript range is marked for the model, which reads it at the next dream and keeps only what the team should still know: decisions and their reasons, constraints, root causes, corrections. Secrets are redacted before anything touches disk; transcripts are never stored.')}

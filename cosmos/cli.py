@@ -630,7 +630,7 @@ def entrypoints() -> List[tuple]:
             out.append((p, True, f"cosmos on PATH: {p} ({py})" + ("" if first else " — not the first one; the first one wins")))
         else:
             out.append((p, not first, f"cosmos on PATH: {p} cannot start — {py} has no cosmos (left by an install into another Python). "
-                        f"Fix: {py} -m pip install \"git+https://github.com/BiswajitBiswa/cosmos\" (or delete {p}); until then `python3 .cosmos/cosmosw <command>` works in any cosmos repo"))
+                        f"Fix: {py} -m pip install cosmos-dev (or delete {p}); until then `python3 .cosmos/cosmosw <command>` works in any cosmos repo"))
     if not out:
         out.append(("", True, f"cosmos entrypoint: {sys.executable} -m cosmos (no `cosmos` on PATH; `python3 .cosmos/cosmosw <command>` works in any cosmos repo)"))
     return out
