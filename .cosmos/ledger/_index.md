@@ -7,7 +7,7 @@ tags: ["cosmos", "moc"]
 
 # Ledger index
 
-20 memories · 18 active · 0 contradicted · 1 stale candidates · 4 lanes
+21 memories · 19 active · 0 contradicted · 1 stale candidates · 4 lanes
 
 Charter: [[charter]] · Atlas: [[inventory]] · [[containers]] · [[deployment]] · [[api]]
 
@@ -40,6 +40,8 @@ Charter: [[charter]] · Atlas: [[inventory]] · [[containers]] · [[deployment]]
 ### Constraint
 - [[mem_2518367d-cosmos-is-on-pypi-as-cosmos-dev-0-1-0-published|cosmos is on PyPI as cosmos-dev (0.1.0 published 2026-09-29; the name cosmos is taken): install with python3 -m pip install cosmos-dev. The README is also the PyPI page, so its images and doc links must be absolute GitHub URLs. /plugin is a Claude Code CLI command only; the desktop app uses its Plugins screen or claude plugin marketplace add / install.]]
 - [[mem_6381abbc-cosmos-is-stdlib-only-the-anthropic-sdk-is-an-op|cosmos is stdlib-only; the anthropic SDK is an optional extra and every feature must work without it.]]
+### Finding
+- [[mem_ac19fa4c-a-whole-ledger-save-from-a-process-that-loaded-e|A whole-ledger save from a process that loaded earlier (a dream, the console, an MCP call) wrote every note back and reverted flare lifecycle changes made meanwhile]]
 
 ## Lane · plugin
 ### Constraint
