@@ -3,8 +3,8 @@ type: Handoff
 kind: handoff
 branch: "main"
 by: "Biswajit Tripathy"
-at: "2026-09-29T11:49:19Z"
+at: "2026-09-29T12:08:27Z"
 how: auto
 ---
 
-Here's what's left, most urgent first. **Your actions (a few minutes)** 1. **Restart `cosmos ui` and the Claude app.** Until then, processes running the old code can still revert flare statuses. 2. **Upload 0.1.2 to PyPI:** ```bash TWINE_USERNAME=__token__ python3.11 -m twine upload dist/* ``` Then revoke that token. 3. **Commit the new cosmos files in `retent`.** `cosmos connect` wrote them but they're uncommitted, so teammates won't get the commands until they're committed. I can commit just those files if you want. **Needs a decision from you** 4. **The ideatorlabs/cosmos code:** its `main` has diverged from this repo's (65 commits behind, 70 ahead). My recommendation is to merge into it  …
+Both parts are done, and all 134 tests pass. It's committed and pushed to both GitHub repos: BiswajitBiswa `ce5e3bf`, ideatorlabs `c607aca`. **1. Lane aliases** - **Config:** `lane_aliases` in `.cosmos/config.json`, also read as `lanes_alias`. Exact names are checked first, then globs like `"chat-*"`. I didn't use `lanes.aliases`, because `lanes` already maps lane names to paths, so a lane called "aliases" would clash. - **Where it applies:** fact filing (`assign_lanes`), the lane report and `cosmos lanes`, the MCP `cosmos_lanes` tool, and the lane pages dreams write under `.cosmos/ledger/lanes/`. An alias gets no page of its own. - **`cosmos lanes --propose`** now suggests aliases for near- …

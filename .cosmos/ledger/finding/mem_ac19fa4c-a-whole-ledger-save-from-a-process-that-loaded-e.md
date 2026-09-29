@@ -6,9 +6,11 @@ status: "stable"
 generated: {"by": "human:Biswajit Tripathy", "at": "2026-09-29T00:00:00Z"}
 sources: [{"resource": "cosmos/store.py", "title": "store.py"}, {"resource": "cosmos/dream.py", "title": "dream.py"}]
 stale_after: "2027-03-28T00:00:00Z"
+links: ["/lanes/cosmos.md", "/finding/mem_f2ac4098-a-token-pasted-in-a-prompt-was-written-verbatim.md"]
 id: "mem_ac19fa4c"
 aliases: ["mem_ac19fa4c"]
 category: "finding"
+lane: "cosmos"
 cosmos_status: "active"
 confidence: 0.9
 importance: 0.85
@@ -45,5 +47,12 @@ meta_source_doc: "qa-report-2026-09-29"
 - Evidence file: `cosmos/store.py`
 - Evidence file: `cosmos/dream.py`
 - Imported from qa-report-2026-09-29 on 2026-09-29
+
+## Related
+- [[mem_f2ac4098]]
+
+## Links
+- lane: [cosmos](/lanes/cosmos.md)
+- related: [mem_f2ac4098](/finding/mem_f2ac4098-a-token-pasted-in-a-prompt-was-written-verbatim.md)
 
 #finding #high #ledger

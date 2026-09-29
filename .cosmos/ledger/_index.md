@@ -27,9 +27,11 @@ Charter: [[charter]] · Atlas: [[inventory]] · [[containers]] · [[deployment]]
 - [[mem_5790a327-cosmos-connect-with-no-agent-argument-failed-arg|`cosmos connect` with no agent argument failed: argparse checked the default ['all'] against choices]]
 - [[mem_5b583e8d-cosmosw-always-prefers-an-installed-cosmos-over|cosmosw always prefers an installed cosmos over the repo's vendored copy, even when the install is older]]
 - [[mem_9391c461-atlas-reported-0-endpoints-for-apps-without-an-o|Atlas reported 0 endpoints for apps without an OpenAPI spec (routes in code were never read)]]
+- [[mem_ac19fa4c-a-whole-ledger-save-from-a-process-that-loaded-e|A whole-ledger save from a process that loaded earlier (a dream, the console, an MCP call) wrote every note back and reverted flare lifecycle changes made meanwhile]]
 - [[mem_b9641884-an-older-pip-install-shadowed-the-repos-cosmos-a|An older pip install shadowed the repo's cosmos and rendered retired names (`finding:`, `cosmos intake`) into the committed CLAUDE.md / AGENTS.md]]
 - [[mem_d4c37ea1-slack-cards-and-the-slack-report-told-people-to|Slack cards and the Slack report told people to run `cosmos audit fix/list` instead of `cosmos flares`]]
 - [[mem_e522e056-console-rendered-every-fact-rule-and-flare-at-on|Console rendered every fact, rule and flare at once and rules sat in a narrow sidebar with unclamped text]]
+- [[mem_f2ac4098-a-token-pasted-in-a-prompt-was-written-verbatim|A token pasted in a prompt was written verbatim into the journal (`ask`) and the live view, and committed with .cosmos]]
 - [[mem_fcf6d908-new-slash-commands-reintroduced-names-retired-in|New slash commands reintroduced names retired in 5b289ba: /intake and cosmos_finding / cosmos_intake in command bodies]]
 
 ## Lane · docs
@@ -40,9 +42,6 @@ Charter: [[charter]] · Atlas: [[inventory]] · [[containers]] · [[deployment]]
 ### Constraint
 - [[mem_2518367d-cosmos-is-on-pypi-as-cosmos-dev-0-1-0-published|cosmos is on PyPI as cosmos-dev (0.1.0 published 2026-09-29; the name cosmos is taken): install with python3 -m pip install cosmos-dev. The README is also the PyPI page, so its images and doc links must be absolute GitHub URLs. /plugin is a Claude Code CLI command only; the desktop app uses its Plugins screen or claude plugin marketplace add / install.]]
 - [[mem_6381abbc-cosmos-is-stdlib-only-the-anthropic-sdk-is-an-op|cosmos is stdlib-only; the anthropic SDK is an optional extra and every feature must work without it.]]
-### Finding
-- [[mem_ac19fa4c-a-whole-ledger-save-from-a-process-that-loaded-e|A whole-ledger save from a process that loaded earlier (a dream, the console, an MCP call) wrote every note back and reverted flare lifecycle changes made meanwhile]]
-- [[mem_f2ac4098-a-token-pasted-in-a-prompt-was-written-verbatim|A token pasted in a prompt was written verbatim into the journal (`ask`) and the live view, and committed with .cosmos]]
 
 ## Lane · plugin
 ### Constraint

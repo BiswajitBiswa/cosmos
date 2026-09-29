@@ -6,7 +6,7 @@ status: "stable"
 generated: {"by": "human:Biswajit Tripathy", "at": "2026-09-21T00:00:00Z"}
 sources: [{"resource": "cosmos/hooks.py", "title": "hooks.py"}, {"resource": "cosmos/gate.py", "title": "gate.py"}]
 stale_after: "2027-03-20T00:00:00Z"
-links: ["/lanes/cosmos.md"]
+links: ["/lanes/cosmos.md", "/finding/mem_f2ac4098-a-token-pasted-in-a-prompt-was-written-verbatim.md"]
 id: "mem_1192ca15"
 aliases: ["mem_1192ca15"]
 category: "constraint"
@@ -33,5 +33,9 @@ valid_from: "2026-09-21"
 - Evidence file: `cosmos/hooks.py`
 - Evidence file: `cosmos/gate.py`
 
+## Related
+- [[mem_f2ac4098]]
+
 ## Links
 - lane: [cosmos](/lanes/cosmos.md)
+- related: [mem_f2ac4098](/finding/mem_f2ac4098-a-token-pasted-in-a-prompt-was-written-verbatim.md)

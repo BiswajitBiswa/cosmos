@@ -6,9 +6,11 @@ status: "stable"
 generated: {"by": "human:Biswajit Tripathy", "at": "2026-09-29T00:00:00Z"}
 sources: [{"resource": "cosmos/hooks.py", "title": "hooks.py"}, {"resource": "cosmos/watch.py", "title": "watch.py"}, {"resource": "cosmos/privacy.py", "title": "privacy.py"}]
 stale_after: "2027-03-28T00:00:00Z"
+links: ["/lanes/cosmos.md", "/constraint/mem_1192ca15-hooks-must-always-exit-0-the-gate-is-the-only-de.md", "/finding/mem_ac19fa4c-a-whole-ledger-save-from-a-process-that-loaded-e.md"]
 id: "mem_f2ac4098"
 aliases: ["mem_f2ac4098"]
 category: "finding"
+lane: "cosmos"
 cosmos_status: "active"
 confidence: 0.9
 importance: 0.85
@@ -46,5 +48,14 @@ meta_source_doc: "session-2026-09-29"
 - Evidence file: `cosmos/watch.py`
 - Evidence file: `cosmos/privacy.py`
 - Imported from session-2026-09-29 on 2026-09-29
+
+## Related
+- [[mem_1192ca15]]
+- [[mem_ac19fa4c]]
+
+## Links
+- lane: [cosmos](/lanes/cosmos.md)
+- related: [mem_1192ca15](/constraint/mem_1192ca15-hooks-must-always-exit-0-the-gate-is-the-only-de.md)
+- related: [mem_ac19fa4c](/finding/mem_ac19fa4c-a-whole-ledger-save-from-a-process-that-loaded-e.md)
 
 #finding #high #privacy
