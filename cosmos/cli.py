@@ -956,11 +956,29 @@ def cmd_audit_stage(a) -> int:
 def cmd_audit_export(a) -> int:
     from .audit import export_json
     cfg = load_config(); _require(cfg)
+    if a.format == "xlsx" or (a.out or "").endswith(".xlsx"):
+        from .xlsx import flares_sheet, workbook
+        out = Path(a.out or f"{cfg.paths.root.name}-flares.xlsx")
+        out.write_bytes(workbook([flares_sheet({m.id: m for m in _findings(cfg, a)})]))
+        print(col("✓", "g"), f"wrote {out}"); return 0
     data = export_json(_findings(cfg, a))
     if a.out:
         Path(a.out).write_text(json.dumps(data, indent=2, ensure_ascii=False) + "\n"); print(col("✓", "g"), f"wrote {len(data)} findings to {a.out}")
     else:
         print(json.dumps(data, indent=2, ensure_ascii=False))
+    return 0
+
+
+def cmd_export(a) -> int:
+    """One Excel workbook: flares, facts, rules, lanes, endpoints, playbooks (or the sheets named with --only)."""
+    from .xlsx import SHEETS, write
+    cfg = load_config(); _require(cfg)
+    which = [w.strip() for w in (a.only or ",".join(SHEETS)).split(",") if w.strip()]
+    unknown = [w for w in which if w not in SHEETS]
+    if unknown:
+        print(col("✗", "r"), f"unknown sheet(s): {', '.join(unknown)} — choose from {', '.join(SHEETS)}"); return 2
+    out = write(cfg, Path(a.out or f"{cfg.paths.root.name}-cosmos.xlsx"), which)
+    print(col("✓", "g"), f"{out} ({', '.join(which)})")
     return 0
 
 
@@ -1061,6 +1079,7 @@ def build_parser() -> argparse.ArgumentParser:
     s = sp.add_parser("atlas", help="build architecture inventory + diagrams from the repo (or --check for drift)"); s.add_argument("--check", action="store_true"); s.add_argument("--deep", action="store_true", help="let the model follow the Atlas prompt now (system context, containers, data flow, deployment, dependencies, lanes)"); s.set_defaults(fn=cmd_atlas)
     s = sp.add_parser("charter", help="the team's working agreement: show | add \"rule\" | edit | gate"); s.add_argument("action", nargs="?", default="show", choices=["show", "add", "edit", "gate"]); s.add_argument("text", nargs="*"); s.add_argument("--section", default="Architecture rules"); s.set_defaults(fn=cmd_charter)
     s = sp.add_parser("horizon", aliases=["intake"], help="map a feature before coding: lanes, collisions, flares, people"); s.add_argument("text", nargs="+"); s.add_argument("-f", "--file", action="append", help="folder or file it will touch (repeatable)"); s.add_argument("--attach", action="append", help="ad-hoc document to read as context (PRD, spec, notes)"); s.add_argument("--brief", help="text file with the brief"); s.add_argument("--json", action="store_true"); s.add_argument("--no-save", action="store_true"); s.set_defaults(fn=cmd_intake)
+    s = sp.add_parser("export", help="an Excel workbook: flares, facts, rules, lanes, endpoints, playbooks"); s.add_argument("-o", "--out", help="file (default <repo>-cosmos.xlsx)"); s.add_argument("--only", help="comma-separated sheets, e.g. flares,rules"); s.set_defaults(fn=cmd_export)
     s = sp.add_parser("playbooks", help="the team's long-form prompts (QA protocol, runbooks) found in the repo, as commands for every agent: list | add <file|qa>"); s.add_argument("action", nargs="?", default="list", choices=["list", "add"]); s.add_argument("source", nargs="?"); s.add_argument("--name", help="command name for an added playbook"); s.set_defaults(fn=cmd_playbooks)
     s = sp.add_parser("gate", help="show Gate rules, or dry-run it on a transcript"); s.add_argument("--transcript"); s.set_defaults(fn=cmd_gate)
 
@@ -1085,7 +1104,7 @@ def build_parser() -> argparse.ArgumentParser:
     x.add_argument("--title"); x.add_argument("--severity", choices=SEVS); x.add_argument("--locations"); x.add_argument("--area"); x.set_defaults(fn=cmd_audit_edit)
     x = au.add_parser("stage", help="the prefix a new flare gets here, and the lifecycle stage it comes from"); x.set_defaults(fn=cmd_audit_stage)
     x = au.add_parser("lint", help="flag repository filter keys that are not real model columns (AST; see docs/flares.md)"); x.add_argument("--repo-base"); x.add_argument("--crud-glob"); x.add_argument("--module-prefix"); x.add_argument("--roots", nargs="*"); x.add_argument("--sys-path", nargs="*"); x.add_argument("--json", action="store_true"); x.set_defaults(fn=cmd_audit_lint)
-    x = au.add_parser("export", help="export findings JSON (same schema as import)"); x.add_argument("-o", "--out"); x.add_argument("--status", choices=FST); x.add_argument("--severity", choices=SEVS); x.set_defaults(fn=cmd_audit_export)
+    x = au.add_parser("export", help="export findings: JSON (same schema as import) or an Excel sheet"); x.add_argument("-o", "--out"); x.add_argument("--format", choices=["json", "xlsx"], default="json", help="xlsx: an Excel sheet (also chosen by an .xlsx --out)"); x.add_argument("--status", choices=FST); x.add_argument("--severity", choices=SEVS); x.set_defaults(fn=cmd_audit_export)
     x = au.add_parser("report", help="regenerate the audit report from the ledger"); x.add_argument("--format", choices=["md", "slack"], default="md"); x.add_argument("-o", "--out"); x.add_argument("--status", choices=FST); x.add_argument("--severity", choices=SEVS); x.set_defaults(fn=cmd_audit_report)
     x = au.add_parser("slack", help="publish open findings as Block Kit cards (dry run unless --send)"); x.add_argument("--send", action="store_true"); x.add_argument("--status", action="store_true", help="what is posted vs pending"); x.add_argument("--validate", action="store_true", help="blocks.validate every card (no token needed)"); x.add_argument("--all", action="store_true", help="repost everything"); x.add_argument("--channel"); x.add_argument("--seed-state", help="import a legacy .slack-posted.json"); x.add_argument("--prefix", default="QA"); x.add_argument("--severity", choices=SEVS)
     x.add_argument("--convert", action="store_true", help="rewrite already-posted messages in place as cards (chat.update)"); x.add_argument("--dry", action="store_true"); x.add_argument("--only", help="one audit id"); x.add_argument("--ts", help="message ts or permalink (skips channels:history)")

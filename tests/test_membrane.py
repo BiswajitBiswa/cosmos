@@ -651,6 +651,40 @@ console.log('ok');"""
         self.assertIn("classDef svc", COMMAND_MD)
 
 
+class TestExcel(unittest.TestCase):
+    def test_the_workbook_opens_and_text_stays_text(self):
+        import re, zipfile, io
+        from xml.etree import ElementTree as ET
+        from cosmos.cli import main
+        from cosmos.xlsx import SHEETS, build
+        with Repo() as r:
+            Ledger(r.cfg.paths).save_all([
+                Memory(id="mem_x1", text="=HYPERLINK(\"http://evil\") stays text", category="finding", details=[["What", "bad\x07char & <tag>"], ["Fix", "quote it"]],
+                       meta={"audit_id": "DEV-1", "severity": "high", "finding_status": "open", "locations": "src/redis-lock.ts:1"}),
+                Memory(id="mem_x2", text="Locks use Redis", category="constraint", source="explicit", files=["src/redis-lock.ts"])])
+            z = zipfile.ZipFile(io.BytesIO(build(r.cfg)))
+            ns = {"m": "http://schemas.openxmlformats.org/spreadsheetml/2006/main"}
+            names = [s.get("name") for s in ET.fromstring(z.read("xl/workbook.xml")).find("m:sheets", ns)]
+            self.assertEqual(names, [n.title() for n in SHEETS])
+            flares = ET.fromstring(z.read("xl/worksheets/sheet1.xml"))
+            cells = ["".join(t.itertext()) for t in flares.iter("{%s}is" % ns["m"])]
+            self.assertIn('=HYPERLINK("http://evil") stays text', cells)
+            self.assertIn("bad char & <tag>".replace(" ", ""), "".join(cells).replace(" ", ""))
+            self.assertFalse(list(flares.iter("{%s}f" % ns["m"])), "no formulas")
+            for n in z.namelist():
+                if n.endswith(".xml"):
+                    ET.fromstring(z.read(n))                  # every part is well-formed XML
+            cwd = os.getcwd(); os.chdir(r.root)
+            try:
+                self.assertEqual(main(["export", "--only", "flares,rules", "-o", "out.xlsx"]), 0)
+                self.assertEqual(main(["export", "--only", "nope"]), 2)
+                self.assertEqual(main(["flares", "export", "-o", "f.xlsx"]), 0)
+            finally:
+                os.chdir(cwd)
+            self.assertEqual(len([n for n in zipfile.ZipFile(r.root / "out.xlsx").namelist() if n.startswith("xl/worksheets/")]), 2)
+            self.assertTrue(zipfile.is_zipfile(r.root / "f.xlsx"))
+
+
 class TestDoctorEntrypoints(unittest.TestCase):
     def test_a_launcher_left_by_another_python_is_named_with_its_fix(self):
         from cosmos.cli import entrypoints
