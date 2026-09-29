@@ -1,5 +1,5 @@
 """cosmos - git-native shared engineering memory for AI coding agents."""
-__version__ = "0.1.2"
+__version__ = "0.1.3"
 
 
 def code_stamp() -> float:
