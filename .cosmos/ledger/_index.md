@@ -7,7 +7,7 @@ tags: ["cosmos", "moc"]
 
 # Ledger index
 
-14 memories · 14 active · 0 contradicted · 0 stale candidates · 3 lanes
+19 memories · 19 active · 0 contradicted · 0 stale candidates · 3 lanes
 
 Charter: [[charter]] · Atlas: [[inventory]] · [[containers]] · [[deployment]] · [[api]]
 
@@ -34,5 +34,12 @@ Charter: [[charter]] · Atlas: [[inventory]] · [[containers]] · [[deployment]]
 - [[mem_62468362-cosmos-dev-is-not-published-on-pypi-404-on-2026|cosmos-dev is not published on PyPI (404 on 2026-09-29): install with `python3 -m pip install "git+https://github.com/BiswajitBiswa/cosmos"`. `/plugin` is a Claude Code CLI command only; the Claude desktop app uses its Plugins screen or `claude plugin marketplace add` / `claude plugin install` in a terminal.]]
 
 ## Lane · general
+### Architecture
+- [[mem_c2833030-excel-export-is-a-stdlib-xlsx-writer-cosmos-xlsx|Excel export is a stdlib xlsx writer (cosmos/xlsx.py: zip of SpreadsheetML parts, inline strings only so no cell is ever a formula); `cosmos export`, `flares export -o *.xlsx` and the console's /api/export.xlsx all use it. Reason: cosmos is stdlib-only, so no openpyxl.]]
 ### Constraint
 - [[mem_6381abbc-cosmos-is-stdlib-only-the-anthropic-sdk-is-an-op|cosmos is stdlib-only; the anthropic SDK is an optional extra and every feature must work without it.]]
+- [[mem_97f2aa55-installed-plugins-update-only-when-the-version-c|Installed plugins update only when the version changes: bump plugin/.claude-plugin/plugin.json and .claude-plugin/marketplace.json together whenever plugin files (commands, skill, bin) change, or `claude plugin update` reports 'already at the latest version'. The plugin version (0.2.0) is independent of the PyPI package version.]]
+### Finding
+- [[mem_498078e0-atlas-page-4-of-8-deep-pass-diagrams-failed-unde|Atlas page: 4 of 8 deep-pass diagrams failed under mermaid 10.9.1 (unquoted ( ) { } in labels, ; in sequence text) and only the first diagram of a document was drawn]]
+- [[mem_a41e3c70-plugin-changes-never-reached-installed-plugins-t|Plugin changes never reached installed plugins: the plugin version stayed 0.1.0, so `claude plugin update` saw nothing new]]
+- [[mem_e522e056-console-rendered-every-fact-rule-and-flare-at-on|Console rendered every fact, rule and flare at once and rules sat in a narrow sidebar with unclamped text]]
