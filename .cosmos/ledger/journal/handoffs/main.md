@@ -3,8 +3,8 @@ type: Handoff
 kind: handoff
 branch: "main"
 by: "Biswajit Tripathy"
-at: "2026-09-29T14:52:37Z"
+at: "2026-09-29T15:11:06Z"
 how: auto
 ---
 
-Because cosmos is built that way: it commits the ledger by itself but never pushes. In the default mode, the ledger lives in your own branch: - **What it commits:** it commits `.cosmos/` to the branch you're on every 10 minutes and after each dream, touching only `.cosmos/` files. - **Where that happens:** `sync_background` in `cosmos/sync.py` commits and returns, with no push; `cosmos doctor` shows it as "push: never — .cosmos/ … goes out when you push it". - **Why:** pushing your branch is your decision. An automatic push would also send your unfinished work on that branch, and some projects forbid it; `retent`'s owner has a "never push" rule, for example. - **The exception:** only the opt …
+Nothing was removed by accident. All of `retent`'s project commands are still there: 12 files in `.claude/commands/`, committed in `d9027209`. The screenshot shows one intended rename, plus a naming difference between plugin and project commands. **1. `intake` is now `horizon`.** The project renamed Intake to Horizon on 2026-09-22 (commit `5b289ba`). My first version of the commands brought the old `/intake` name back by mistake, and the QA pass you asked for flagged it as a reintroduced retired name. So it's `/horizon` now; that's the `cosmos:horizon` highlighted in your screenshot, "Map a feature before coding", and it's the same command. `cosmos intake "…"` still works on the command line …
