@@ -360,7 +360,7 @@ body{margin:0;background:var(--bg);color:var(--fg);font:14px/1.55 "DM Sans","Int
 h1,h2,h3,.logo,.kpi,.node .k,.node .t,.run .when,.fs b,.stat b{font-family:"Cormorant Garamond",Georgia,serif;font-weight:400}
 a{color:var(--acc)}code,.mono,pre{font-family:"IBM Plex Mono",ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12px}
 code{background:var(--panel2);padding:1px 6px;border-radius:3px;color:var(--acc2)}
-#app{display:grid;grid-template-columns:232px 1fr;height:100vh}
+#app{display:grid;grid-template-columns:232px 1fr;height:100vh;transition:grid-template-columns .18s ease}nav{position:relative}#navtog{all:unset;position:absolute;top:18px;right:10px;width:26px;height:26px;display:grid;place-items:center;border-radius:6px;cursor:pointer;color:var(--mut)}#navtog:hover{background:var(--navy2);color:var(--fg)}#navtog svg{width:16px;height:16px;stroke:currentColor;fill:none;stroke-width:1.5;transition:transform .18s}#app.navmin{grid-template-columns:64px 1fr}#app.navmin nav{padding:22px 8px;align-items:center}#app.navmin #navtog{position:static;margin:0 0 14px}#app.navmin #navtog svg{transform:rotate(180deg)}#app.navmin .logo{padding:6px 0 10px}#app.navmin .logo span:not(.dot),#app.navmin .logo small{display:none}#app.navmin nav button[data-p]{justify-content:center;padding:9px;position:relative}#app.navmin nav .lb{font-size:0;gap:0}#app.navmin nav .n{position:absolute;top:4px;right:4px;width:7px;height:7px;padding:0;font-size:0;border:0;background:var(--acc)}#app.navmin nav .n.empty0{display:none}#app.navmin nav .n.bad{background:var(--bad)}#app.navmin nav .foot{display:none}
 nav{background:var(--bg);padding:22px 14px;display:flex;flex-direction:column;gap:2px;color:var(--fg)}
 .logo{display:flex;align-items:center;gap:0;padding:6px 8px 24px;font-size:24px;letter-spacing:.38em;color:var(--fg);font-weight:400;font-family:"Cormorant Garamond",serif}
 .logo .dot{display:inline-block;width:12px;height:22px;border-radius:0;background:none;position:relative;margin:0 .05em 0 .08em;order:1}
@@ -435,7 +435,7 @@ dl{display:grid;grid-template-columns:120px 1fr;gap:6px 10px;margin:10px 0}dt{co
 pre.log{background:var(--panel);color:var(--mut);border-radius:6px;padding:12px;max-height:320px;overflow:auto;font-size:11.5px}
 .empty{padding:40px;text-align:center;color:var(--dim);border:1px dashed var(--line);border-radius:var(--r)}
 .toast{position:fixed;bottom:20px;right:20px;background:var(--panel2);color:var(--fg);border:1px solid var(--acc);padding:10px 14px;border-radius:10px;box-shadow:var(--shadow);opacity:0;transition:.3s}
-.toast.show{opacity:1}
+.toast.show{opacity:1}.modal{position:fixed;inset:0;z-index:60;background:rgba(0,0,0,.55);display:flex;align-items:center;justify-content:center;padding:16px}.modal .box{background:var(--panel);border:1px solid var(--line);border-radius:10px;box-shadow:var(--shadow);width:min(460px,100%);padding:20px 22px;display:grid;gap:10px}.modal h3{margin:0}.modal textarea{width:100%;box-sizing:border-box;resize:vertical;min-height:70px;background:var(--panel2);color:var(--fg);border:1px solid var(--line);border-radius:6px;padding:8px 10px;font:inherit}.modal textarea.bad{border-color:var(--bad)}.modal .box.wide{width:min(760px,100%);max-height:86vh;overflow:auto;position:relative;padding:22px 26px}.modal .box.wide>.card{background:none;border:0;padding:0;margin:0}.modal .mclose{all:unset;position:absolute;top:12px;right:14px;width:28px;height:28px;display:grid;place-items:center;border-radius:6px;cursor:pointer;color:var(--mut);font-size:18px}.modal .mclose:hover{background:var(--panel2);color:var(--fg)}
 .sect{margin-top:10px}.sect b{display:block;color:var(--fg)}
 canvas#graph{width:100%;height:280px;display:block;border-radius:10px;background:var(--bg2);border:1px solid var(--line)}
 .docs{display:grid;grid-template-columns:210px minmax(0,1fr);gap:20px;align-items:start}
@@ -523,6 +523,7 @@ select{appearance:none;-webkit-appearance:none;padding-right:30px;background-ima
 </style></head><body>
 <div id="app">
 <nav>
+ <button id="navtog" aria-label="Collapse the sidebar" title="Collapse the sidebar"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 6l-6 6 6 6"/></svg></button>
  <div class="logo"><div><span>cosm</span><span class="dot"></span><span>s</span><small id="repo">__REPO__</small></div></div>
 <script>
 const ICONS={
@@ -580,6 +581,20 @@ const $=s=>document.querySelector(s);
 const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
 const cc=c=>getComputedStyle(document.documentElement).getPropertyValue("--"+c).trim()||"#888";
 const md=s=>esc(s).replace(/`([^`]+)`/g,'<code>$1</code>').replace(/\*\*(.+?)\*\*/g,'<b>$1</b>').replace(/\*(.+?)\*/g,'<b>$1</b>').replace(/(?<!\w)_(\S[^_]*?\S)_(?!\w)/g,'<i>$1</i>');
+/* the console's own dialog (never the browser's prompt): resolves the note, or null when cancelled - Cancel, Escape
+   or a click outside does nothing at all. opts: sub, placeholder, ok, required */
+function ask(title,opts={}){return new Promise(res=>{const d=document.createElement('div');d.className='modal';
+ d.innerHTML=`<div class="box" role="dialog" aria-modal="true" aria-label="${esc(title)}"><h3>${esc(title)}</h3>${opts.sub?`<div class="small dim">${esc(opts.sub)}</div>`:''}<textarea placeholder="${esc(opts.placeholder||(opts.required?'Required':'Optional'))}"></textarea><div class="row"><span class="spacer"></span><button class="btn sm" data-x>Cancel</button><button class="btn sm primary" data-ok>${esc(opts.ok||'Save')}</button></div></div>`;
+ document.body.appendChild(d);const t=d.querySelector('textarea');t.focus();
+ const done=v=>{d.remove();document.removeEventListener('keydown',key);res(v)};
+ const ok=()=>{const v=t.value.trim();if(opts.required&&!v){t.classList.add('bad');t.focus();return}done(v)};
+ const key=e=>{if(e.key==='Escape')done(null);else if(e.key==='Enter'&&(e.metaKey||e.ctrlKey))ok()};
+ document.addEventListener('keydown',key);d.onclick=e=>{if(e.target===d)done(null)};d.querySelector('[data-x]').onclick=()=>done(null);d.querySelector('[data-ok]').onclick=ok})}
+const FS_ASK={claimed:['Claim this flare','You (or the fix loop) take it on. A note is optional.','Claim',false],fixed:['Mark it fixed','Which PR or commit fixed it? (optional)','Mark fixed',false],
+ pr_open:['A PR is open for it','Which PR? (optional)','Save',false],open:['Reopen this flare','Why is it open again? (optional)','Reopen',false],
+ needs_human:['Needs a human','What is unclear, or why could it not be reproduced?','Save',true],wontfix:["Won't fix",'Why is the risk accepted?',"Won't fix",true],
+ withdrawn:['Withdraw this flare','Why is it not a bug? It stays recorded so nobody files it again.','Withdraw',true]};
+async function askStatus(st){const [t,sub,okl,req]=FS_ASK[st]||['Change status','A note (optional)','Save',false];return ask(t,{sub,ok:okl,required:req})}
 function toast(m){const t=$('#toast');t.textContent=m;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2600)}
 async function load(){ if(LIVE){S=await (await fetch('/api/state')).json()} else {S=window.__SNAPSHOT__} ; render()}
 async function act(body){ if(!LIVE){toast('read-only snapshot');return {ok:false}}; const r=await (await fetch('/api/action',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)})).json(); if(!r.ok)toast('✗ '+(r.error||'failed')); await load(); return r}
@@ -599,7 +614,8 @@ function render(){
  $('#n-ledger').textContent=living; $('#n-find').textContent=findings().filter(m=>['open','claimed','pr_open','needs_human','regressed'].includes(fstatus(m))).length;
  $('#n-dreams').textContent=S.dreams.length; const na=openIssues().length+needsHuman().length; const e=$('#n-appr'); e.textContent=na; e.className='n'+(na?' bad':'');
  const np=$('#n-act'); np.textContent=S.pending_observations; np.className='n'+(S.pending_observations?' warn':'');
- document.querySelectorAll('nav button').forEach(b=>b.classList.toggle('on',b.dataset.p===page));
+ document.querySelectorAll('nav button[data-p]').forEach(b=>b.classList.toggle('on',b.dataset.p===page));
+ document.querySelectorAll('nav .n').forEach(n=>n.classList.toggle('empty0',!/[1-9]/.test(n.textContent)));
  $('#title').textContent={overview:'Overview',ledger:'Ledger',lanes:'Lanes',atlas:'Atlas',charter:'Charter',horizon:'Horizon',flares:'Flares',dreams:'Dreams',verdicts:'Verdicts',activity:'Activity',docs:'Docs'}[page];
  $('#n-lanes').textContent=S.lanes.length; const ov=S.lanes.filter(l=>l.overlap).length; $('#n-lanes').className='n'+(ov?' warn':'');
  const ac=S.atlas.check; $('#n-atlas').textContent=ac.exists?((ac.drift.length+ac.missing.length)?'drift':'ok'):'–'; $('#n-atlas').className='n'+(ac.exists&&(ac.drift.length+ac.missing.length)?' warn':'');
@@ -668,6 +684,10 @@ function paged(key,items,size){const sig=items.length+':'+(items[0]&&items[0].id
  const bar=pages>1?`<div class="pager"><span>${from+1}–${Math.min(items.length,from+size)} of ${items.length}</span><button class="btn sm" data-pg="${key}" data-d="-1" ${st.p?'':'disabled'}>‹ prev</button><span>page ${st.p+1} / ${pages}</span><button class="btn sm" data-pg="${key}" data-d="1" ${st.p<pages-1?'':'disabled'}>next ›</button></div>`:'';
  return {rows:items.slice(from,from+size),bar}}
 function bindPager(){document.querySelectorAll('[data-pg]').forEach(b=>b.onclick=()=>{const st=PG[b.dataset.pg];st.p+=+b.dataset.d;render();window.scrollTo({top:0})})}
+/* a fact or flare opens in a dialog above the page (no scrolling to a side column); ×, Escape or a click outside closes it */
+const detailModal=m=>m?`<div class="modal" id="detailm"><div class="box wide" role="dialog" aria-modal="true" aria-label="${esc(m.text.slice(0,60))}"><button class="mclose" id="mclose" aria-label="Close">×</button>${detail(m)}</div></div>`:'';
+function bindDetailModal(){const d=$('#detailm');if(!d)return;const close=()=>{sel=null;render()};$('#mclose').onclick=close;d.onclick=e=>{if(e.target===d)close()};$('#mclose').focus()}
+document.addEventListener('keydown',e=>{if(e.key==='Escape'&&$('#detailm')&&!document.querySelector('.modal:not(#detailm)')){sel=null;render()}});
 function bindMem(){document.querySelectorAll('.mem,.fcard').forEach(el=>el.onclick=()=>{sel=el.dataset.id;render()})}
 function ledger(){
  const HIDDEN=['forgotten','superseded'];
@@ -692,12 +712,12 @@ function ledger(){
    <div class="small dim" style="padding:0 4px">A fact is something true about the code. A rule about how the team works goes in the <a href="#" data-go-page="charter" style="color:var(--acc)">Charter</a>.</div>
   </div>
   <div class="split"><div>${(()=>{const P=paged('ledger',vis,50);return P.bar+P.rows.map(memRow).join('')+P.bar})()||`<div class="empty">${(filt.cat||filt.status||q)?'Nothing matches these filters.':'No facts yet — work in your agent, then run a dream.'}</div>`}</div>
-  <div class="sticky">${m?detail(m):'<div class="card"><h3>Graph</h3><canvas id="graph"></canvas><div class="small dim" style="margin-top:8px">nodes = facts · edges = shared files or tags · red = contradiction · dashed = superseded. Click a node.</div></div>'}</div></div>`;
+  <div class="sticky">${'<div class="card"><h3>Graph</h3><canvas id="graph"></canvas><div class="small dim" style="margin-top:8px">nodes = facts · edges = shared files or tags · red = contradiction · dashed = superseded. Click a node.</div></div>'}</div></div>${detailModal(m)}`;
  document.querySelectorAll('.chip').forEach(c=>c.onclick=()=>{if(c.dataset.cat)filt.cat=filt.cat===c.dataset.cat?null:c.dataset.cat;if(c.dataset.status)filt.status=filt.status===c.dataset.status?null:c.dataset.status;render()});
  const cf=$('#clearf');if(cf)cf.onclick=()=>{filt={cat:null,status:null};q='';$('#q').value='';render()};
  document.querySelectorAll('[data-go-page]').forEach(a=>a.onclick=e=>{e.preventDefault();page=a.dataset.goPage;render()});
  $('#rem').onsubmit=async e=>{e.preventDefault();const t=$('#remtext').value.trim();if(!t)return;await act({type:'remember',text:t,category:$('#remcat').value});toast('recorded')};
- bindMem(); bindDetail(); bindPager(); if(!m)graph(vis);
+ bindMem(); bindDetail(); bindDetailModal(); bindPager(); graph(vis);
 }
 function detail(m){const B=byId();const link=id=>B[id]?`<a href="#" data-go="${id}">${esc(B[id].text.slice(0,80))}</a>`:esc(id);
  const isF=m.category==='finding';
@@ -719,7 +739,7 @@ function detail(m){const B=byId();const link=id=>B[id]?`<a href="#" data-go="${i
 function bindDetail(){document.querySelectorAll('[data-go]').forEach(a=>a.onclick=e=>{e.preventDefault();sel=a.dataset.go;render()});
  const c=document.querySelector('[data-close]');if(c)c.onclick=()=>{sel=null;render()};
  document.querySelectorAll('[data-act]').forEach(b=>b.onclick=()=>act({type:b.dataset.act,id:sel}));
- document.querySelectorAll('[data-fs]').forEach(b=>b.onclick=async()=>{const note=b.dataset.fs==='needs_human'||b.dataset.fs==='withdrawn'||b.dataset.fs==='wontfix'?prompt('Why? (recorded as status_note)')||'':'';await act({type:'finding_status',id:sel,status:b.dataset.fs,note})});}
+ document.querySelectorAll('[data-fs]').forEach(b=>b.onclick=async()=>{const note=await askStatus(b.dataset.fs);if(note===null)return;await act({type:'finding_status',id:sel,status:b.dataset.fs,note})});}
 function graph(v){const cv=$('#graph');if(!cv)return;const r=cv.getBoundingClientRect();cv.width=r.width;cv.height=r.height;const ctx=cv.getContext('2d');
  const ids=new Set(v.map(m=>m.id));const N=v.map((m,i)=>({m,x:cv.width/2+Math.cos(i)*90,y:cv.height/2+Math.sin(i)*70,vx:0,vy:0}));const P=Object.fromEntries(N.map(n=>[n.m.id,n]));const E=[];
  for(const m of v){for(const r of m.related)if(ids.has(r)&&m.id<r)E.push([P[m.id],P[r],'rel']);for(const c of m.contradicts)if(ids.has(c)&&m.id<c)E.push([P[m.id],P[c],'con']);if(m.supersedes&&ids.has(m.supersedes))E.push([P[m.id],P[m.supersedes],'sup'])}
@@ -842,11 +862,11 @@ function flaresPage(){
  $('#page').innerHTML=`${fs.length?statsRow([[openL.length,'open findings',`${fs.length} total`],[sev('critical'),'critical','',sev('critical')?'bad':''],[sev('high'),'high','',sev('high')?'warn':''],[sev('medium')+sev('low'),'medium & low',''],[fs.filter(m=>fstatus(m)==='needs_human').length,'need a human','could not reproduce / unclear',fs.filter(m=>fstatus(m)==='needs_human').length?'warn':''],[fs.filter(m=>fstatus(m)==='fixed').length,'fixed','']])+'<div style="height:18px"></div>':'<div class="empty">No findings yet. <code>cosmos flares import &lt;findings.json&gt;</code></div>'}
   ${fs.length?stepper([{icon:'imp',title:'Import or file',desc:'audit JSON, or flare: in a session',value:fs.length,unit:'flares',lit:true},{icon:'board',title:'Triage',desc:'kanban by lifecycle',value:openL.length,unit:'open',lit:openL.length},{icon:'human',title:'Claim / needs human',desc:'a person or the fix loop takes it',value:fs.filter(m=>['claimed','pr_open','needs_human'].includes(fstatus(m))).length,unit:'in progress',lit:fs.some(m=>['claimed','pr_open','needs_human'].includes(fstatus(m)))},{icon:'fix',title:'Fix',desc:'commit recorded',value:fs.filter(m=>fstatus(m)==='fixed').length,unit:'fixed',lit:fs.some(m=>fstatus(m)==='fixed')},{icon:'regress',title:'Regression watch',desc:'a fixed bug reported again is flagged',value:fs.filter(m=>fstatus(m)==='regressed').length,unit:'regressed',lit:fs.some(m=>fstatus(m)==='regressed')},{icon:'slack',title:'Slack',desc:'one card per finding, never twice'}],{compact:true,title:'The finding lifecycle'})+'<div style="height:14px"></div>':''}
   ${LIVE&&fs.length?'<div class="row" style="margin:0 0 10px"><span class="spacer"></span><a class="btn sm" href="/api/export.xlsx?sheets=flares" download>⬇ Flares as Excel</a></div>':''}
-  <div class="${m?'split':''}"><div class="board">${cols.map(s=>{const L=fs.filter(f=>fstatus(f)===s).sort((a,b)=>sevOrder[a.meta.severity]-sevOrder[b.meta.severity]);
+  <div><div class="board">${cols.map(s=>{const L=fs.filter(f=>fstatus(f)===s).sort((a,b)=>sevOrder[a.meta.severity]-sevOrder[b.meta.severity]);
    const P=paged('flares-'+s,L,30);
    return `<div class="col"><h4><span>${s.replace('_',' ')}</span><span>${L.length}</span></h4>${P.rows.map(f=>`<div class="fcard" data-id="${f.id}" style="--c:${cc(f.meta.severity)}"><div class="id">${esc(f.meta.audit_id)}${f.meta.area?' · '+esc(f.meta.area):''}</div><div class="t">${md(f.text)}</div>${f.files[0]?`<code>${esc(f.files[0])}</code>`:''}</div>`).join('')}${P.bar}</div>`}).join('')}</div>
-  ${m?`<div class="sticky">${detail(m)}</div>`:''}</div>`;
- bindMem();bindDetail();bindPager();
+  </div>${detailModal(m)}`;
+ bindMem();bindDetail();bindDetailModal();bindPager();
 }
 /* ---------- dreams */
 function runRow(r,compact){return `<div class="run" data-run="${r.at}"><div><div class="when">${fmt(r.at)}</div><div class="small dim">${r.memories_total} memories after${r.llm_used?' · LLM':''}</div></div>
@@ -894,11 +914,11 @@ function verdicts(){
   ${aging.length?`<h3 class="sec" style="margin-top:28px">Flares open for ${14}+ days</h3><div class="small dim" style="margin:-6px 0 12px">Filing is free; closing needs a decision. Each one here is either still worth fixing, not worth fixing, or already gone.</div>`+aging.map(m=>`<div class="card" style="margin-bottom:8px"><div class="row" style="justify-content:space-between;align-items:start"><div><span class="badge sev" style="--c:${cc(m.meta.severity)}">${esc(m.meta.severity)}</span> <b>${esc(m.meta.audit_id||'')}</b> · ${flareAgeDays(m)}d · <span class="dim">${esc(fstatus(m))}</span><div style="margin-top:4px">${md(m.text)}</div>${(m.files||[]).slice(0,2).map(f=>`<code>${esc(f)}</code>`).join(' ')}</div><div class="actions"><button class="btn sm ok" data-fs="${m.id}" data-st="claimed">Still valid · I take it</button><button class="btn sm" data-fs="${m.id}" data-st="wontfix">Won't fix</button><button class="btn sm" data-fs="${m.id}" data-st="withdrawn">Gone</button></div></div></div>`).join(''):''}
   ${nh.length?`<h3 class="sec" style="margin-top:28px">Flares that need a human</h3>`+nh.map(m=>`<div class="card" style="margin-bottom:8px"><div class="row" style="justify-content:space-between"><div><span class="badge sev" style="--c:${cc(m.meta.severity)}">${SEVI[m.meta.severity]||''} ${esc(m.meta.audit_id)}</span> <b>${md(m.text)}</b><div class="small muted" style="margin-top:4px">${esc(m.meta.status_note||m.reason||'')}</div></div><div class="actions" style="margin:0"><button class="btn sm" data-fs2="claimed" data-id="${m.id}">Claim</button><button class="btn sm ok" data-fs2="fixed" data-id="${m.id}">Fixed</button><button class="btn sm warn" data-fs2="wontfix" data-id="${m.id}">Won't fix</button><button class="btn sm bad" data-fs2="withdrawn" data-id="${m.id}">Withdraw</button></div></div></div>`).join(''):''}
   ${pairs.length+stale.length+nh.length+aging.length?'':'<div class="empty">✓ Nothing needs a decision. The ledger is consistent.</div>'}`;
- document.querySelectorAll('[data-fs]').forEach(b=>b.onclick=()=>act({type:'finding_status',id:b.dataset.fs,status:b.dataset.st,note:b.dataset.st==='claimed'?'':(prompt('Why? (optional)')||'')}));
- document.querySelectorAll('[data-keep]').forEach(b=>b.onclick=()=>act({type:'keep',id:b.dataset.keep,drop:b.dataset.drop,note:prompt('Why keep this one? (optional)')||''}));
- document.querySelectorAll('[data-both]').forEach(b=>b.onclick=()=>act({type:'both_valid',id:b.dataset.both,other:b.dataset.other,note:prompt('Why are both true? (optional)')||''}));
+ document.querySelectorAll('[data-fs]').forEach(b=>b.onclick=async()=>{const note=await askStatus(b.dataset.st);if(note!==null)act({type:'finding_status',id:b.dataset.fs,status:b.dataset.st,note})});
+ document.querySelectorAll('[data-keep]').forEach(b=>b.onclick=async()=>{const note=await ask('Keep this one',{sub:'The other becomes superseded. Why is this one right? (optional)',ok:'Keep'});if(note!==null)act({type:'keep',id:b.dataset.keep,drop:b.dataset.drop,note})});
+ document.querySelectorAll('[data-both]').forEach(b=>b.onclick=async()=>{const note=await ask('Both are true',{sub:'Why do they not contradict each other? (optional)',ok:'Both valid'});if(note!==null)act({type:'both_valid',id:b.dataset.both,other:b.dataset.other,note})});
  document.querySelectorAll('[data-act2]').forEach(b=>b.onclick=()=>act({type:b.dataset.act2,id:b.dataset.id}));
- document.querySelectorAll('[data-fs2]').forEach(b=>b.onclick=()=>act({type:'finding_status',id:b.dataset.id,status:b.dataset.fs2,note:prompt('Note (optional)')||''}));
+ document.querySelectorAll('[data-fs2]').forEach(b=>b.onclick=async()=>{const note=await askStatus(b.dataset.fs2);if(note!==null)act({type:'finding_status',id:b.dataset.id,status:b.dataset.fs2,note})});
 }
 /* ---------- activity */
 function obsRow(o){return `<div class="ev"><span><span class="badge cat" style="--c:${cc(o.category)}">${esc(o.category)}</span>${o.source==='explicit'?' <span class="badge" style="color:var(--acc2)">explicit</span>':''}</span><span>${md(o.text)}<div class="small dim">${esc(o.author||'')}${o.files&&o.files[0]?' · <code>'+esc(o.files[0])+'</code>':''}</div></span></div>`}
@@ -1044,7 +1064,7 @@ fixed/wontfix reported again by a later audit → regressed ⚠️</pre>
   <table><tr><th>stage</th><th>how</th></tr>
   <tr><td>Name</td><td>A flare's id is the project's lifecycle stage, read from git when it is filed: <code>qa/*</code> <code>test/*</code> → QA, <code>uat/*</code> <code>staging</code> → UAT, <code>release/*</code> or an rc tag → RC, <code>hotfix/*</code> → HOTFIX, main once a version tag is reachable → PROD, anything else → DEV. Nothing to run: a new flare takes the current stage and keeps it for life. <code>cosmos flares stage</code> says which one applies and why. In <code>.cosmos/config.json</code>: <code>flares.stages</code> adds branch patterns, <code>flares.stage</code> pins a stage, <code>flares.project</code> adds a tag (<code>RET-QA-…</code>), <code>flares.prefix</code> pins one prefix for everything (explicit outranks inferred).</td></tr>
   <tr><td>Report</td><td>An audit session writes <code>qa-findings.json</code> → <code>cosmos flares import docs/qa-findings.json</code> (<code>--prefix PENTEST</code> names that one import). Same id = update, never a duplicate — also after the stage changed: a finding already filed under an earlier prefix keeps it. No file yet? cosmos asks before creating an empty one (<code>--yes</code> skips the question). Or type <code>flare: …</code> in a session.</td></tr>
-  <tr><td>Triage</td><td><b>Flares</b> board, kanban by status. Click a card for What / Impact / Evidence / Fix.</td></tr>
+  <tr><td>Triage</td><td><b>Flares</b> board, kanban by status. Click a card for What / Impact / Evidence / Fix. A status button asks in a dialog: Cancel, Escape or a click outside changes nothing; Withdraw, Won't fix and Needs a human need a reason.</td></tr>
   <tr><td>Fix</td><td><code>cosmos flares claim QA-12</code> → <code>pr-open</code> → <code>fix QA-12 "PR #<n>"</code> (records the commit; the status's own name works too: <code>claimed</code>, <code>fixed</code>, <code>pr_open</code>). Work in another worktree or branch: <code>--commit &lt;sha&gt; --branch &lt;name&gt;</code>. Filed something wrong: <code>cosmos flares edit QA-12 --title … --severity … --locations …</code> (the id stays). Or the buttons in the card. Or the QA fix loop, which writes <code>status</code>/<code>status_note</code>/<code>status_at</code> into the JSON — re-import is the sync point; an incoming <i>open</i> never downgrades a local <i>claimed</i>.</td></tr>
   <tr><td>Withdraw</td><td><code>cosmos flares withdraw QA-8 "shared reference data by design"</code>. Kept forever so nobody re-files it; hidden from retrieval.</td></tr>
   <tr><td>Publish</td><td><code>cosmos flares slack --validate</code> → <code>cosmos flares slack --send --channel C…</code> (token from <code>SLACK_BOT_TOKEN</code> only). One Block Kit card per open finding, 👀 ✅ 🚫 pre-seeded, never double-posts. <code>--convert</code> rewrites already-posted messages in place.</td></tr>
@@ -1122,7 +1142,11 @@ cosmos obsidian --vault ~/Obsidian/Team  # link several repos' ledgers into one 
 }
 /* ---------- wiring */
 document.querySelectorAll('nav i[data-ic]').forEach(i=>{i.innerHTML='<svg viewBox="0 0 24 24" aria-hidden="true">'+ICONS[i.dataset.ic]+'</svg>'});
-document.querySelectorAll('nav button').forEach(b=>b.onclick=()=>{page=b.dataset.p;sel=null;render()});
+document.querySelectorAll('nav button[data-p]').forEach(b=>{b.title=b.querySelector('.lb').textContent.trim();b.onclick=()=>{page=b.dataset.p;sel=null;render()}});
+/* collapsible sidebar: icons only, the choice kept per browser (a convenience; nothing breaks without storage) */
+(function(){const app=$('#app'),t=$('#navtog');let min=null;try{min=localStorage.getItem('cosmos.navmin')}catch(e){}
+ const set=v=>{app.classList.toggle('navmin',v);const l=v?'Open the sidebar':'Collapse the sidebar';t.title=l;t.setAttribute('aria-label',l);t.setAttribute('aria-expanded',String(!v));try{localStorage.setItem('cosmos.navmin',v?'1':'0')}catch(e){}};
+ set(min===null?window.innerWidth<760:min==='1');t.onclick=()=>set(!app.classList.contains('navmin'))})();
 $('#q').oninput=e=>{q=e.target.value.toLowerCase();render()};
 $('#dream').onclick=async()=>{$('#dream').textContent='💤 dreaming…';$('#dream').disabled=true;const r=await act({type:'dream'});$('#dream').textContent='💤 Run dream';$('#dream').disabled=false;if(r.ok){toast(r.report.summary);page='dreams';selRun=S.dreams[0]&&S.dreams[0].at;render()}};
 $('#capture').onclick=async()=>{$('#capture').disabled=true;const r=await act({type:'capture'});$('#capture').disabled=false;if(r.ok)toast(`captured ${r.captured} observation(s)`)};

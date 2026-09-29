@@ -645,6 +645,15 @@ console.log('ok');"""
         out = subprocess.run(["node", "-e", js], capture_output=True, text=True)
         self.assertEqual(out.stdout.strip(), "ok", out.stdout + out.stderr)
 
+    def test_no_browser_dialogs_and_cancel_never_acts(self):
+        import re
+        from cosmos.ui import HTML
+        self.assertNotRegex(HTML, r"\b(prompt|confirm|alert)\(", "the console's own dialog only: a browser prompt looks foreign and its Cancel was taken as an empty note")
+        for handler in re.findall(r"await (?:ask|askStatus)\([^;]*;[^;]*", HTML):
+            self.assertRegex(handler, r"(===|!==)\s*null", f"a cancelled dialog must stop the action: {handler[:90]}")
+        self.assertIn('id="navtog"', HTML)
+        self.assertIn("#app.navmin", HTML)
+
     def test_the_atlas_prompt_asks_for_mermaid_that_renders(self):
         from cosmos.atlas import COMMAND_MD
         self.assertIn('every label in double quotes', COMMAND_MD)
