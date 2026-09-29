@@ -37,17 +37,37 @@ The JSON a Claude audit session already produces:
 
 ## Ids and the prefix
 
-A flare's id is `<PREFIX>-<raw id>`. The prefix given to `cosmos flares import --prefix` is saved in the repository's
-`.cosmos/config.json` (`flares.prefix`) and used for every flare filed later, including the ones agents file from a
-session with `cosmos_flare` or `flare: …`; flares already filed from sessions under the previous default are renamed to
-it. Flares imported under a prefix someone chose keep theirs. Without a saved prefix it is `QA`. A finding the model
-writes while reading a session gets an id with the same prefix and is a note (no lifecycle) unless it states a severity.
+A flare's id is `<PREFIX>-<raw id>`, and the prefix is where the project is in its life when the flare is filed, read
+from git. Nothing to run and nothing to choose: every flare filed now (from a session with `cosmos_flare` or
+`flare: …`, by an import, or named by a dream) takes the current stage, and keeps it after the project moves on.
+
+| stage | when |
+|---|---|
+| `QA` | branch `qa/*`, `qa-*`, `test/*`, `testing` |
+| `UAT` | branch `uat/*`, `uat`, `staging`, `stage` |
+| `RC` | branch `release/*`, `release-*`, `rc/*`, or HEAD has an `-rc` / `-beta` / `-alpha` tag |
+| `HOTFIX` | branch `hotfix/*`, `hotfix-*` |
+| `PROD` | `main` / `master` / `trunk` once a version tag (`v1.2.0`, `1.2`) is reachable from HEAD |
+| `DEV` | any other branch, or nothing released yet |
+
+`cosmos flares stage` prints the prefix a new flare gets here and why. In `.cosmos/config.json`:
+
+- `flares.stages` — your own branch patterns, checked first: `{"develop": "DEV", "preprod/*": "UAT"}`
+- `flares.stage` — pin the stage for every branch (a project that is "in QA" whatever the branch)
+- `flares.project` — a project tag before the stage: `RET-QA-11`
+- `flares.prefix` — one prefix for every flare, lifecycle off (explicit outranks inferred; older versions of cosmos
+  wrote it on `import --prefix`, remove it to follow the lifecycle)
+
+`cosmos flares import --prefix PENTEST` names that one import. A finding that is already in the ledger keeps its id when
+it is imported or filed again under a later stage (same source and raw id), so a re-import is an update, and a fixed
+finding reported again is a regression, never a duplicate. A finding the model writes while reading a session gets an id
+with the current prefix and is a note (no lifecycle) unless it states a severity.
 `cosmos flares import` on a file that does not exist asks before creating an empty one to fill in (`--yes` skips the
 question).
 
 ## Commands
 ```bash
-cosmos flares import docs/qa-findings.json --prefix QA --source qa-flares.md
+cosmos flares import docs/qa-findings.json --source qa-flares.md
 cosmos flares list [--status open|fixed|withdrawn|wontfix|regressed] [--severity critical] [--json]
 cosmos flares show QA-11
 cosmos flares fix QA-12 "org_id__eq → org_id, PR #<n>"      # records HEAD as fixed_commit
@@ -55,6 +75,10 @@ cosmos flares withdraw QA-8 "companies is shared reference data by design"
 cosmos flares wontfix QA-6 | cosmos flares reopen QA-6
 cosmos flares claim QA-1 | cosmos flares pr-open QA-1 | cosmos flares needs-human QA-17 "intent unclear"
 cosmos flares set QA-1 pr_open "PR #<n>"
+cosmos flares claimed QA-1 | cosmos flares fixed QA-1 …                # each status's own name works too (except open: use reopen)
+cosmos flares fix QA-12 "PR #<n>" --commit 862f73c --branch qa/fixes   # the fix lives in another worktree
+cosmos flares edit QA-12 --title "…" --severity high --locations "api/x.py:42"   # correct a flare; its id stays
+cosmos flares stage                                            # the prefix a new flare gets here, and why
 cosmos flares export -o docs/qa-findings.json                  # same schema back out
 cosmos flares report --format md -o docs/qa-flares.md           # regenerated from the ledger
 cosmos flares report --format slack                            # parent + threaded replies as JSON
@@ -97,3 +121,13 @@ produced two real findings. Limits: literal dict keys at the call site only; the
 - Typing `flare: …` in a session captures an explicit finding observation; `cosmos dream` turns it into a note.
 - `UserPromptSubmit` retrieval ranks findings by the files they anchor to, so a prompt like *"refactor pipeline_stage.py"* surfaces `QA-11` before the edit happens.
 - Open findings appear in the CLAUDE.md / AGENTS.md managed block like any other high-importance fact.
+
+## QA playbooks
+
+A team's own QA protocol (for example `docs/qa/MASTER_QA_PROTOCOL.md`) is found by itself: a markdown file named
+*protocol* / *playbook* / *runbook* / *master prompt*, written for an agent. It becomes a command for every agent
+(`/master-qa-protocol`), and `/qa` reads it first and follows it. Another project that wants the same protocol runs
+`cosmos playbooks add <path to it>`, which copies it into `.cosmos/playbooks/` (committed) to adapt; a project with none
+runs `cosmos playbooks add qa` for a generic one (safety rules, discovery, the loop with flares and a resumable state
+file, stop rules, severity, areas). `cosmos playbooks` lists what was found; `playbooks.ignore` and `playbooks.paths` in
+`.cosmos/config.json` correct the detection.

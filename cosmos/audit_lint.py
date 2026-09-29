@@ -1,4 +1,4 @@
-"""`cosmos audit lint`: flag repository filter keys that are not real columns of the repository's model.
+"""`cosmos flares lint`: flag repository filter keys that are not real columns of the repository's model.
 
 Generalised from a QA audit's filter check: `BaseRepository.apply_filters`-style helpers silently DROP
 unknown keys, so a typo or an operator suffix (`org_id__eq`) on a model without that column becomes a no-op filter

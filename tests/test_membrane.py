@@ -404,26 +404,297 @@ class TestLedgerRelink(unittest.TestCase):
             self.assertFalse(list(r.root.glob(".cosmos-relink-*")), "no temporary folder left behind")
 
 
+def _git(root, *args):
+    return subprocess.run(["git", *args], cwd=root, check=True, capture_output=True, text=True).stdout
+
+
 class TestFlarePrefix(unittest.TestCase):
-    def test_chosen_prefix_is_remembered_and_session_flares_follow_it(self):
-        from cosmos.audit import flare_prefix, remember_prefix, rename_prefix
+    def _stage_repo(self, r):
+        _git(r.root, "config", "user.email", "t@example.com")
+        _git(r.root, "checkout", "-q", "-b", "main")
+        (r.root / "README.md").write_text("x")
+        _git(r.root, "add", "README.md"); _git(r.root, "commit", "-q", "-m", "one")
+
+    def test_the_prefix_follows_the_lifecycle_and_a_flare_keeps_the_one_it_was_filed_with(self):
+        from cosmos.audit import flare_prefix, lifecycle_stage
         from cosmos.config import load_config
         from cosmos.mcp import call_tool
         from cosmos.dream import _name_findings
         with Repo() as r:
+            self._stage_repo(r)
+            self.assertEqual(lifecycle_stage(r.cfg)[0], "DEV", "nothing released yet")
             call_tool(r.cfg, "cosmos_flare", {"title": "Opt-out ignored on bulk send", "severity": "high"})
-            self.assertTrue(any(m.meta.get("audit_id", "").startswith("QA-") for m in Ledger(r.cfg.paths).load().values()))
-            self.assertTrue(remember_prefix(r.cfg, "RET"))
-            self.assertEqual(rename_prefix(r.cfg, "QA", "RET", only_source="mcp"), 1)
+            _git(r.root, "checkout", "-q", "-b", "qa/fixes-2026-09-29")
+            self.assertEqual(flare_prefix(r.cfg), "QA")
+            call_tool(r.cfg, "cosmos_flare", {"title": "Holdout shrinks when pct is unset", "severity": "medium"})
+            call_tool(r.cfg, "cosmos_flare", {"title": "Opt-out ignored on bulk send", "severity": "high"})    # filed again in QA
+            ids = sorted(m.meta["audit_id"].rsplit("-", 1)[0] for m in Ledger(r.cfg.paths).load().values() if m.category == "finding")
+            self.assertEqual(ids, ["DEV", "QA"], "the same flare filed again keeps its first id; a new one takes the stage")
+            for branch, stage in (("release/2.0", "RC"), ("hotfix/login", "HOTFIX"), ("staging", "UAT"), ("feature/x", "DEV")):
+                _git(r.root, "checkout", "-q", "-B", branch)
+                self.assertEqual(lifecycle_stage(r.cfg)[0], stage, branch)
+            _git(r.root, "checkout", "-q", "main"); _git(r.root, "tag", "v1.0.0")
+            self.assertEqual(lifecycle_stage(r.cfg), ("PROD", "released (v1.0.0 is in main)"))
+            data = json.loads(r.cfg.paths.config.read_text())
+            data["flares"] = {"project": "RET", "stages": {"feature/*": "QA"}}
+            r.cfg.paths.config.write_text(json.dumps(data))
             cfg = load_config(r.root)
-            self.assertEqual(flare_prefix(cfg), "RET", "saved in the repo config")
-            call_tool(cfg, "cosmos_flare", {"title": "Holdout shrinks when pct is unset", "severity": "medium"})
-            ids = sorted(m.meta["audit_id"] for m in Ledger(cfg.paths).load().values() if m.category == "finding")
-            self.assertTrue(all(i.startswith("RET-") for i in ids), ids)
+            self.assertEqual(flare_prefix(cfg), "RET-PROD")
+            _git(r.root, "checkout", "-q", "feature/x")
+            self.assertEqual(flare_prefix(cfg), "RET-QA", "the team's own branch patterns are checked first")
+            data["flares"] = {"prefix": "RET-WATERFALL", "project": "RET"}
+            r.cfg.paths.config.write_text(json.dumps(data))
+            cfg = load_config(r.root)
+            self.assertEqual(flare_prefix(cfg), "RET-WATERFALL", "a pinned prefix outranks the lifecycle")
             stray = Memory(id="mem_abc12345", text="Benchmark: 226ms for the heaviest query", category="finding")
-            mems = {stray.id: stray}
-            _name_findings(cfg, mems)
-            self.assertEqual((stray.meta["audit_id"], stray.meta["severity"], stray.meta["finding_status"]), ("RET-c12345", "note", "note"))
+            _name_findings(cfg, {stray.id: stray})
+            self.assertEqual((stray.meta["audit_id"], stray.meta["severity"], stray.meta["finding_status"]), ("RET-WATERFALL-c12345", "note", "note"))
+
+    def test_a_reimport_after_the_stage_changed_updates_instead_of_duplicating(self):
+        from cosmos.audit import import_findings
+        with Repo() as r:
+            self._stage_repo(r)
+            f = r.root / "qa.json"
+            f.write_text(json.dumps([{"id": "11", "severity": "high", "title": "Review chain bypassable by slug", "status": "open"}]))
+            import_findings(r.cfg, f, "PENTEST")
+            f.write_text(json.dumps([{"id": "11", "severity": "high", "title": "Review chain bypassable by slug", "status": "fixed"}]))
+            new, upd, _ = import_findings(r.cfg, f, "QA")
+            fs = [m for m in Ledger(r.cfg.paths).load().values() if m.category == "finding"]
+            self.assertEqual((len(new), len(upd), len(fs)), (0, 1, 1))
+            self.assertEqual((fs[0].meta["audit_id"], fs[0].meta["finding_status"]), ("PENTEST-11", "fixed"))
+
+
+class TestFlareCommands(unittest.TestCase):
+    def test_status_names_commit_branch_and_edit(self):
+        from cosmos.cli import main
+        from cosmos.mcp import call_tool
+        with Repo() as r:
+            call_tool(r.cfg, "cosmos_flare", {"title": "Wallet charge accepts negative amounts", "severity": "medium", "locations": "src/redis-lock.ts:1"})
+            aid = next(m.meta["audit_id"] for m in Ledger(r.cfg.paths).load().values() if m.category == "finding")
+            cwd = os.getcwd()
+            os.chdir(r.root)
+            try:
+                self.assertEqual(main(["flares", "claimed", aid, "on it"]), 0, "the status's own name is a command")
+                self.assertEqual(main(["flares", "fix", aid, "PR 12", "--commit", "b10646f", "--branch", "qa/fixes"]), 0)
+                self.assertEqual(main(["flares", "edit", aid, "--severity", "high", "--title", "Wallet charge adds balance on a negative amount"]), 0)
+                self.assertEqual(main(["flares", "edit", aid]), 1, "nothing to change")
+            finally:
+                os.chdir(cwd)
+            m = next(m for m in Ledger(r.cfg.paths).load().values() if m.category == "finding")
+            self.assertEqual((m.meta["finding_status"], m.meta["fixed_commit"], m.meta["fixed_branch"]), ("fixed", "b10646f", "qa/fixes"))
+            self.assertEqual((m.meta["severity"], m.text, m.meta["audit_id"]), ("high", "Wallet charge adds balance on a negative amount", aid))
+            self.assertIn("high", m.tags)
+            self.assertNotIn("medium", m.tags)
+
+
+class TestSlashCommands(unittest.TestCase):
+    def test_every_agent_gets_the_catalogue_and_the_teams_own_files_are_kept(self):
+        from cosmos.commands import catalogue, write_codex_prompts, write_commands
+        names = [n for n, *_ in catalogue()]
+        with Repo() as r:
+            own = r.root / ".claude" / "commands" / "qa.md"
+            own.parent.mkdir(parents=True)
+            own.write_text("our own QA protocol\n")
+            written, kept = write_commands(r.root, ["claude", "gemini", "cursor", "copilot", "windsurf", "codex", "cline"])
+            self.assertEqual(kept, [".claude/commands/qa.md"])
+            self.assertEqual(own.read_text(), "our own QA protocol\n")
+            self.assertEqual(len(written), 5 * len(names) - 1)
+            flare = (r.root / ".gemini" / "commands" / "flare.toml").read_text()
+            self.assertIn("{{args}}", flare)
+            self.assertTrue(flare.splitlines()[1].startswith('description = "'))
+            self.assertIn("$ARGUMENTS", (r.root / ".claude" / "commands" / "recall.md").read_text())
+            self.assertTrue((r.root / ".github" / "prompts" / "qa.prompt.md").exists())
+            self.assertEqual(write_commands(r.root, ["claude"]), ([], [".claude/commands/qa.md"]), "second run: nothing to rewrite")
+            home = r.root / "home"
+            self.assertEqual(len(write_codex_prompts(home)), len(names))
+            self.assertTrue((home / ".codex" / "prompts" / "cosmos-flare.md").exists())
+
+    def test_the_plugin_carries_the_same_commands(self):
+        from cosmos.commands import catalogue, render
+        plugin = Path(__file__).resolve().parent.parent / "plugin" / "commands"
+        for name, desc, hint, body in catalogue():
+            self.assertEqual((plugin / f"{name}.md").read_text(), render("claude", name, desc, hint, body),
+                             f"plugin/commands/{name}.md is stale: python3 -c 'from cosmos.commands import write_plugin_commands as w; from pathlib import Path; w(Path(\"plugin\"))'")
+
+    def test_connect_with_no_agent_wires_all(self):
+        from cosmos.cli import main
+        with Repo() as r:
+            cwd = os.getcwd()
+            os.chdir(r.root)
+            try:
+                self.assertEqual(main(["connect"]), 0)
+                self.assertEqual(main(["connect", "notepad"]), 2)
+            finally:
+                os.chdir(cwd)
+            self.assertTrue((r.root / ".cursor" / "commands" / "recall.md").exists())
+            self.assertIn("/reconcile", (r.root / "CLAUDE.md").read_text(), "the block names the commands once they exist")
+
+    def test_the_block_names_no_commands_a_repo_does_not_have(self):
+        with Repo() as r:
+            self.assertNotIn("Slash commands", managed_block({}, 5, r.cfg))
+
+
+class TestPlaybooks(unittest.TestCase):
+    def test_a_teams_protocol_is_found_becomes_a_command_and_qa_follows_it(self):
+        from cosmos.commands import write_commands
+        from cosmos.playbooks import detect
+        with Repo() as r:
+            qa = r.root / "docs" / "qa"
+            qa.mkdir(parents=True)
+            (qa / "MASTER_QA_PROTOCOL.md").write_text("# Master QA Operating Instruction\nThis file is an instruction for an autonomous agent session.\n")
+            (r.root / "docs" / "CLIENT_MEETING_PLAYBOOK.md").write_text("# Client meeting playbook\nBring the deck. Ask about budget.\n")
+            (r.root / "docs" / "release.md").write_text("# Release runbook\nThe agent tags the release after cosmos says the gate passed.\n")
+            self.assertEqual([(p["name"], p["kind"]) for p in detect(r.cfg)], [("master-qa-protocol", "qa"), ("release", "general")],
+                             "a playbook for people is not an agent playbook")
+            write_commands(r.root, ["claude", "gemini"], r.cfg)
+            cmd = r.root / ".claude" / "commands"
+            self.assertIn("docs/qa/MASTER_QA_PROTOCOL.md", (cmd / "master-qa-protocol.md").read_text())
+            self.assertIn("The team's QA playbook is `docs/qa/MASTER_QA_PROTOCOL.md`", (cmd / "qa.md").read_text())
+            self.assertIn("{{args}}", (r.root / ".gemini" / "commands" / "release.toml").read_text())
+            (r.root / "docs" / "release.md").unlink()
+            written, _ = write_commands(r.root, ["claude"], r.cfg)
+            self.assertIn(".claude/commands/release.md", written)
+            self.assertFalse((cmd / "release.md").exists(), "a playbook that is gone takes its command with it")
+            self.assertTrue((cmd / "recall.md").exists())
+
+    def test_a_playbook_is_brought_in_from_another_project_or_started_from_the_generic_one(self):
+        from cosmos.cli import main
+        from cosmos.playbooks import add, detect, qa_playbook
+        with Repo() as r, tempfile.TemporaryDirectory() as other:
+            src = Path(other) / "MASTER_QA_PROTOCOL.md"
+            src.write_text("# RETEN — Master QA Operating Instruction\nFor an agent.\n")
+            dst = add(r.cfg, str(src))
+            self.assertEqual(dst.relative_to(r.root).as_posix(), ".cosmos/playbooks/master-qa-protocol.md")
+            self.assertIn(f"playbook from {src.resolve()}", dst.read_text())
+            generic = add(r.cfg, "qa")
+            self.assertIn(f"# {r.root.name} — QA playbook", generic.read_text())
+            with self.assertRaises(SystemExit):
+                add(r.cfg, "qa")
+            self.assertEqual(qa_playbook(r.cfg)["path"], ".cosmos/playbooks/master-qa-protocol.md")
+            self.assertEqual(len(detect(r.cfg)), 2)
+            cwd = os.getcwd()
+            os.chdir(r.root)
+            try:
+                self.assertEqual(main(["playbooks"]), 0)
+                self.assertEqual(main(["playbooks", "add"]), 2)
+            finally:
+                os.chdir(cwd)
+
+
+class TestNoRetiredNames(unittest.TestCase):
+    """Intake → Horizon and Findings → Flares (5b289ba). The old names stay accepted as aliases, never shown again."""
+    def test_commands_block_and_messages_use_the_current_names(self):
+        import re
+        from cosmos.audit import report_slack
+        from cosmos.commands import RETIRED, catalogue
+        root = Path(__file__).resolve().parent.parent
+        self.assertFalse(RETIRED & {n for n, *_ in catalogue()})
+        shown = "\n".join(b for *_, b in catalogue()) + managed_block({}, 5, None)
+        for f in ("README.md", "docs/index.html", "docs/flares.md", "docs/plugin.md", "cosmos/ui.py", "plugin/skills/cosmos/SKILL.md"):
+            shown += (root / f).read_text()
+        for old in (r"cosmos audit\b", r"cosmos_finding", r"cosmos_intake", r"/intake\b", r"cosmos intake\b", r"`finding: ", r"ledger/intake/"):
+            self.assertFalse(re.search(old, shown), f"retired name shown again: {old}")
+        with Repo() as r:
+            m = Memory(id="mem_f1", text="Webhook replay possible", category="finding", meta={"audit_id": "DEV-1", "severity": "high", "finding_status": "open"})
+            self.assertNotIn("cosmos audit", json.dumps(report_slack(r.cfg, [m])))
+
+    def test_a_renamed_command_takes_its_old_file_with_it(self):
+        from cosmos.commands import render, write_commands
+        with Repo() as r:
+            old = r.root / ".claude" / "commands" / "intake.md"
+            old.parent.mkdir(parents=True)
+            old.write_text(render("claude", "intake", "old", "", "old body"))
+            write_commands(r.root, ["claude"])
+            self.assertFalse(old.exists())
+            self.assertTrue((r.root / ".claude" / "commands" / "horizon.md").exists())
+
+
+class TestConsoleScripts(unittest.TestCase):
+    def _js(self, name):
+        import re
+        from cosmos.ui import HTML
+        m = re.search(r"^function %s\(.*?^}" % name, HTML, re.S | re.M) or re.search(r"^function %s\(.*$" % name, HTML, re.M)
+        return m.group(0)
+
+    @unittest.skipUnless(__import__("shutil").which("node"), "node not installed")
+    def test_mermaid_labels_the_model_writes_are_made_parseable(self):
+        js = self._js("mmdFix") + """
+const cases = [
+  ["flowchart LR\\n  storage -.->|S3 API (demo)| minio", 'storage -.->|"S3 API (demo)"| minio'],
+  ["flowchart LR\\n  a -->|POST /api/cron/{sync,autopilot}| b", '|"POST /api/cron/{sync,autopilot}"|'],
+  ["flowchart LR\\n  api[reten-api (FastAPI)] --> db[(Postgres)]", 'api["reten-api (FastAPI)"] --> db[(Postgres)]'],
+  ["flowchart LR\\n  a -->|\\"already quoted\\"| b", '|"already quoted"|'],
+  ["sequenceDiagram\\n  API-->>SITE: rows (no emails; relative paths)", "rows (no emails#59; relative paths)"],
+];
+for (const [src, want] of cases) { const got = mmdFix(src.replace(/\\\\n/g, "\\n")); if (!got.includes(want)) { console.log("FAIL", JSON.stringify(got), "wants", want); process.exit(1) } }
+console.log("ok");"""
+        out = subprocess.run(["node", "-e", js], capture_output=True, text=True)
+        self.assertEqual(out.stdout.strip(), "ok", out.stdout + out.stderr)
+
+    @unittest.skipUnless(__import__("shutil").which("node"), "node not installed")
+    def test_long_lists_are_paged_in_the_page(self):
+        js = "const PG={};" + self._js("paged") + """
+const items = Array.from({length: 1329}, (_, i) => ({id: 'm' + i}));
+let P = paged('ledger', items, 50);
+if (P.rows.length !== 50 || !P.bar.includes('1–50 of 1329') || !P.bar.includes('page 1 / 27')) { console.log('bad first page', P.bar); process.exit(1) }
+PG.ledger.p = 26; P = paged('ledger', items, 50);
+if (P.rows.length !== 29) { console.log('bad last page', P.rows.length); process.exit(1) }
+P = paged('ledger', items.slice(0, 10), 50);
+if (P.bar !== '' || PG.ledger.p !== 0) { console.log('a new list starts at page one without a pager'); process.exit(1) }
+console.log('ok');"""
+        out = subprocess.run(["node", "-e", js], capture_output=True, text=True)
+        self.assertEqual(out.stdout.strip(), "ok", out.stdout + out.stderr)
+
+    def test_the_atlas_prompt_asks_for_mermaid_that_renders(self):
+        from cosmos.atlas import COMMAND_MD
+        self.assertIn('every label in double quotes', COMMAND_MD)
+        self.assertIn("classDef svc", COMMAND_MD)
+
+
+class TestDoctorEntrypoints(unittest.TestCase):
+    def test_a_launcher_left_by_another_python_is_named_with_its_fix(self):
+        from cosmos.cli import entrypoints
+        with tempfile.TemporaryDirectory() as d:
+            d = Path(d)
+            py = d / "python3.10"
+            py.write_text("#!/bin/sh\nexit 1\n"); py.chmod(0o755)                    # a Python without cosmos
+            launcher = d / "bin" / "cosmos"
+            launcher.parent.mkdir()
+            launcher.write_text(f"#!{py}\nfrom cosmos.cli import main\n"); launcher.chmod(0o755)
+            old = os.environ["PATH"]
+            os.environ["PATH"] = str(launcher.parent)
+            try:
+                (path, good, msg), = entrypoints()
+            finally:
+                os.environ["PATH"] = old
+            self.assertEqual((path, good), (str(launcher), False))
+            self.assertIn(f"{py} -m pip install", msg)
+            self.assertIn(".cosmos/cosmosw", msg)
+
+    def test_no_push_guard(self):
+        from cosmos import sync
+        with Repo() as r:
+            os.environ["COSMOS_NO_PUSH"] = "1"
+            try:
+                self.assertEqual(sync.push(r.root), (False, "COSMOS_NO_PUSH is set: cosmos pushes nothing"))
+            finally:
+                del os.environ["COSMOS_NO_PUSH"]
+
+
+class TestAtlasCodeRoutes(unittest.TestCase):
+    def test_routes_declared_in_code_count_as_endpoints(self):
+        from cosmos.atlas import code_routes
+        with Repo() as r:
+            (r.root / "apis").mkdir()
+            (r.root / "apis" / "main.py").write_text('@app.get("/api/health")\ndef h(): ...\n@router.post("/api/auth/signup")\ndef s(): ...\n'
+                                                     '@bp.route("/legacy", methods=["GET", "POST"])\ndef l(): ...\n@app.websocket("/ws")\nasync def w(): ...\n')
+            (r.root / "web.js").write_text("app.get('/x', h); router.delete(`/y/:id`, d)\n")
+            (r.root / "tests").mkdir()
+            (r.root / "tests" / "test_api.py").write_text('@app.get("/not-an-endpoint")\n')
+            got = {x["spec"]: x["endpoints"] for x in code_routes(r.root)}
+            self.assertEqual(got["apis/main.py (routes in code)"], [("GET", "/api/health"), ("POST", "/api/auth/signup"), ("GET", "/legacy"), ("POST", "/legacy"), ("WS", "/ws")])
+            self.assertEqual(got["web.js (routes in code)"], [("GET", "/x"), ("DELETE", "/y/:id")])
+            self.assertFalse(any("tests/" in k for k in got))
 
 
 class TestFolderAnchoredFacts(unittest.TestCase):
@@ -1074,7 +1345,7 @@ class TestMultiAgent(unittest.TestCase):
             self.assertIn("Redis is used for locks", res[3]["result"]["content"][0]["text"])
             self.assertIn("remembered", res[4]["result"]["content"][0]["text"])
             self.assertIn("## How we test", res[5]["result"]["content"][0]["text"])
-            self.assertIn("filed QA-", res[6]["result"]["content"][0]["text"])
+            self.assertIn("filed DEV-", res[6]["result"]["content"][0]["text"])
             mems = Ledger(r.cfg.paths).load()
             self.assertTrue(any(m.source == "explicit" and "production schemas" in m.text for m in mems.values()))
             self.assertTrue(any(m.category == "finding" for m in mems.values()))
@@ -1667,7 +1938,7 @@ class TestReviewFixes(unittest.TestCase):
             out = call_tool(r.cfg, "cosmos_remember", {"lane": "universe", "category": "constraint"})
             self.assertIn("needs `text` (got: category, lane)", out["content"][0]["text"])
             out = call_tool(r.cfg, "cosmos_flare", {"text": "GET /transitions has no role gate", "severity": "HIGH"})
-            self.assertIn("filed QA-", out["content"][0]["text"])
+            self.assertIn("filed DEV-", out["content"][0]["text"])
             out = call_tool(r.cfg, "cosmos_flare", {"severity": "high"})
             self.assertIn("needs `title`", out["content"][0]["text"])
 

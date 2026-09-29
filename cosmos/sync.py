@@ -311,6 +311,8 @@ def push(root: Path, timeout: int = 60) -> Tuple[bool, str]:
     """Bring the branch up to date and publish it. Concurrent teammates are the normal case: rebase first; if two
     people changed the same note, keep both sides' files (ours on conflict) and let the next dream reconcile."""
     cos = root / ".cosmos"
+    if os.environ.get("COSMOS_NO_PUSH"):
+        return False, "COSMOS_NO_PUSH is set: cosmos pushes nothing"
     if foreign_view(root):
         return False, "seen from a sandbox: the owning machine pushes"
     if not (cos / ".git").is_file():

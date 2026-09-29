@@ -29,6 +29,11 @@ OPENAPI = ["openapi*.json", "openapi*.y*ml", "swagger*.json", "swagger*.y*ml", "
 STORE_IMAGES = {"postgres": "database", "postgresql": "database", "mysql": "database", "mariadb": "database", "mongo": "database", "clickhouse": "database", "sqlite": "database",
                 "redis": "cache", "memcached": "cache", "kafka": "queue", "rabbitmq": "queue", "nats": "queue", "sqs": "queue", "elasticsearch": "search", "opensearch": "search",
                 "minio": "object storage", "localstack": "cloud emulator", "authentik": "identity", "keycloak": "identity", "nginx": "gateway", "traefik": "gateway"}
+ROUTE_FILES = ["**/*.py", "**/*.js", "**/*.ts", "**/*.mjs"]
+# routes declared in code: FastAPI / Flask / Starlette decorators and Express-style app.get('/x', …)
+_PY_ROUTE = re.compile(r"^[ \t]*@\w+\.(get|post|put|patch|delete|api_route|route|websocket)\([ \t]*[rf]?[\"']([^\"'\n]*)[\"']([^\n]*)", re.M)
+_JS_ROUTE = re.compile(r"\b(?:app|router|server|api)\.(get|post|put|patch|delete)\(\s*[\"'`](/[^\"'`\n]*)[\"'`]")
+_METHODS = re.compile(r"methods\s*=\s*\[([^\]]*)\]")
 SKIP_DIRS = {".git", "node_modules", ".venv", "venv", "__pycache__", "dist", "build", ".cosmos", ".next", "target", ".idea", ".terraform"}
 
 
@@ -145,6 +150,48 @@ def warn(msg: str) -> None:
 
 
 # ---------------------------------------------------------------- inventory
+def _routes_in(text: str, is_py: bool) -> List[Tuple[str, str]]:
+    out: List[Tuple[str, str]] = []
+    if is_py:
+        for verb, path, rest in _PY_ROUTE.findall(text):
+            if verb in ("route", "api_route"):
+                m = _METHODS.search(rest)
+                verbs = re.findall(r"[A-Za-z]+", m.group(1)) if m else ["GET"]
+                out += [(v.upper(), path or "/") for v in verbs]
+            else:
+                out.append(("WS" if verb == "websocket" else verb.upper(), path or "/"))
+    else:
+        out = [(verb.upper(), path) for verb, path in _JS_ROUTE.findall(text)]
+    return out
+
+
+def code_routes(root: Path, limit: int = 300) -> List[Dict[str, Any]]:
+    """Endpoints declared in code, one entry per file that declares any. The paths are as written: a router's prefix
+    (APIRouter(prefix=…), app.use('/api', router)) is not added. Not tracked for drift: route files change daily."""
+    out: List[Dict[str, Any]] = []
+    total = 0
+    for p in _walk(root, ROUTE_FILES, 3000):
+        rel = str(p.relative_to(root))
+        if "/test" in "/" + rel or rel.endswith((".d.ts", ".min.js")):
+            continue
+        try:
+            if p.stat().st_size > 1_500_000:
+                continue
+            text = p.read_text(errors="ignore")
+        except OSError:
+            continue
+        if "@" not in text and ".get(" not in text and ".post(" not in text:
+            continue
+        found = _routes_in(text, p.suffix == ".py")
+        if found:
+            found = found[: max(0, limit - total)]
+            total += len(found)
+            out.append({"spec": f"{rel} (routes in code)", "endpoints": found})
+        if total >= limit:
+            break
+    return out
+
+
 def inventory(cfg: Config) -> Dict[str, Any]:
     root = cfg.paths.root
     inv: Dict[str, Any] = {"repo": root.name, "commit": git_head(root), "generated": today(), "sources": [], "apps": [], "services": [], "stores": [],
@@ -242,6 +289,8 @@ def inventory(cfg: Config) -> Dict[str, Any]:
         except Exception:
             pass
         inv["api"].append({"spec": rel, "endpoints": paths[:300]})
+    if not any(a["endpoints"] for a in inv["api"]):
+        inv["api"] += code_routes(root)                # no spec, or an empty one: the routes the code declares
     env = root / ".env.example"
     if env.exists():
         src(env)
@@ -400,7 +449,10 @@ Write `.cosmos/ledger/atlas/dependencies.md`: service → service calls, service
 4. `deployment.md` — from compose / k8s / Terraform: what runs where
 5. `lanes.md` — group modules into feature lanes; propose a `lanes` mapping (lane → path globs) for `.cosmos/config.json`
 
-Rules: every node must exist in the inventory; every edge must have a source file; use the team's own names; keep each diagram under 40 nodes (split if bigger). Finish with `cosmos atlas --check` and print a 5-line summary of what changed since the previous Atlas.
+Rules: every node must exist in the inventory; every edge must have a source file; use the team's own names; keep each diagram under 40 nodes (split if bigger).
+Mermaid that renders (the console uses mermaid 10): `flowchart LR` or `TB`, never `graph`; node ids are plain words (`api_prod`, never `end`, `class`, `style`); every label in double quotes — `api["reten-api · FastAPI"]`, `db[("Postgres")]`, edge labels `-->|"POST /api/cron/{job}"|` — because ( ) { } [ ] | : ; # inside an unquoted label break the parse; no HTML except `<br/>`; one diagram per fenced block. Make it read at a glance: one `subgraph` per runtime or boundary (browser, API, workers, data, third parties), short labels (name · tech), details in the text below the diagram, and the same four classes in every diagram:
+`classDef svc fill:#15151b,stroke:#E8CFA0,color:#ECEAE4` · `classDef store fill:#101820,stroke:#9FB8D0,color:#ECEAE4` · `classDef ext fill:#1b1414,stroke:#D89A9A,color:#ECEAE4,stroke-dasharray:4 3` · `classDef job fill:#141a16,stroke:#9CC9B0,color:#ECEAE4` — then `class a,b svc` etc.
+`system-context.md` is the overall picture: at most 15 nodes, people and outside systems around the product, the one diagram someone new should look at first. Finish with `cosmos atlas --check` and print a 5-line summary of what changed since the previous Atlas.
 """
 
 

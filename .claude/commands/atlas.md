@@ -1,6 +1,7 @@
 ---
-description: Build or refresh the Atlas — inventory, dependency index and architecture diagrams — into .cosmos/ledger/atlas
+description: "Build or refresh the Atlas — inventory, dependency index and architecture diagrams — into .cosmos/ledger/atlas"
 ---
+<!-- written by cosmos (`cosmos connect` rewrites it; delete this line to keep your own version) -->
 You are building the **Atlas** for this repository: a living architecture record that cosmos keeps in sync with the code. `cosmos atlas` has already produced a deterministic inventory (`.cosmos/ledger/atlas/inventory.md`, `containers.md`, `deployment.md`, `api.md`) — read those first, then deepen them in three passes and WRITE files; do not just answer in chat.
 
 ## Pass 1 — Inventory (no diagrams yet)
@@ -17,4 +18,7 @@ Write `.cosmos/ledger/atlas/dependencies.md`: service → service calls, service
 4. `deployment.md` — from compose / k8s / Terraform: what runs where
 5. `lanes.md` — group modules into feature lanes; propose a `lanes` mapping (lane → path globs) for `.cosmos/config.json`
 
-Rules: every node must exist in the inventory; every edge must have a source file; use the team's own names; keep each diagram under 40 nodes (split if bigger). Finish with `cosmos atlas --check` and print a 5-line summary of what changed since the previous Atlas.
+Rules: every node must exist in the inventory; every edge must have a source file; use the team's own names; keep each diagram under 40 nodes (split if bigger).
+Mermaid that renders (the console uses mermaid 10): `flowchart LR` or `TB`, never `graph`; node ids are plain words (`api_prod`, never `end`, `class`, `style`); every label in double quotes — `api["reten-api · FastAPI"]`, `db[("Postgres")]`, edge labels `-->|"POST /api/cron/{job}"|` — because ( ) { } [ ] | : ; # inside an unquoted label break the parse; no HTML except `<br/>`; one diagram per fenced block. Make it read at a glance: one `subgraph` per runtime or boundary (browser, API, workers, data, third parties), short labels (name · tech), details in the text below the diagram, and the same four classes in every diagram:
+`classDef svc fill:#15151b,stroke:#E8CFA0,color:#ECEAE4` · `classDef store fill:#101820,stroke:#9FB8D0,color:#ECEAE4` · `classDef ext fill:#1b1414,stroke:#D89A9A,color:#ECEAE4,stroke-dasharray:4 3` · `classDef job fill:#141a16,stroke:#9CC9B0,color:#ECEAE4` — then `class a,b svc` etc.
+`system-context.md` is the overall picture: at most 15 nodes, people and outside systems around the product, the one diagram someone new should look at first. Finish with `cosmos atlas --check` and print a 5-line summary of what changed since the previous Atlas.

@@ -13,7 +13,7 @@ from pathlib import Path
 from typing import List, Optional
 
 from . import __version__
-from .config import Config, find_repo_root, is_initialized, load_config
+from .config import Config, find_repo_root, load_config
 from .store import Ledger, Memory, Observations, State, make_id, today
 
 C = {"g": "\033[32m", "y": "\033[33m", "r": "\033[31m", "b": "\033[34m", "d": "\033[2m", "x": "\033[0m", "B": "\033[1m"}
@@ -80,10 +80,8 @@ def cmd_init(a) -> int:
     hooks_changed = install_hooks(cfg.paths.claude_settings, command)
     prepare_vault(cfg)
     from .charter import ensure as ensure_charter
-    from .atlas import COMMAND_MD, build as build_atlas
+    from .atlas import build as build_atlas
     ensure_charter(cfg)
-    cmd_dir = root / ".claude" / "commands"; cmd_dir.mkdir(parents=True, exist_ok=True)
-    (cmd_dir / "atlas.md").write_text(COMMAND_MD)
     inv = build_atlas(cfg)
     from .adapters import AGENTS
     from .connect import connect as _connect
@@ -109,14 +107,14 @@ def cmd_init(a) -> int:
         _sync.sync_background(cfg, "cosmos: init")
     elif (root / ".git").exists() and not os.environ.get("COSMOS_NO_BACKGROUND"):
         wiring = [".gitignore", ".claude/settings.json", ".claude/commands", ".mcp.json", "CLAUDE.md", "AGENTS.md", "GEMINI.md",
-                  ".cursor/rules", ".cursor/mcp.json", ".gemini/settings.json", ".vscode/mcp.json", ".github/copilot-instructions.md",
-                  ".clinerules", ".windsurfrules"]
+                  ".cursor/rules", ".cursor/mcp.json", ".cursor/commands", ".gemini/settings.json", ".gemini/commands", ".vscode/mcp.json",
+                  ".github/copilot-instructions.md", ".github/prompts", ".clinerules", ".windsurfrules", ".windsurf/workflows"]
         if _sync.commit_inline(root, "cosmos: init", [w for w in wiring if (root / w).exists()]):
             branch_note = branch_note or "committed .cosmos/ to this branch: every branch made from it carries the team memory"
     print(col("✓", "g"), "cosmos", "initialized" if fresh else "already initialized", "in", root)
     if branch_note:
         print(col("✓", "g"), branch_note)
-    print(col("✓", "g"), f".cosmos/charter.md (team working agreement + Gate rules) · /atlas command for Claude Code")
+    print(col("✓", "g"), ".cosmos/charter.md (team working agreement + Gate rules) · slash commands /cosmos /recall /remember /flare /flares /qa /reconcile /lanes /horizon /handoff /atlas for Claude Code, Gemini CLI, Cursor, Copilot and Windsurf")
     print(col("✓", "g"), f"atlas built: {len(inv['apps'])} apps · {len(inv['services'])} services · {len(inv['stores'])} stores · {len(inv['k8s'])} k8s objects · {sum(len(a['endpoints']) for a in inv['api'])} endpoints")
     print(col("✓", "g"), ".cosmos/  (config.json, ledger/, observations/, state/)" + (" · on branch `cosmos`, pushed by itself" if _sync.is_branch_mode(cfg) else " · committed in this branch; cosmos commits it every 10 minutes while you work, you push it with your branch"))
     print(col("✓", "g"), f".claude/settings.json hooks {'installed' if hooks_changed else 'present'} → `{command}`")
@@ -271,7 +269,10 @@ def cmd_connect(a) -> int:
     from .connect import codex_snippet, connect, write_codex_user_config
     from .render import render_all
     cfg = load_config(); _require(cfg)
-    agents = list(AGENTS) if "all" in a.agents else a.agents
+    unknown = [x for x in a.agents if x != "all" and x not in AGENTS]
+    if unknown:
+        print(col("✗", "r"), f"unknown agent(s): {', '.join(unknown)} — choose from all, {', '.join(AGENTS)}"); return 2
+    agents = list(AGENTS) if not a.agents or "all" in a.agents else a.agents
     # instruction files per agent
     extra = []
     for ag in agents:
@@ -279,15 +280,18 @@ def cmd_connect(a) -> int:
             if f not in ("CLAUDE.md", "AGENTS.md") and f not in extra:
                 extra.append(f)
     cfg.data.setdefault("render", {})["targets"] = sorted(set((cfg.get("render.targets", ["GEMINI.md"]) or []) + extra)); cfg.save()
+    done = connect(cfg, agents)                       # first: the block names the slash commands once they exist
     changed = render_all(cfg, Ledger(cfg.paths).load())
-    done = connect(cfg, agents)
     print(col("✓", "g"), "instruction files:", ", ".join(f for f in changed if f != str(cfg.paths.ledger / "_index.md")) or "(already current)")
     print(col("✓", "g"), "MCP configs:", ", ".join(done) or "(already current)")
+    from .commands import status as commands_status, write_codex_prompts
+    print(col("✓", "g"), "slash commands:", commands_status(cfg.paths.root))
     if "codex" in agents:
         if a.write_user:
             p = write_codex_user_config(cfg.paths.root); print(col("✓", "g"), f"Codex: added [mcp_servers.cosmos] to {p}")
+            n = write_codex_prompts(); print(col("✓", "g"), f"Codex: {len(n)} prompt(s) in ~/.codex/prompts → /prompts:cosmos-recall, /prompts:cosmos-flare …")
         else:
-            print(col("  Codex", "B"), "reads MCP servers from ~/.codex/config.toml — add (or run `cosmos connect codex --write-user`):\n" + "\n".join("    " + l for l in codex_snippet(cfg.paths.root).splitlines()))
+            print(col("  Codex", "B"), "reads MCP servers from ~/.codex/config.toml and prompts from ~/.codex/prompts — add (or run `cosmos connect codex --write-user`, which also writes the /prompts:cosmos-… commands):\n" + "\n".join("    " + l for l in codex_snippet(cfg.paths.root).splitlines()))
     print(col("  Cowork / Claude Desktop", "B"), "reads CLAUDE.md in the project; add the same MCP entry under Settings → Connectors (command python3, args .cosmos/cosmosw mcp).")
     print(col("  capture", "d"), "Claude Code: automatic via hooks · Codex / Gemini: `cosmos capture --agent all` reads their session logs · everyone: cosmos_remember / cosmos_flare tools via MCP")
     return 0
@@ -517,17 +521,36 @@ def cmd_doctor(a) -> int:
     s = cfg.paths.claude_settings
     line(s.exists() and "cosmos" in s.read_text(), f"hooks in {s}")
     line(shutil.which("claude") is not None, "claude CLI on PATH")
-    line(shutil.which("cosmos") is not None or True, f"cosmos entrypoint: {shutil.which('cosmos') or sys.executable + ' -m cosmos'}")
-    from .providers import get_provider
+    for path, good, msg in entrypoints():
+        line(good, msg)
+    from .providers import get_provider, provider_reason
     prov = get_provider(cfg.get("llm", {}) or {})
+    why = provider_reason(cfg.get("llm", {}) or {})
     if prov is None:
-        line(False, "LLM: none available — dreams run on heuristics only. Log in to Claude Code (`claude`, then /login) or set ANTHROPIC_API_KEY.")
+        line(False, f"LLM: none available ({why}) — dreams run on heuristics only. Log in to Claude Code (`claude`, then /login) or set ANTHROPIC_API_KEY.")
     else:
         try:
             r = prov.complete("Reply with JSON.", '{"ping": true}', {"type": "object", "properties": {"pong": {"type": "boolean"}}, "required": ["pong"], "additionalProperties": False})
-            line(bool(r), f"LLM: {prov.name}" + ("" if r else " (no reply)"))
+            line(bool(r), f"LLM: {prov.name} ({why})" + ("" if r else " (no reply)"))
         except Exception as e:
-            line(False, f"LLM: {prov.name} configured but failing — {str(e)[:120]}")
+            line(False, f"LLM: {prov.name} ({why}) configured but failing — {str(e)[:120]}")
+    from . import sync as _sync
+    if os.environ.get("COSMOS_NO_PUSH"):
+        print(col("  ·", "d"), "push: never (COSMOS_NO_PUSH is set)")
+    elif _sync.is_branch_mode(cfg):
+        print(col("  ·", "d"), "push: the cosmos branch after each dream" if cfg.get("sync.auto_push", True) and not os.environ.get("COSMOS_NO_BACKGROUND")
+              else "push: off (sync.auto_push false or COSMOS_NO_BACKGROUND); `cosmos sync --push` publishes the cosmos branch")
+    else:
+        print(col("  ·", "d"), "push: never — .cosmos/ is committed in your branch and goes out when you push it (sync.auto_push applies only to the opt-in cosmos branch)")
+    if cfg.paths.config.exists():
+        from .audit import prefix_note
+        print(col("  ·", "d"), "flares: " + prefix_note(cfg))
+        from .commands import status as commands_status
+        print(col("  ·", "d"), "slash commands: " + commands_status(cfg.paths.root))
+        from .playbooks import detect as detect_playbooks, qa_playbook
+        pbs = detect_playbooks(cfg)
+        qa = qa_playbook(cfg)
+        print(col("  ·", "d"), "playbooks: " + (", ".join(f"/{p['name']}" for p in pbs) + (f" · /qa follows {qa['path']}" if qa else "") if pbs else "none (`cosmos playbooks add qa` starts one)"))
     try:
         import re as _re
         bad_okf = []
@@ -569,6 +592,48 @@ def cmd_doctor(a) -> int:
         for t in tail:
             print(col("   " + t, "d"))
     return 0 if ok else 1
+
+
+def _script_python(path: str) -> str:
+    """The interpreter a console script starts (its #! line), or "" when it is not a Python script."""
+    try:
+        with open(path, "rb") as fh:
+            first = fh.readline(300).decode(errors="ignore").strip()
+    except OSError:
+        return ""
+    if not first.startswith("#!") or "python" not in first:
+        return ""
+    parts = first[2:].split()
+    return parts[-1] if parts and parts[0].endswith("/env") else (parts[0] if parts else "")
+
+
+def entrypoints() -> List[tuple]:
+    """(path, works, message) for every `cosmos` on PATH, first one first. A launcher left behind by an install into
+    another Python (its interpreter cannot import cosmos) fails with ModuleNotFoundError wherever it comes first."""
+    seen, out = set(), []
+    for d in os.environ.get("PATH", "").split(os.pathsep):
+        p = os.path.join(d, "cosmos")
+        real = os.path.realpath(p)
+        if not (os.path.isfile(p) and os.access(p, os.X_OK)) or real in seen:
+            continue
+        seen.add(real)
+        py = _script_python(p)
+        if not py:
+            out.append((p, True, f"cosmos on PATH: {p}")); continue
+        exe = shutil.which(py) if not os.path.isabs(py) else py
+        try:
+            works = bool(exe) and subprocess.run([exe, "-c", "import cosmos.cli"], capture_output=True, timeout=10, cwd=os.path.expanduser("~")).returncode == 0
+        except (OSError, subprocess.SubprocessError):
+            works = False
+        first = not out
+        if works:
+            out.append((p, True, f"cosmos on PATH: {p} ({py})" + ("" if first else " — not the first one; the first one wins")))
+        else:
+            out.append((p, not first, f"cosmos on PATH: {p} cannot start — {py} has no cosmos (left by an install into another Python). "
+                        f"Fix: {py} -m pip install \"git+https://github.com/BiswajitBiswa/cosmos\" (or delete {p}); until then `python3 .cosmos/cosmosw <command>` works in any cosmos repo"))
+    if not out:
+        out.append(("", True, f"cosmos entrypoint: {sys.executable} -m cosmos (no `cosmos` on PATH; `python3 .cosmos/cosmosw <command>` works in any cosmos repo)"))
+    return out
 
 
 def cmd_uninstall(a) -> int:
@@ -697,6 +762,32 @@ def cmd_intake(a) -> int:
     return 0
 
 
+def cmd_playbooks(a) -> int:
+    """The team's long-form prompts, found in the repository or brought in from another project, as commands."""
+    from .commands import refresh
+    from .playbooks import BUILTIN, add, detect, qa_playbook
+    cfg = load_config(); _require(cfg)
+    if a.action == "add":
+        if not a.source:
+            print(col("✗", "r"), f"cosmos playbooks add <file from another project | {' | '.join(BUILTIN)}>"); return 2
+        dst = add(cfg, a.source, a.name)
+        print(col("✓", "g"), f"{dst.relative_to(cfg.paths.root)} — adapt it to this project and commit it")
+    pbs = detect(cfg)
+    changed = refresh(cfg)
+    if not pbs:
+        print(col("no playbooks found", "d"), "— a markdown file named *protocol* / *playbook* / *runbook* / master prompt, written for an agent, "
+              f"or `cosmos playbooks add {'|'.join(BUILTIN)}` for a generic one to adapt")
+        return 0
+    qa = qa_playbook(cfg)
+    for pb in pbs:
+        print(f"/{pb['name']:<28} {pb['path']}" + col(f"  {pb['title']}" + ("  · /qa follows it" if qa and pb["path"] == qa["path"] else ""), "d"))
+    if changed:
+        print(col("✓", "g"), f"commands updated: {len(changed)} file(s)")
+    elif not (cfg.paths.root / ".claude" / "commands" / "recall.md").exists():
+        print(col("  run `cosmos connect` to write the commands for every agent", "d"))
+    return 0
+
+
 def cmd_gate(a) -> int:
     from .charter import gate_config
     from .gate import evaluate, message
@@ -743,14 +834,9 @@ FINDINGS_TEMPLATE = {
 
 
 def cmd_audit_import(a) -> int:
-    from .audit import flare_prefix, import_findings, remember_prefix, rename_prefix
+    from .audit import flare_prefix, import_findings
     cfg = load_config(); _require(cfg)
-    was = flare_prefix(cfg)
-    if a.prefix and remember_prefix(cfg, a.prefix):
-        moved = rename_prefix(cfg, was, a.prefix, only_source="mcp")      # flares agents filed under the default follow
-        print(col("✓", "g"), f"flares in this repo now use the prefix {a.prefix}, including the ones filed from sessions"
-              + (f" ({moved} renamed from {was})" if moved else ""))
-    a.prefix = a.prefix or flare_prefix(cfg)
+    a.prefix = a.prefix or flare_prefix(cfg)                  # --prefix names this import only; the lifecycle names the rest
     f = Path(a.file)
     if not f.exists():
         cands = sorted({str(p.relative_to(cfg.paths.root)) for pat in ("**/*finding*.json", "**/qa-*.json", "**/*audit*.json")
@@ -798,9 +884,9 @@ def cmd_audit_list(a) -> int:
         print(json.dumps(export_json(fs), indent=1, ensure_ascii=False)); return 0
     if not fs:
         print(col("no findings", "d")); return 0
-    from .audit import CLOSED, NOTE, OPEN_LIKE
+    from .audit import CLOSED, NOTE, OPEN_LIKE, prefix_note
     st_ = [m.meta.get("finding_status", "open") for m in fs]
-    print(col(f"open {sum(s in OPEN_LIKE for s in st_)} · closed {sum(s in CLOSED for s in st_)} · notes {sum(s == NOTE for s in st_)}", "d"))
+    print(col(f"open {sum(s in OPEN_LIKE for s in st_)} · closed {sum(s in CLOSED for s in st_)} · notes {sum(s == NOTE for s in st_)} · {prefix_note(cfg)}", "d"))
     for m in fs:
         st = m.meta.get("finding_status", "open")
         print(f"{SEV_ICON.get(m.meta.get('severity'),'⚪')} {m.meta.get('audit_id','').ljust(12)} {m.meta.get('severity','').ljust(8)} "
@@ -832,11 +918,39 @@ def cmd_audit_set(new_status: str):
         m = _find_finding(cfg, a.id)
         if not m:
             print(col("no such finding", "r")); return 1
-        set_status(cfg, m, new_status, " ".join(a.note or []))
+        set_status(cfg, m, new_status, " ".join(a.note or []), commit=getattr(a, "commit", None) or "", branch=getattr(a, "branch", None) or "")
         _finish(cfg, Ledger(cfg.paths).load())
-        print(col("✓", "g"), f"{m.meta.get('audit_id')} → {new_status}")
+        where = " · ".join(x for x in (m.meta.get(f"{new_status}_commit", ""), m.meta.get(f"{new_status}_branch", "")) if x)
+        print(col("✓", "g"), f"{m.meta.get('audit_id')} → {new_status}" + (f" ({where})" if where else ""))
         return 0
     return fn
+
+
+def cmd_audit_edit(a) -> int:
+    from .audit import edit_finding
+    cfg = load_config(); _require(cfg)
+    m = _find_finding(cfg, a.id)
+    if not m:
+        print(col("no such finding", "r")); return 1
+    changed = edit_finding(cfg, m, title=a.title, severity=a.severity, locations=a.locations, area=a.area)
+    if not changed:
+        print(col("nothing to change: pass --title, --severity, --locations or --area", "y")); return 1
+    _finish(cfg, Ledger(cfg.paths).load())
+    print(col("✓", "g"), f"{m.meta.get('audit_id')}: {', '.join(changed)} updated")
+    return 0
+
+
+def cmd_audit_stage(a) -> int:
+    from .audit import STAGE_BRANCHES, prefix_note
+    cfg = load_config(); _require(cfg)
+    print(prefix_note(cfg))
+    extra = cfg.get("flares.stages") or {}
+    print(col("  branch → stage (first match wins; add your own under flares.stages in .cosmos/config.json):", "d"))
+    for glob, stage in list(extra.items() if isinstance(extra, dict) else []) + STAGE_BRANCHES:
+        print(col(f"    {glob:<12} {str(stage).upper()}", "d"))
+    print(col("    main / master / trunk: PROD once a version tag (v1.2.0) is reachable, else DEV · any other branch: DEV", "d"))
+    print(col("  a flare keeps the prefix it was filed with; flares.stage pins the stage, flares.project adds a project tag (RET-QA-…)", "d"))
+    return 0
 
 
 def cmd_audit_export(a) -> int:
@@ -922,7 +1036,7 @@ def build_parser() -> argparse.ArgumentParser:
     s = sp.add_parser("hook", help="(internal) Claude Code hook entrypoint, reads event JSON on stdin"); s.set_defaults(fn=cmd_hook)
     s = sp.add_parser("capture", help="capture from session logs: Claude Code, Codex, Gemini/Antigravity"); s.add_argument("--transcript"); s.add_argument("--agent", default="all", choices=["all", "claude", "codex", "gemini"]); s.add_argument("-v", "--verbose", action="store_true"); s.add_argument("--rebuild-journal", action="store_true", help="re-read whole transcripts and write the journal for work done before cosmos was installed"); s.add_argument("--days", type=int, default=14, help="when reading whole transcripts, only turns from the last N days are read by the model (default 14)"); s.add_argument("--reread", action="store_true", help="start again from the beginning of every transcript (with --days, the model reads only recent turns)"); s.set_defaults(fn=cmd_capture)
     s = sp.add_parser("mcp", help="run the MCP server (stdio) — one point of contact for every agent"); s.add_argument("--root", help="the repository to serve, when the server is not started inside it (Claude Desktop / Cowork)"); s.set_defaults(fn=cmd_mcp)
-    s = sp.add_parser("connect", help="wire agents to cosmos: instruction files + MCP configs"); s.add_argument("agents", nargs="*", default=["all"], choices=["all", "claude", "codex", "gemini", "cursor", "copilot", "cline", "windsurf"]); s.add_argument("--write-user", action="store_true", help="also write ~/.codex/config.toml"); s.set_defaults(fn=cmd_connect)
+    s = sp.add_parser("connect", help="wire agents to cosmos: instruction files, MCP configs, slash commands"); s.add_argument("agents", nargs="*", metavar="agent", help="all (default) or any of: claude codex gemini cursor copilot cline windsurf"); s.add_argument("--write-user", action="store_true", help="also write ~/.codex/config.toml and the ~/.codex/prompts commands"); s.set_defaults(fn=cmd_connect)
     s = sp.add_parser("eval", help="recall eval: does the right fact reach the agent? recall@k over the ledger"); s.add_argument("-k", type=int, default=5); s.add_argument("--show", type=int, default=10); s.set_defaults(fn=cmd_eval)
     s = sp.add_parser("sync", help="commit the team memory now (dreams and the watcher do this for you)"); s.add_argument("--push", action="store_true", help="ledger-branch mode only: push the cosmos branch"); s.add_argument("--inline", action="store_true", help="move the ledger from the cosmos branch into this branch"); s.add_argument("-m", "--message"); s.set_defaults(fn=cmd_sync)
     s = sp.add_parser("watch", help="follow every agent's sessions on this machine (all worktrees, subagents; hooks not required)"); s.add_argument("--interval", type=int, default=30); s.add_argument("--once", action="store_true"); s.add_argument("--agent", choices=["all", "claude", "codex", "gemini"], default="all"); s.add_argument("--daemon", action="store_true", help=argparse.SUPPRESS); s.add_argument("--idle", type=int, default=120, help=argparse.SUPPRESS); s.set_defaults(fn=cmd_watch)
@@ -946,19 +1060,30 @@ def build_parser() -> argparse.ArgumentParser:
     s = sp.add_parser("lanes", help="facts, findings and people per feature lane; flags overlap"); s.add_argument("--days", type=int, default=30); s.add_argument("--json", action="store_true"); s.add_argument("--propose", action="store_true", help="suggest a lanes mapping (LLM if configured, else from paths)"); s.add_argument("--write", action="store_true", help="with --propose: save to config and re-file"); s.add_argument("--no-llm", action="store_true"); s.set_defaults(fn=cmd_lanes)
     s = sp.add_parser("atlas", help="build architecture inventory + diagrams from the repo (or --check for drift)"); s.add_argument("--check", action="store_true"); s.add_argument("--deep", action="store_true", help="let the model follow the Atlas prompt now (system context, containers, data flow, deployment, dependencies, lanes)"); s.set_defaults(fn=cmd_atlas)
     s = sp.add_parser("charter", help="the team's working agreement: show | add \"rule\" | edit | gate"); s.add_argument("action", nargs="?", default="show", choices=["show", "add", "edit", "gate"]); s.add_argument("text", nargs="*"); s.add_argument("--section", default="Architecture rules"); s.set_defaults(fn=cmd_charter)
-    s = sp.add_parser("horizon", aliases=["intake"], help="map a feature before coding: lanes, collisions, findings, people"); s.add_argument("text", nargs="+"); s.add_argument("-f", "--file", action="append", help="folder or file it will touch (repeatable)"); s.add_argument("--attach", action="append", help="ad-hoc document to read as context (PRD, spec, notes)"); s.add_argument("--brief", help="text file with the brief"); s.add_argument("--json", action="store_true"); s.add_argument("--no-save", action="store_true"); s.set_defaults(fn=cmd_intake)
+    s = sp.add_parser("horizon", aliases=["intake"], help="map a feature before coding: lanes, collisions, flares, people"); s.add_argument("text", nargs="+"); s.add_argument("-f", "--file", action="append", help="folder or file it will touch (repeatable)"); s.add_argument("--attach", action="append", help="ad-hoc document to read as context (PRD, spec, notes)"); s.add_argument("--brief", help="text file with the brief"); s.add_argument("--json", action="store_true"); s.add_argument("--no-save", action="store_true"); s.set_defaults(fn=cmd_intake)
+    s = sp.add_parser("playbooks", help="the team's long-form prompts (QA protocol, runbooks) found in the repo, as commands for every agent: list | add <file|qa>"); s.add_argument("action", nargs="?", default="list", choices=["list", "add"]); s.add_argument("source", nargs="?"); s.add_argument("--name", help="command name for an added playbook"); s.set_defaults(fn=cmd_playbooks)
     s = sp.add_parser("gate", help="show Gate rules, or dry-run it on a transcript"); s.add_argument("--transcript"); s.set_defaults(fn=cmd_gate)
 
     au = sp.add_parser("flares", aliases=["audit"], help="QA / security findings (flares) as memory: import, track lifecycle, report, publish").add_subparsers(dest="audit_cmd", required=True)
     from .audit import FINDING_STATUSES as FST, SEVERITIES as SEVS
-    x = au.add_parser("import", help="import findings JSON (id, severity, title, area, locations, sections)"); x.add_argument("file"); x.add_argument("--prefix", help="stable id prefix for this repo's flares, e.g. QA (remembered; default: the last one used, else QA)"); x.add_argument("--source", help="source document name"); x.add_argument("-y", "--yes", action="store_true", help="create the file (empty) if it does not exist"); x.set_defaults(fn=cmd_audit_import)
+    x = au.add_parser("import", help="import findings JSON (id, severity, title, area, locations, sections)"); x.add_argument("file"); x.add_argument("--prefix", help="id prefix for this import only, e.g. PENTEST (default: the project's lifecycle stage, see `cosmos flares stage`)"); x.add_argument("--source", help="source document name"); x.add_argument("-y", "--yes", action="store_true", help="create the file (empty) if it does not exist"); x.set_defaults(fn=cmd_audit_import)
     x = au.add_parser("list", help="list findings"); x.add_argument("--status", choices=FST); x.add_argument("--severity", choices=SEVS); x.add_argument("--json", action="store_true"); x.set_defaults(fn=cmd_audit_list)
     x = au.add_parser("show", help="show one finding"); x.add_argument("id"); x.set_defaults(fn=cmd_audit_show)
-    for name, status, help_ in (("fix", "fixed", "mark fixed (records HEAD commit)"), ("withdraw", "withdrawn", "not a bug / by design — kept so nobody re-files it"),
+    def status_args(x):
+        x.add_argument("id"); x.add_argument("note", nargs="*")
+        x.add_argument("--commit", help="the commit that holds the work, when it is not this checkout's HEAD (a fix made in another worktree)")
+        x.add_argument("--branch", help="the branch that holds the work")
+    for name, status, help_ in (("fix", "fixed", "mark fixed (records HEAD, or --commit)"), ("withdraw", "withdrawn", "not a bug / by design — kept so nobody re-files it"),
                                 ("wontfix", "wontfix", "accepted risk"), ("reopen", "open", "reopen a closed finding"), ("claim", "claimed", "someone / the fix loop is on it"),
                                 ("pr-open", "pr_open", "a PR is open for it"), ("needs-human", "needs_human", "could not reproduce or intent is ambiguous — a human decides")):
-        x = au.add_parser(name, help=help_); x.add_argument("id"); x.add_argument("note", nargs="*"); x.set_defaults(fn=cmd_audit_set(status))
-    x = au.add_parser("set", help="set any lifecycle status"); x.add_argument("id"); x.add_argument("status", choices=FST); x.add_argument("note", nargs="*"); x.set_defaults(fn=lambda a: cmd_audit_set(a.status)(a))
+        # the status's own name works too: `flares claimed <id>` is `flares claim <id>`
+        aliases = [n for n in dict.fromkeys([status, status.replace("_", "-")]) if n not in (name, "open")]   # `flares open` would read as a list
+        x = au.add_parser(name, aliases=aliases, help=help_); status_args(x); x.set_defaults(fn=cmd_audit_set(status))
+    x = au.add_parser("set", help="set any lifecycle status"); x.add_argument("id"); x.add_argument("status", choices=FST); x.add_argument("note", nargs="*")
+    x.add_argument("--commit"); x.add_argument("--branch"); x.set_defaults(fn=lambda a: cmd_audit_set(a.status)(a))
+    x = au.add_parser("edit", help="correct a flare after filing: title, severity, locations, area (its id stays)"); x.add_argument("id")
+    x.add_argument("--title"); x.add_argument("--severity", choices=SEVS); x.add_argument("--locations"); x.add_argument("--area"); x.set_defaults(fn=cmd_audit_edit)
+    x = au.add_parser("stage", help="the prefix a new flare gets here, and the lifecycle stage it comes from"); x.set_defaults(fn=cmd_audit_stage)
     x = au.add_parser("lint", help="flag repository filter keys that are not real model columns (AST; see docs/flares.md)"); x.add_argument("--repo-base"); x.add_argument("--crud-glob"); x.add_argument("--module-prefix"); x.add_argument("--roots", nargs="*"); x.add_argument("--sys-path", nargs="*"); x.add_argument("--json", action="store_true"); x.set_defaults(fn=cmd_audit_lint)
     x = au.add_parser("export", help="export findings JSON (same schema as import)"); x.add_argument("-o", "--out"); x.add_argument("--status", choices=FST); x.add_argument("--severity", choices=SEVS); x.set_defaults(fn=cmd_audit_export)
     x = au.add_parser("report", help="regenerate the audit report from the ledger"); x.add_argument("--format", choices=["md", "slack"], default="md"); x.add_argument("-o", "--out"); x.add_argument("--status", choices=FST); x.add_argument("--severity", choices=SEVS); x.set_defaults(fn=cmd_audit_report)

@@ -396,7 +396,7 @@ input:focus,select:focus,textarea:focus{outline:none;border-color:var(--acc)}
 @keyframes flow{to{background-position:14px 0}}
 /* memory list */
 .mem{background:var(--panel);border-left:2px solid var(--c);border-radius:6px;padding:12px 14px;margin-bottom:8px;cursor:pointer}
-.mem:hover{background:var(--panel2)}.mem .t{font-weight:600}.mem .m{display:flex;gap:8px;flex-wrap:wrap;margin-top:6px;color:var(--mut);font-size:12px;align-items:center}
+.mem:hover{background:var(--panel2)}.mem .t{font-weight:600;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}.mem.open .t{display:block}.fcard .t{display:-webkit-box;-webkit-line-clamp:4;-webkit-box-orient:vertical;overflow:hidden}.pager{display:flex;gap:6px;align-items:center;justify-content:flex-end;margin:10px 0;color:var(--mut);font-size:12px}.pager .btn[disabled]{opacity:.35;cursor:default}.rulesbox{max-height:70vh;overflow:auto;padding-right:4px}.mem .m{display:flex;gap:8px;flex-wrap:wrap;margin-top:6px;color:var(--mut);font-size:12px;align-items:center}
 .split{display:grid;grid-template-columns:1fr 420px;gap:16px;align-items:start}
 @media(max-width:1000px){.split{grid-template-columns:1fr}}
 .sticky{position:sticky;top:0}
@@ -438,7 +438,7 @@ canvas#graph{width:100%;height:280px;display:block;border-radius:10px;background
 .lanerow{display:grid;grid-template-columns:1.2fr .5fr .7fr 1.6fr;gap:12px;padding:14px 16px;border-radius:6px;background:var(--panel);margin-bottom:8px;align-items:center}
 .lanerow.ov{box-shadow:inset 2px 0 0 var(--acc)}.lanerow .ln{font-weight:700}.lanerow .who{display:flex;gap:6px;flex-wrap:wrap}
 .person{padding:2px 9px;border-radius:999px;background:var(--panel2);font-size:12px}
-.mmd{background:var(--panel);border-radius:6px;padding:14px;overflow:auto;margin-top:8px}.mmd svg{max-width:100%;height:auto}
+.mmd{background:var(--panel);border-radius:6px;padding:14px;overflow:auto;margin-top:8px}.mmd svg{max-width:100%;height:auto}.mmd{position:relative}.mmdbig{position:absolute;top:8px;right:8px;z-index:2}.mmd.big{position:fixed;inset:0;z-index:50;margin:0;border-radius:0;padding:28px}.mmd.big svg{max-width:none;min-width:100%}
 .mdtxt{white-space:pre-wrap;font-size:13px;line-height:1.55;color:var(--fg)}.mdtxt h1,.mdtxt h2,.mdtxt h3{font-size:20px;color:var(--fg);margin:14px 0 4px;font-family:"Cormorant Garamond",serif;font-weight:400}
 .tabs{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px}
 .charter{white-space:pre-wrap;font-size:14px;line-height:1.7;background:var(--panel);border-radius:6px;padding:24px 28px;color:var(--fg)}
@@ -551,7 +551,13 @@ const ICONS={
 <script src="https://cdn.jsdelivr.net/npm/mermaid@10.9.1/dist/mermaid.min.js" onerror="window.__nomermaid=1"></script>
 <script>
 const LIVE = location.protocol.startsWith('http');
-if(window.mermaid){mermaid.initialize({startOnLoad:false,theme:'base',themeVariables:{primaryColor:'#0d0d10',primaryTextColor:'#ECEAE4',primaryBorderColor:'#ECEAE4',lineColor:'#E8CFA0',secondaryColor:'#141418',tertiaryColor:'#050506',fontFamily:'inherit',fontSize:'14px'}})}
+if(window.mermaid){mermaid.initialize({startOnLoad:false,suppressErrorRendering:true,theme:'base',flowchart:{curve:'basis',padding:14,nodeSpacing:40,rankSpacing:56,htmlLabels:true},themeVariables:{primaryColor:'#15151b',primaryTextColor:'#ECEAE4',primaryBorderColor:'#E8CFA0',lineColor:'#8a8577',secondaryColor:'#141418',tertiaryColor:'#0b0b0e',clusterBkg:'#0e0e12',clusterBorder:'#2c2c34',edgeLabelBackground:'#0d0d10',titleColor:'#E8CFA0',fontFamily:'inherit',fontSize:'14px'}})}
+/* the model's Mermaid often carries ( ) { } in unquoted labels, which mermaid 10 cannot parse: quote them */
+function mmdFix(src){if(/^\s*sequenceDiagram\b/.test(src))return src.replace(/^([^:\n]*:)(.*)$/gm,(m,a,t)=>a+t.replace(/;/g,'#59;'));  /* ; ends a statement there */
+ if(!/^\s*(flowchart|graph)\b/.test(src))return src;const q=t=>'"'+t.trim().replace(/"/g,'#quot;')+'"';return src.replace(/\|(?!")([^|\n]+?)\|/g,(m,l)=>'|'+q(l)+'|').replace(/(\w)\[(?!["(\[\/\\>])([^\]\n]*[(){}|:;#][^\]\n]*)\]/g,(m,id,l)=>id+'['+q(l)+']')}
+async function mmdDraw(el,src){for(const cand of [mmdFix(src),src]){try{await mermaid.parse(cand);const o=await mermaid.render('m'+Math.random().toString(36).slice(2),cand);el.innerHTML='<button class="btn sm mmdbig" title="full screen">⤢</button>'+o.svg;el.querySelector('.mmdbig').onclick=()=>el.classList.toggle('big');return}catch(e){var err=e}}
+ el.innerHTML='<div class="small" style="color:var(--warn)">This diagram has a Mermaid syntax error, so it is shown as text. The next deep pass (<code>cosmos atlas --deep</code>) rewrites it. '+esc(String((err&&err.message)||err).split('\n').slice(0,2).join(' '))+'</div><pre class="log">'+esc(src)+'</pre>'}
+let ruleQ='';
 let S=null, page='overview', q='', sel=null, filt={cat:null,status:null}, selRun=null;
 const CATS=["finding","architecture","decision","convention","constraint","bug","dependency","workflow","domain","rejected"];
 const FSTAT=["open","claimed","pr_open","needs_human","regressed","fixed","wontfix","withdrawn","note"];
@@ -641,6 +647,13 @@ const kpi=(l,v,s,color)=>`<div class="card"><h3>${l}</h3><div class="kpi" style=
 const fmt=ts=>ts?ts.replace(/^(\d{4})(\d{2})(\d{2})T(\d{2})(\d{2})(\d{2})Z$/,'$1-$2-$3 $4:$5Z').replace('T',' ').slice(0,17):'';
 /* ---------- ledger */
 function memRow(m){return `<div class="mem" data-id="${m.id}" style="--c:${cc(m.category)}"><div class="t">${md(m.text)}</div><div class="m"><span class="badge cat" style="--c:${cc(m.category)}">${m.category}</span>${m.status!=='active'?`<span class="badge ${m.status}">${m.status}</span>`:''}<span>${Math.round(m.confidence*100)}%</span>${m.files[0]?`<code>${esc(m.files[0])}</code>`:''}${m.source==='explicit'?'<span class="badge" style="color:var(--acc2)">explicit</span>':''}</div></div>`}
+/* paging in the page itself: a snapshot or a 10,000-fact ledger needs no server. PG[key] = page, reset when the list changes */
+const PG={};
+function paged(key,items,size){const sig=items.length+':'+(items[0]&&items[0].id||'');const st=PG[key]&&PG[key].sig===sig?PG[key]:(PG[key]={p:0,sig});
+ const pages=Math.max(1,Math.ceil(items.length/size));st.p=Math.min(st.p,pages-1);const from=st.p*size;
+ const bar=pages>1?`<div class="pager"><span>${from+1}–${Math.min(items.length,from+size)} of ${items.length}</span><button class="btn sm" data-pg="${key}" data-d="-1" ${st.p?'':'disabled'}>‹ prev</button><span>page ${st.p+1} / ${pages}</span><button class="btn sm" data-pg="${key}" data-d="1" ${st.p<pages-1?'':'disabled'}>next ›</button></div>`:'';
+ return {rows:items.slice(from,from+size),bar}}
+function bindPager(){document.querySelectorAll('[data-pg]').forEach(b=>b.onclick=()=>{const st=PG[b.dataset.pg];st.p+=+b.dataset.d;render();window.scrollTo({top:0})})}
 function bindMem(){document.querySelectorAll('.mem,.fcard').forEach(el=>el.onclick=()=>{sel=el.dataset.id;render()})}
 function ledger(){
  const HIDDEN=['forgotten','superseded'];
@@ -664,13 +677,13 @@ function ledger(){
    <form id="rem" class="composer"><svg viewBox="0 0 24 24">${XI.record}</svg><input id="remtext" placeholder="Record a fact you know about this codebase…"><select id="remcat">${CATS.filter(c=>!['finding','convention'].includes(c)).map(c=>`<option ${c==='decision'?'selected':''}>${c}</option>`).join('')}</select><button class="btn sm primary">Record</button></form>
    <div class="small dim" style="padding:0 4px">A fact is something true about the code. A rule about how the team works goes in the <a href="#" data-go-page="charter" style="color:var(--acc)">Charter</a>.</div>
   </div>
-  <div class="split"><div>${vis.map(memRow).join('')||`<div class="empty">${(filt.cat||filt.status||q)?'Nothing matches these filters.':'No facts yet — work in your agent, then run a dream.'}</div>`}</div>
+  <div class="split"><div>${(()=>{const P=paged('ledger',vis,50);return P.bar+P.rows.map(memRow).join('')+P.bar})()||`<div class="empty">${(filt.cat||filt.status||q)?'Nothing matches these filters.':'No facts yet — work in your agent, then run a dream.'}</div>`}</div>
   <div class="sticky">${m?detail(m):'<div class="card"><h3>Graph</h3><canvas id="graph"></canvas><div class="small dim" style="margin-top:8px">nodes = facts · edges = shared files or tags · red = contradiction · dashed = superseded. Click a node.</div></div>'}</div></div>`;
  document.querySelectorAll('.chip').forEach(c=>c.onclick=()=>{if(c.dataset.cat)filt.cat=filt.cat===c.dataset.cat?null:c.dataset.cat;if(c.dataset.status)filt.status=filt.status===c.dataset.status?null:c.dataset.status;render()});
  const cf=$('#clearf');if(cf)cf.onclick=()=>{filt={cat:null,status:null};q='';$('#q').value='';render()};
  document.querySelectorAll('[data-go-page]').forEach(a=>a.onclick=e=>{e.preventDefault();page=a.dataset.goPage;render()});
  $('#rem').onsubmit=async e=>{e.preventDefault();const t=$('#remtext').value.trim();if(!t)return;await act({type:'remember',text:t,category:$('#remcat').value});toast('recorded')};
- bindMem(); bindDetail(); if(!m)graph(vis);
+ bindMem(); bindDetail(); bindPager(); if(!m)graph(vis);
 }
 function detail(m){const B=byId();const link=id=>B[id]?`<a href="#" data-go="${id}">${esc(B[id].text.slice(0,80))}</a>`:esc(id);
  const isF=m.category==='finding';
@@ -720,18 +733,17 @@ function atlas(){
  const c=A.check; const drift=c.exists&&(c.drift.length+c.missing.length);
  $('#subtitle').textContent=c.exists?`${c.counts.apps} apps · ${c.counts.services} services · ${c.counts.stores} stores · ${c.counts.endpoints} endpoints`:'no atlas yet';
  if(!names.includes(atlasTab))atlasTab=names[0];
- const md=docs[atlasTab]||'';const mer=(md.match(/```mermaid\n([\s\S]*?)```/)||[])[1];
- const rest=md.replace(/^---[\s\S]*?---\n/,'').replace(/```mermaid[\s\S]*?```/,'');
+ const md=(docs[atlasTab]||'').replace(/^---[\s\S]*?---\n/,'');const mers=[];
+ const body=md.split(/```mermaid\n([\s\S]*?)```/).map((part,i)=>i%2?(mers.push(part),`<div class="mmd" data-mmd="${mers.length-1}">${window.mermaid?'':'<pre class="log">'+esc(part)+'</pre>'}</div>`):(part.trim()?`<div class="card mdtxt" style="margin-top:12px">${mdlite(part)}</div>`:'')).join('');
  const K=c.counts||{};
  $('#page').innerHTML=`${c.exists?statsRow([[drift?'drift':'in sync','status',drift?`${c.drift.length+c.missing.length} source file(s) changed`:`generated ${c.generated}`,drift?'warn':''],[K.apps||0,'apps & packages',''],[K.services||0,'services','docker-compose'],[K.stores||0,'stores & queues',''],[K.k8s||0,'k8s objects',''],[K.endpoints||0,'api endpoints','from OpenAPI']]):''}
   ${stepper([{icon:'manifest',title:'Read the repo',desc:'manifests · compose · k8s · Terraform · OpenAPI',value:c.exists?(S.atlas.docs.inventory||'').split('\n- `').length-1:'',unit:'sources',lit:c.exists},{icon:'inventory',title:'Inventory',desc:'apps, services, stores, endpoints, config keys',value:c.exists?(K.apps||0)+(K.services||0)+(K.stores||0):'',unit:'components',lit:c.exists},{icon:'diagram',title:'Diagrams',desc:'containers · deployment · api, in Mermaid',value:c.exists?Object.keys(S.atlas.docs).length:'',unit:'documents',lit:c.exists},{icon:'curate',title:'Deep pass',desc:'/atlas: data flows, dependency index, lanes',value:S.atlas.docs['data-flow']||S.atlas.docs.dependencies?'done':'not yet',unit:'',lit:!!(S.atlas.docs['data-flow']||S.atlas.docs.dependencies),llm:true},{icon:'fingerprint',title:'Fingerprint',desc:'every source file hashed',value:'',unit:'',lit:c.exists},{icon:'drift',title:'Drift',desc:'reported when the code moves and the picture does not',value:c.exists?(c.drift.length+c.missing.length):'',unit:'changed files',lit:drift}],{compact:true,title:'How the atlas stays true'})}
   <div class="row" style="margin:0 0 12px"><span class="spacer"></span><button class="btn sm" id="atlasrun">↻ Rebuild</button><span class="small dim">deep pass: the model, with each dream when the map is missing or has moved · <code>cosmos atlas --deep</code> now</span></div>
   ${names.length?`<div class="tabs">${names.map(n=>`<span class="chip ${n===atlasTab?'on':''}" data-tab="${n}">${n}</span>`).join('')}</div>
-  ${mer?`<div class="mmd" id="mmd">${window.mermaid?'':'<pre class="log">'+esc(mer)+'</pre>'}</div>`:''}
-  <div class="card mdtxt" style="margin-top:12px">${mdlite(rest)}</div>`:'<div class="empty">Run <code>cosmos atlas</code> (or the button above) to generate inventory and diagrams from the repository.</div>'}`;
+  ${body}`:'<div class="empty">Run <code>cosmos atlas</code> (or the button above) to generate inventory and diagrams from the repository.</div>'}`;
  document.querySelectorAll('[data-tab]').forEach(t=>t.onclick=()=>{atlasTab=t.dataset.tab;render()});
  $('#atlasrun').onclick=async()=>{const r=await act({type:'atlas'});if(r.ok)toast(`atlas rebuilt: ${r.apps} apps · ${r.services} services · ${r.stores} stores`)};
- if(mer&&window.mermaid){mermaid.render('m'+Date.now(),mer).then(o=>{const el=$('#mmd');if(el)el.innerHTML=o.svg}).catch(e=>{const el=$('#mmd');if(el)el.innerHTML='<pre class="log">'+esc(mer)+'</pre>'})}
+ if(window.mermaid)document.querySelectorAll('[data-mmd]').forEach(el=>mmdDraw(el,mers[+el.dataset.mmd]));
 }
 function mdlite(t){return esc(t).replace(/^### (.+)$/gm,'<h3>$1</h3>').replace(/^## (.+)$/gm,'<h2>$1</h2>').replace(/^# (.+)$/gm,'<h1>$1</h1>').replace(/`([^`]+)`/g,'<code>$1</code>').replace(/\*\*(.+?)\*\*/g,'<b>$1</b>').replace(/(?<!\w)_(\S[^_\n]*?\S)_(?!\w)/g,'<i>$1</i>').replace(/^\|(.+)\|$/gm,(m)=>'<div style="font-family:ui-monospace,Menlo,monospace;font-size:12px;color:var(--mut)">'+m+'</div>')}
 /* ---------- charter */
@@ -741,14 +753,18 @@ function charterPage(){
  const sections=(C.body.match(/^## /gm)||[]).length;
  $('#page').innerHTML=`${statsRow([[C.rules.length,'explicit rules','stated by the team'],[sections,'charter sections','.cosmos/charter.md'],[C.gate.enabled?'on':'off','gate',C.gate.enabled?'holds a turn until the checklist is met':'disabled',C.gate.enabled?'':'warn'],[C.gate.require_tests?'required':'optional','tests','when code changed'],[C.gate.require_refs?'required':'optional','file:line refs','in the summary']])}
   ${stepper([{icon:'rule',title:'Write the rules',desc:'style · testing · pointing · self-review · architecture',value:sections,unit:'sections',lit:sections},{icon:'commit',title:'Agree in a PR',desc:'the team, not one person, owns it',value:C.rules.length,unit:'explicit rules',lit:C.rules.length},{icon:'inject',title:'Injected first',desc:'every session, every machine, every agent',value:S.hooks.includes('SessionStart')?'on':'off',unit:'',lit:S.hooks.includes('SessionStart')},{icon:'gate',title:'Gate enforces',desc:'tests ran · file:line cited · findings addressed',value:C.gate.enabled?'on':'off',unit:'',lit:C.gate.enabled}],{compact:true,title:'How the charter works',foot:'Facts about the code live in the Ledger; the Charter is how the team works.'})}
+  ${(()=>{const R=C.rules.filter(m=>!ruleQ||m.text.toLowerCase().includes(ruleQ));const P=paged('rules',R,10);
+   return `<div class="card" style="margin-bottom:18px"><div class="row"><h3 style="margin:0">Explicit rules in the ledger · ${C.rules.length}</h3><span class="spacer"></span><input id="ruleq" placeholder="filter rules…" value="${esc(ruleQ)}" style="max-width:280px"></div>
+    <div class="small dim" style="margin:6px 0 10px">Click a rule to read all of it.</div><div class="rulesbox">${P.rows.map(memRow).join('')||'<div class="small dim">'+(C.rules.length?'no rule matches':'none yet')+'</div>'}</div>${P.bar}</div>`})()}
   <div class="split"><div>
    <div class="charter">${mdlite(C.body)}</div></div>
   <div class="sticky"><div class="card" style="margin-bottom:14px"><h3>Add a rule</h3><div class="small dim" style="margin:-4px 0 10px">A rule is how the team works (style, testing, review, architecture). It goes into <code>.cosmos/charter.md</code> and is injected first into every session. Facts about the code live in the Ledger.</div><form id="chf" class="stack" style="display:grid;gap:8px"><input id="cht" placeholder="e.g. Never call the DB from a controller"><select id="chs">${['Architecture rules','How we write code','How we test','How we point at things','How we review our own work'].map(x=>`<option>${x}</option>`).join('')}</select><button class="btn sm primary">Add to charter + ledger</button></form>
    <div class="small dim" style="margin-top:8px">Also works from any session: type <code>remember: …</code></div></div>
-   <div class="card" style="margin-bottom:14px"><h3>Explicit rules in the ledger</h3>${C.rules.map(memRow).join('')||'<div class="small dim">none yet</div>'}</div>
    <div class="card"><h3>Gate</h3><dl><dt>enabled</dt><dd>${C.gate.enabled}</dd><dt>tests</dt><dd>${C.gate.require_tests?'required when code changed':'not required'}</dd><dt>file:line refs</dt><dd>${C.gate.require_refs?'required in the summary':'not required'}</dd><dt>findings</dt><dd>open findings on touched files must be addressed or deferred</dd></dl><div class="small dim">Edit the <code>gate:</code> line in .cosmos/charter.md</div></div></div></div>`;
+ document.querySelectorAll('.rulesbox .mem').forEach(el=>el.onclick=()=>el.classList.toggle('open'));
+ const rq=$('#ruleq');if(rq)rq.oninput=e=>{ruleQ=e.target.value.toLowerCase();const at=e.target.selectionStart;render();const n=$('#ruleq');n.focus();n.setSelectionRange(at,at)};
+ bindPager();
  $('#chf').onsubmit=async e=>{e.preventDefault();const t=$('#cht').value.trim();if(!t)return;const r=await act({type:'charter_add',text:t,section:$('#chs').value});if(r.ok)toast('added to charter')};
- bindMem();
 }
 /* ---------- intake */
 let selHorizon=null, pickPath='', picked=new Set(), attached=[];
@@ -809,12 +825,13 @@ function flaresPage(){
  const m=sel&&byId()[sel];
  const sevOrder={critical:0,high:1,medium:2,low:3,note:4,info:5};
  const cols=FSTAT.filter(s=>fs.some(f=>fstatus(f)===s)||['open','claimed','pr_open','needs_human','fixed'].includes(s));
- $('#page').innerHTML=`${fs.length?statsRow([[openL.length,'open findings',`${fs.length} total`],[sev('critical'),'critical','',sev('critical')?'bad':''],[sev('high'),'high','',sev('high')?'warn':''],[sev('medium')+sev('low'),'medium & low',''],[fs.filter(m=>fstatus(m)==='needs_human').length,'need a human','could not reproduce / unclear',fs.filter(m=>fstatus(m)==='needs_human').length?'warn':''],[fs.filter(m=>fstatus(m)==='fixed').length,'fixed','']])+'<div style="height:18px"></div>':'<div class="empty">No findings yet. <code>cosmos flares import &lt;findings.json&gt; --prefix &lt;ID-PREFIX&gt;</code></div>'}
+ $('#page').innerHTML=`${fs.length?statsRow([[openL.length,'open findings',`${fs.length} total`],[sev('critical'),'critical','',sev('critical')?'bad':''],[sev('high'),'high','',sev('high')?'warn':''],[sev('medium')+sev('low'),'medium & low',''],[fs.filter(m=>fstatus(m)==='needs_human').length,'need a human','could not reproduce / unclear',fs.filter(m=>fstatus(m)==='needs_human').length?'warn':''],[fs.filter(m=>fstatus(m)==='fixed').length,'fixed','']])+'<div style="height:18px"></div>':'<div class="empty">No findings yet. <code>cosmos flares import &lt;findings.json&gt;</code></div>'}
   ${fs.length?stepper([{icon:'imp',title:'Import or file',desc:'audit JSON, or flare: in a session',value:fs.length,unit:'flares',lit:true},{icon:'board',title:'Triage',desc:'kanban by lifecycle',value:openL.length,unit:'open',lit:openL.length},{icon:'human',title:'Claim / needs human',desc:'a person or the fix loop takes it',value:fs.filter(m=>['claimed','pr_open','needs_human'].includes(fstatus(m))).length,unit:'in progress',lit:fs.some(m=>['claimed','pr_open','needs_human'].includes(fstatus(m)))},{icon:'fix',title:'Fix',desc:'commit recorded',value:fs.filter(m=>fstatus(m)==='fixed').length,unit:'fixed',lit:fs.some(m=>fstatus(m)==='fixed')},{icon:'regress',title:'Regression watch',desc:'a fixed bug reported again is flagged',value:fs.filter(m=>fstatus(m)==='regressed').length,unit:'regressed',lit:fs.some(m=>fstatus(m)==='regressed')},{icon:'slack',title:'Slack',desc:'one card per finding, never twice'}],{compact:true,title:'The finding lifecycle'})+'<div style="height:14px"></div>':''}
   <div class="${m?'split':''}"><div class="board">${cols.map(s=>{const L=fs.filter(f=>fstatus(f)===s).sort((a,b)=>sevOrder[a.meta.severity]-sevOrder[b.meta.severity]);
-   return `<div class="col"><h4><span>${s.replace('_',' ')}</span><span>${L.length}</span></h4>${L.map(f=>`<div class="fcard" data-id="${f.id}" style="--c:${cc(f.meta.severity)}"><div class="id">${esc(f.meta.audit_id)}${f.meta.area?' · '+esc(f.meta.area):''}</div><div class="t">${md(f.text)}</div>${f.files[0]?`<code>${esc(f.files[0])}</code>`:''}</div>`).join('')}</div>`}).join('')}</div>
+   const P=paged('flares-'+s,L,30);
+   return `<div class="col"><h4><span>${s.replace('_',' ')}</span><span>${L.length}</span></h4>${P.rows.map(f=>`<div class="fcard" data-id="${f.id}" style="--c:${cc(f.meta.severity)}"><div class="id">${esc(f.meta.audit_id)}${f.meta.area?' · '+esc(f.meta.area):''}</div><div class="t">${md(f.text)}</div>${f.files[0]?`<code>${esc(f.files[0])}</code>`:''}</div>`).join('')}${P.bar}</div>`}).join('')}</div>
   ${m?`<div class="sticky">${detail(m)}</div>`:''}</div>`;
- bindMem();bindDetail();
+ bindMem();bindDetail();bindPager();
 }
 /* ---------- dreams */
 function runRow(r,compact){return `<div class="run" data-run="${r.at}"><div><div class="when">${fmt(r.at)}</div><div class="small dim">${r.memories_total} memories after${r.llm_used?' · LLM':''}</div></div>
@@ -939,19 +956,21 @@ function docs(){
   <table><tr><th>how</th><th>what</th><th>agents</th></tr>
   <tr><td>Instruction files</td><td>the same managed block written to <code>CLAUDE.md</code>, <code>AGENTS.md</code>, <code>GEMINI.md</code>, <code>.cursor/rules/cosmos.mdc</code>, <code>.github/copilot-instructions.md</code>, <code>.clinerules</code>, <code>.windsurfrules</code></td><td>all</td></tr>
   <tr><td>MCP server</td><td><code>cosmos mcp</code> — tools: <code>cosmos_recall</code>, <code>cosmos_remember</code>, <code>cosmos_flare</code>, <code>cosmos_charter</code>, <code>cosmos_why</code>, <code>cosmos_horizon</code>, <code>cosmos_atlas</code>, <code>cosmos_lanes</code>. Configured by <code>cosmos init</code> in <code>.mcp.json</code>, <code>.cursor/mcp.json</code>, <code>.gemini/settings.json</code>, <code>.vscode/mcp.json</code>; Codex via <code>~/.codex/config.toml</code>.</td><td>all MCP clients</td></tr>
-  <tr><td>Plugin</td><td>the cosmos plugin (this repository is its marketplace): finds the shared folder that has <code>.cosmos/</code>, one level down included, and serves that repository's own copy of cosmos. Cowork runs no hooks and reads no local MCP config, so this is how it gets the tools — from the next message.</td><td>Cowork · Claude Code (optional)</td></tr>
+  <tr><td>Slash commands</td><td>one catalogue, written by <code>cosmos init</code> / <code>connect</code> for every agent that reads project commands: <code>/cosmos</code> <code>/recall</code> <code>/remember</code> <code>/flare</code> <code>/flares</code> <code>/qa</code> <code>/reconcile</code> <code>/lanes</code> <code>/horizon</code> <code>/handoff</code> <code>/atlas</code> — <code>.claude/commands/</code>, <code>.gemini/commands/</code> (TOML), <code>.cursor/commands/</code>, <code>.github/prompts/</code> (Copilot in VS Code), <code>.windsurf/workflows/</code>. Codex reads prompts only from <code>~/.codex/prompts</code>: <code>cosmos connect codex --write-user</code> writes <code>/prompts:cosmos-recall</code> … there. The plugin carries them as <code>/cosmos:recall</code> …. Each uses the MCP tools and falls back to <code>python3 .cosmos/cosmosw</code>. A file without the "written by cosmos" line is the team's own and is never overwritten. (<code>/doctor</code> in Claude Code is Claude's own check; cosmos's is <code>/cosmos</code>.)</td><td>Claude Code · Gemini CLI · Cursor · Copilot · Windsurf · Codex (user level) · Cowork (plugin)</td></tr>
+  <tr><td>Playbooks</td><td>a team's own long-form prompt — a master QA protocol, a release runbook — is found by itself: a markdown file named <i>protocol</i> / <i>playbook</i> / <i>runbook</i> / <i>master prompt</i> (or with such a first heading under <code>docs/</code>, <code>prompts/</code>, <code>qa/</code>) that is written for an agent, plus everything in <code>.cosmos/playbooks/</code>. Each becomes a slash command for every agent (<code>/master-qa-protocol</code>) that reads the file and follows it, and <code>/qa</code> follows the QA one. Another project wants it: <code>cosmos playbooks add ../other/docs/qa/MASTER_QA_PROTOCOL.md</code>; nothing yet: <code>cosmos playbooks add qa</code> writes a generic QA playbook to adapt. <code>playbooks.ignore</code> / <code>playbooks.paths</code> in config.json correct the detection.</td><td>every agent with commands</td></tr>
+  <tr><td>Plugin</td><td>the cosmos plugin (this repository is its marketplace): finds the shared folder that has <code>.cosmos/</code>, one level down included, and serves that repository's own copy of cosmos. Cowork runs no hooks and reads no local MCP config, so this is how it gets the tools — from the next message. <code>/plugin</code> is a Claude Code terminal command: in the Claude desktop app use the Plugins screen, or run <code>claude plugin marketplace add</code> and <code>claude plugin install</code> in a terminal. It shows only <code>cosmos_status</code> when no shared folder has <code>.cosmos/</code>.</td><td>Cowork · Claude Code (optional)</td></tr>
   <tr><td>Capture</td><td>Claude Code: hooks, automatic. Cowork: the watcher reads its transcripts on this machine and maps the sandbox paths back. Codex: <code>cosmos capture --agent codex</code> reads <code>~/.codex/sessions</code> rollouts (exact format). Gemini / Antigravity: best-effort JSON reader. Any agent: <code>cosmos_remember</code> over MCP.</td><td>Claude Code · Codex · Gemini · any via MCP</td></tr></table>
   <pre>cosmos init                   # writes every agent's instruction file and MCP config; nothing else to run
 cosmos connect codex --write-user   # only Codex keeps its MCP config in ~/.codex/config.toml
-# Cowork: Plugins → add marketplace (this repository) → install cosmos
-/plugin marketplace add &lt;owner&gt;/cosmos   # Claude Code, optional
-/plugin install cosmos@cosmos</pre>
+# Cowork / Claude desktop app: Plugins → add marketplace (this repository) → install cosmos
+claude plugin marketplace add &lt;owner&gt;/cosmos   # any terminal; inside the Claude Code CLI: /plugin marketplace add …
+claude plugin install cosmos@cosmos</pre>
   <p><b>Capture is not a step.</b> Hooks record Claude Code turns; the watcher (started by <code>init</code> and by every session start) follows Claude Code, Codex and Gemini session files on this machine, all worktrees and subagents; the model reads what is new at the next dream, which starts by itself.</p>
   <p><b>Shareable:</b> everything is in <code>.cosmos/</code> and the instruction files — commit and push, and every teammate on every tool has it. <code>cosmos ui --static</code> makes a read-only snapshot page for people outside the repo.</p>`],
  ['link','2 · Link an existing codebase & past sessions',`
   <p>Most projects already have months of history. <code>cosmos init</code> reads the old sessions (all worktrees, subagents), writes their journal, marks recent history for the model and starts the first dream and the watcher. The rest is the audit, the Charter and a commit.</p>
   <pre>cd &lt;your-repo&gt; &amp;&amp; cosmos init
-cosmos flares import &lt;findings.json&gt; --prefix &lt;ID-PREFIX&gt; --source &lt;report-name&gt;   <span style="color:var(--dim)"># only if you have an audit document</span>
+cosmos flares import &lt;findings.json&gt; --source &lt;report-name&gt;   <span style="color:var(--dim)"># only if you have an audit document</span>
 cosmos ui             <span style="color:var(--dim)"># look while the first dream finishes</span>
 cosmos charter edit
 git push              <span style="color:var(--dim)"># init committed .cosmos/ and the agent wiring to this branch</span></pre>
@@ -959,7 +978,7 @@ git push              <span style="color:var(--dim)"># init committed .cosmos/ a
  ['start','3 · Getting started (a new repo)',`
   <div class="callout">Memory travels with the code. One person sets cosmos up and commits it; everyone else just clones.</div>
   <h3 class="small muted">FIRST PERSON ON THE REPO (once)</h3>
-  <pre>pip install cosmos-dev
+  <pre>python3 -m pip install "git+https://github.com/BiswajitBiswa/cosmos"
 cd ${repo}
 cosmos init
 git checkout -b cosmos/init origin/&lt;base-branch&gt;
@@ -969,7 +988,7 @@ git commit -m "cosmos: hooks and instruction files" &amp;&amp; git push -u origi
   <h3 class="small muted">EVERYONE AFTER THAT</h3>
   <pre>git clone &lt;repo&gt; &amp;&amp; cd ${repo} &amp;&amp; claude</pre>
   <p>No install, no init. The hooks call <code>.cosmos/cosmosw</code>, which runs the vendored copy when <code>cosmos</code> is not installed. Their first session starts with the team's top facts already in context.</p>
-  <p>Optional for the short command name: <code>pip install cosmos-dev</code>. Check the setup any time with <code>cosmos doctor</code>.</p>`],
+  <p>Optional for the short command name: <code>python3 -m pip install "git+https://github.com/BiswajitBiswa/cosmos"</code>. Check the setup any time with <code>cosmos doctor</code>.</p>`],
  ['daily','4 · Daily use (nothing to do)',`
   ${step(1,'Work with Claude Code as usual','On <b>SessionStart</b> the top facts are injected. On every <b>UserPromptSubmit</b> the memories relevant to your prompt (by words and by the files they anchor to) are injected — including open findings on those files.')}
   ${step(2,'Cosmos captures silently','On <b>Stop</b>, <b>PreCompact</b> and <b>SessionEnd</b> the turn gets a journal line (ask, files, commits, tests, branch) and its transcript range is marked for the model, which reads it at the next dream and keeps only what the team should still know: decisions and their reasons, constraints, root causes, corrections. Secrets are redacted before anything touches disk; transcripts are never stored.')}
@@ -995,7 +1014,7 @@ cosmos gate --transcript ~/.claude/projects/&lt;repo&gt;/&lt;session&gt;.jsonl  
   <pre>cosmos atlas            # build · cosmos atlas --check   # drift
 cosmos lanes [--days 30]</pre>`],
  ['horizon','8 · Horizon',`
-  <p>A feature enters with a map, not a Slack message. <code>cosmos horizon "bulk invite with partial success" -f path/hint.py</code> answers, from what the repo already knows: lanes touched (with overlap warnings), recorded decisions it collides with, open findings in the way, who has been working there, a suggested owner. Saved under <code>.cosmos/ledger/intake/</code> so the PR that implements the feature carries its own impact note.</p>`],
+  <p>A feature enters with a map, not a Slack message. <code>cosmos horizon "bulk invite with partial success" -f path/hint.py</code> answers, from what the repo already knows: lanes touched (with overlap warnings), recorded decisions it collides with, open flares in the way, who has been working there, a suggested owner. Saved under <code>.cosmos/ledger/horizon/</code> so the PR that implements the feature carries its own impact note.</p>`],
  ['approve','9 · Verdicts (the human gate)',`
   <p>Three things are never decided automatically; they wait on the <b>Verdicts</b> page (and <code>cosmos review</code>):</p>
   <table><tr><th>item</th><th>why it appears</th><th>your options</th></tr>
@@ -1008,9 +1027,10 @@ cosmos lanes [--days 30]</pre>`],
                  ↘ needs_human → (human) fixed | wontfix | withdrawn
 fixed/wontfix reported again by a later audit → regressed ⚠️</pre>
   <table><tr><th>stage</th><th>how</th></tr>
-  <tr><td>Report</td><td>An audit session writes <code>qa-findings.json</code> → <code>cosmos flares import docs/qa-findings.json --prefix QA</code>. Same id = update, never a duplicate. No file yet? cosmos asks before creating an empty one (<code>--yes</code> skips the question). Or type <code>flare: …</code> in a session.</td></tr>
+  <tr><td>Name</td><td>A flare's id is the project's lifecycle stage, read from git when it is filed: <code>qa/*</code> <code>test/*</code> → QA, <code>uat/*</code> <code>staging</code> → UAT, <code>release/*</code> or an rc tag → RC, <code>hotfix/*</code> → HOTFIX, main once a version tag is reachable → PROD, anything else → DEV. Nothing to run: a new flare takes the current stage and keeps it for life. <code>cosmos flares stage</code> says which one applies and why. In <code>.cosmos/config.json</code>: <code>flares.stages</code> adds branch patterns, <code>flares.stage</code> pins a stage, <code>flares.project</code> adds a tag (<code>RET-QA-…</code>), <code>flares.prefix</code> pins one prefix for everything (explicit outranks inferred).</td></tr>
+  <tr><td>Report</td><td>An audit session writes <code>qa-findings.json</code> → <code>cosmos flares import docs/qa-findings.json</code> (<code>--prefix PENTEST</code> names that one import). Same id = update, never a duplicate — also after the stage changed: a finding already filed under an earlier prefix keeps it. No file yet? cosmos asks before creating an empty one (<code>--yes</code> skips the question). Or type <code>flare: …</code> in a session.</td></tr>
   <tr><td>Triage</td><td><b>Flares</b> board, kanban by status. Click a card for What / Impact / Evidence / Fix.</td></tr>
-  <tr><td>Fix</td><td><code>cosmos flares claim QA-12</code> → <code>pr-open</code> → <code>fix QA-12 "PR #<n>"</code> (records the commit). Or the buttons in the card. Or the QA fix loop, which writes <code>status</code>/<code>status_note</code>/<code>status_at</code> into the JSON — re-import is the sync point; an incoming <i>open</i> never downgrades a local <i>claimed</i>.</td></tr>
+  <tr><td>Fix</td><td><code>cosmos flares claim QA-12</code> → <code>pr-open</code> → <code>fix QA-12 "PR #<n>"</code> (records the commit; the status's own name works too: <code>claimed</code>, <code>fixed</code>, <code>pr_open</code>). Work in another worktree or branch: <code>--commit &lt;sha&gt; --branch &lt;name&gt;</code>. Filed something wrong: <code>cosmos flares edit QA-12 --title … --severity … --locations …</code> (the id stays). Or the buttons in the card. Or the QA fix loop, which writes <code>status</code>/<code>status_note</code>/<code>status_at</code> into the JSON — re-import is the sync point; an incoming <i>open</i> never downgrades a local <i>claimed</i>.</td></tr>
   <tr><td>Withdraw</td><td><code>cosmos flares withdraw QA-8 "shared reference data by design"</code>. Kept forever so nobody re-files it; hidden from retrieval.</td></tr>
   <tr><td>Publish</td><td><code>cosmos flares slack --validate</code> → <code>cosmos flares slack --send --channel C…</code> (token from <code>SLACK_BOT_TOKEN</code> only). One Block Kit card per open finding, 👀 ✅ 🚫 pre-seeded, never double-posts. <code>--convert</code> rewrites already-posted messages in place.</td></tr>
   <tr><td>Report</td><td><code>cosmos flares report -o docs/qa-audit.md</code> regenerates the full report from the ledger. <code>cosmos flares export</code> writes the JSON back.</td></tr>
@@ -1025,11 +1045,11 @@ cosmos obsidian --vault ~/Obsidian/Team  # link several repos' ledgers into one 
  ['cli','12 · Command reference',`
   <table>
   <tr><th>command</th><th>does</th></tr>
-  <tr><td><code>cosmos init [--no-vendor]</code></td><td>set up this repo (charter, hooks, ledger, atlas, /atlas command, wrapper, CLAUDE.md/AGENTS.md block, vault)</td></tr>
+  <tr><td><code>cosmos init [--no-vendor]</code></td><td>set up this repo (charter, hooks, ledger, atlas, slash commands for every agent, wrapper, CLAUDE.md/AGENTS.md block, vault)</td></tr>
   <tr><td><code>cosmos charter [show|add|edit|gate]</code> · <code>gate [--transcript F]</code></td><td>the working agreement · the Stop-hook checklist</td></tr>
   <tr><td><code>cosmos atlas [--check]</code> · <code>lanes [--days N]</code> · <code>horizon "…" [-f F]</code></td><td>architecture from the repo · feature lanes and overlap · map a feature before coding</td></tr>
-  <tr><td><code>cosmos connect [all|claude|codex|gemini|cursor|copilot|cline|windsurf]</code> · <code>mcp</code> · <code>capture --agent all</code></td><td>wire every agent · the MCP server · read other agents' session logs</td></tr>
-  <tr><td><code>cosmos status</code> · <code>doctor</code> · <code>health</code></td><td>quick state · installation check · memory quality metrics</td></tr>
+  <tr><td><code>cosmos connect [all|claude|codex|gemini|cursor|copilot|cline|windsurf]</code> · <code>mcp</code> · <code>capture --agent all</code></td><td>wire every agent (instruction files, MCP configs, slash commands; <code>codex --write-user</code> for Codex's user-level config and prompts) · the MCP server · read other agents' session logs</td></tr>
+  <tr><td><code>cosmos status</code> · <code>doctor</code> · <code>health</code></td><td>quick state · installation check (every <code>cosmos</code> on PATH, the model and why, push, flare prefix, slash commands) · memory quality metrics</td></tr>
   <tr><td><code>cosmos ui</code> [<code>--static</code>] · <code>ledger --obsidian</code></td><td>this control room · read-only snapshot HTML · open the vault</td></tr>
   <tr><td><code>cosmos capture [--transcript F]</code></td><td>backfill from existing Claude transcripts of this repo</td></tr>
   <tr><td><code>cosmos dream [--llm|--no-llm]</code></td><td>consolidate observations into the ledger</td></tr>
@@ -1039,7 +1059,8 @@ cosmos obsidian --vault ~/Obsidian/Team  # link several repos' ledgers into one 
   <tr><td><code>cosmos verify ID [--resolve]</code> · <code>forget ID</code></td><td>mark verified (and supersede what it contradicts) · retire</td></tr>
   <tr><td><code>cosmos render</code></td><td>rewrite CLAUDE.md/AGENTS.md block and ledger index</td></tr>
   <tr><td><code>cosmos update</code> · <code>uninstall</code></td><td>refresh the vendored copy · remove hooks</td></tr>
-  <tr><td><code>cosmos flares import|list|show|claim|pr-open|needs-human|fix|wontfix|withdraw|reopen|set|export|report|slack|lint</code></td><td>QA findings lifecycle (section 5)</td></tr>
+  <tr><td><code>cosmos flares import|list|show|claim|pr-open|needs-human|fix|wontfix|withdraw|reopen|set|edit|stage|export|report|slack|lint</code></td><td>QA findings lifecycle (section 10); <code>stage</code>: the prefix a new flare gets here and why</td></tr>
+  <tr><td><code>cosmos playbooks [list|add &lt;file|qa&gt;]</code></td><td>the team's long-form prompts (a master QA protocol, runbooks) found in the repo, each a slash command for every agent; <code>/qa</code> follows the QA one · bring one in from another project, or start from the generic QA playbook</td></tr>
   <tr><td><code>cosmos eval</code></td><td>measure retrieval now: before-edit hit rate and recall@5 (dreams do it after each change)</td></tr>
   <tr><td><code>cosmos hook</code></td><td>the hook entrypoint Claude Code calls (reads the event on stdin; not for people)</td></tr>
   <tr><td><code>cosmos hooks --user</code></td><td>install the hooks for your user, so every checkout and worktree is covered (init does it)</td></tr>
@@ -1047,7 +1068,7 @@ cosmos obsidian --vault ~/Obsidian/Team  # link several repos' ledgers into one 
   <tr><td><code>cosmos watch [--daemon]</code></td><td>follow every agent's session files for this repository (started for you; stops after two idle hours)</td></tr>
   <tr><td><code>cosmos obsidian [--open]</code></td><td>open the ledger as an Obsidian vault (<code>.cosmos/ledger/</code>)</td></tr>
   </table>
-  <p class="small dim">Teammates without an install: prefix with <code>.cosmos/cosmosw</code>, e.g. <code>.cosmos/cosmosw status</code>.</p>`],
+  <p class="small dim">Teammates without an install: prefix with <code>.cosmos/cosmosw</code>, e.g. <code>.cosmos/cosmosw status</code>. <code>ModuleNotFoundError: No module named 'cosmos'</code> means the first <code>cosmos</code> on PATH belongs to another Python: <code>python3 .cosmos/cosmosw doctor</code> names it and the fix. <code>COSMOS_NO_PUSH=1</code> stops every push cosmos could make.</p>`],
  ['config','13 · Configuration & layout',`
   <pre>${esc(JSON.stringify(S.config,null,2))}</pre>
   <p><code>.cosmos/config.json</code> — committed. Notable keys: <code>capture.min_score</code> (extraction threshold), <code>privacy.author</code> (<i>git</i> | <i>anonymous</i>), <code>retrieval.session_start_max</code> / <code>prompt_max</code>, <code>dream.staleness_days</code> per category, <code>ignore</code> globs (facts anchored only on ignored paths are dropped).</p>
@@ -1074,6 +1095,8 @@ cosmos obsidian --vault ~/Obsidian/Team  # link several repos' ledgers into one 
   <tr><td><b>Open Knowledge Format</b> — every note is an OKF v0.2 concept (type, provenance, trust, freshness, links); lanes and Atlas services are concept pages that link facts, flares, horizon notes and people, so the product graph is a folder any OKF tool or graph viewer can read. A lane with nothing active loses its page; a lane that is no longer a clean name is inferred again</td><td>each dream</td><td><code>ledger/index.md</code> · <code>ledger/lanes/</code> · <code>ledger/atlas/services/</code></td></tr>
   <tr><td><b>Ledger in your branch</b> — <code>.cosmos/</code> is committed in the branch where init ran; cosmos commits it to the current branch every 10 minutes and after each dream (only <code>.cosmos/</code>, amended while unpushed, never during a merge or rebase); append-only files merge by union</td><td>watcher · dreams</td><td>goes out when you push the branch</td></tr>
   <tr><td><b>Atlas deep pass</b> — the model follows the Atlas prompt: system context, containers, data flow, deployment, dependencies, proposed lanes</td><td>with a dream, when a map file is missing or its sources moved</td><td><code>ledger/atlas/</code></td></tr>
+  <tr><td><b>Playbook commands</b> — a protocol or runbook added to the repository gets its slash command in every agent that has cosmos commands; one removed loses it</td><td>each dream · <code>cosmos connect</code> · <code>cosmos playbooks</code></td><td><code>.claude/commands/</code> and the other agents' folders, committed with the dream</td></tr>
+  <tr><td><b>Flare ids</b> — a new flare is named after the lifecycle stage read from git (branch, release tags): DEV, QA, UAT, RC, PROD, HOTFIX</td><td>when a flare is filed (session, import, dream)</td><td><code>cosmos flares stage</code> · Flares</td></tr>
   <tr><td><b>Sessions older than cosmos</b> — briefed on their next prompt; Cowork gets the tools from the cosmos plugin with its next message</td><td>next prompt · next message</td><td>the agent's context</td></tr>
   </table>
   <p>What cosmos costs a session is shown on Activity as tokens injected today. Everything above can be switched in <code>config.json</code> (<code>dream.auto</code>, <code>watch.auto</code>, <code>sources.git_log</code>, <code>sources.github_reviews</code>, <code>sync.auto_push</code>) or in the Charter's gate line (<code>reflect</code>, <code>small_change_chars</code>).</p>`],];

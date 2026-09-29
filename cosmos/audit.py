@@ -12,9 +12,11 @@ Import format = the QA audit JSON already produced by Claude sessions:
 """
 from __future__ import annotations
 
+import fnmatch
 import hashlib
 import json
 import re
+import subprocess
 from collections import Counter, defaultdict
 from pathlib import Path
 from typing import Dict, Iterable, List, Optional, Tuple
@@ -25,7 +27,7 @@ from .store import Ledger, Memory, today
 SEVERITIES = ["critical", "high", "medium", "low", "note", "info"]
 SEV_IMPORTANCE = {"critical": 1.0, "high": 0.85, "medium": 0.65, "low": 0.45, "note": 0.3, "info": 0.3}
 SEV_ICON = {"critical": "🔴", "high": "🟠", "medium": "🟡", "low": "🔵", "note": "🔬", "info": "⚪"}
-# Lifecycle written by humans (cosmos audit fix/withdraw/...) AND by the session-driven fix loop
+# Lifecycle written by humans (cosmos flares fix/withdraw/...) AND by the session-driven fix loop
 # (claimed → pr_open → fixed | needs_human). Import accepts every one of these verbatim - never coerces.
 FINDING_STATUSES = ["open", "claimed", "pr_open", "needs_human", "fixed", "withdrawn", "wontfix", "regressed"]
 OPEN_LIKE = {"open", "claimed", "pr_open", "needs_human", "regressed"}   # still needs work → shown in reports / retrieval
@@ -36,44 +38,65 @@ PUBLISHABLE = OPEN_LIKE | {NOTE}
 _LOC = re.compile(r"`?([\w\-./]+\.(?:py|ts|tsx|js|kt|java|go|rs|rb|sql|sh|yml|yaml|json|toml))(?::\d+(?:,\d+)*)?`?")
 
 
+# Where the project is in its life, read from git: the branch first (first match wins), then whether anything was
+# released. A flare keeps the stage it was found in for life; only new flares take the current one.
+STAGE_BRANCHES = [("hotfix/*", "HOTFIX"), ("hotfix-*", "HOTFIX"), ("release/*", "RC"), ("release-*", "RC"), ("rc/*", "RC"),
+                  ("qa/*", "QA"), ("qa-*", "QA"), ("test/*", "QA"), ("testing", "QA"), ("uat/*", "UAT"), ("uat", "UAT"),
+                  ("staging", "UAT"), ("stage", "UAT")]
+DEFAULT_BRANCHES = {"main", "master", "trunk"}
+_RELEASE_TAG = re.compile(r"^v?\d+(\.\d+)+$")                  # v1.2.0 or 1.2 - an -rc / -beta tag is not a release
+_RC_TAG = re.compile(r"^v?\d+(\.\d+)+[-.]?(rc|beta|alpha)", re.I)
+
+
+def _git_lines(root: Path, *args: str) -> List[str]:
+    try:
+        out = subprocess.run(["git", *args], cwd=root, capture_output=True, text=True, timeout=3)
+        return [l.strip() for l in out.stdout.splitlines() if l.strip()] if out.returncode == 0 else []
+    except (OSError, subprocess.SubprocessError):
+        return []
+
+
+def lifecycle_stage(cfg: Config) -> Tuple[str, str]:
+    """(stage, why) for a flare filed now: flares.stage in config.json if set, else the branch (flares.stages extends the
+    branch map), else PROD on the default branch once a version tag is reachable, else DEV."""
+    pinned = str(cfg.get("flares.stage") or "").strip()
+    if pinned:
+        return pinned.upper(), "set in .cosmos/config.json (flares.stage)"
+    root = cfg.paths.root
+    branch = next(iter(_git_lines(root, "symbolic-ref", "--short", "HEAD")), "")
+    extra = cfg.get("flares.stages") or {}
+    rules = [(str(g), str(s).upper()) for g, s in (extra.items() if isinstance(extra, dict) else [])] + STAGE_BRANCHES
+    for glob, stage in rules:
+        if branch and fnmatch.fnmatch(branch.lower(), glob.lower()):
+            return stage, f"branch {branch}"
+    if any(_RC_TAG.match(t) for t in _git_lines(root, "tag", "--points-at", "HEAD")):
+        return "RC", "HEAD carries a release-candidate tag"
+    if branch and branch not in DEFAULT_BRANCHES:
+        return "DEV", f"branch {branch}"
+    tag = next((t for t in _git_lines(root, "tag", "--merged", "HEAD", "--sort=-creatordate") if _RELEASE_TAG.match(t)), "")
+    if tag:
+        return "PROD", f"released ({tag} is in {branch or 'HEAD'})"
+    return "DEV", "nothing released yet (no version tag)"
+
+
 def flare_prefix(cfg: Config) -> str:
-    """The id prefix for this repository's flares: set by the last `cosmos flares import --prefix`, else QA."""
-    return str(cfg.get("flares.prefix") or "QA")
+    """The id prefix for a flare filed now. flares.prefix in config.json pins one prefix for every flare (explicit
+    outranks inferred); otherwise it is the lifecycle stage, after the project tag flares.project if there is one."""
+    pinned = str(cfg.get("flares.prefix") or "").strip()
+    if pinned:
+        return pinned
+    stage, _ = lifecycle_stage(cfg)
+    project = str(cfg.get("flares.project") or "").strip()
+    return f"{project}-{stage}" if project else stage
 
 
-def remember_prefix(cfg: Config, prefix: str) -> bool:
-    """Keep the prefix someone chose, so flares filed later from sessions carry it too. True when it changed."""
-    import json as _json
-    if not prefix or prefix == flare_prefix(cfg):
-        return False
-    p = cfg.paths.config
-    data = _json.loads(p.read_text()) if p.exists() else {}
-    data.setdefault("flares", {})["prefix"] = prefix
-    p.write_text(_json.dumps(data, indent=2) + "\n")
-    cfg.data.setdefault("flares", {})["prefix"] = prefix
-    return True
-
-
-def rename_prefix(cfg: Config, old: str, new: str, only_source: str = "") -> int:
-    """Give flares filed under one prefix the new one: audit id and memory id both follow, so a later import or
-    session flare with the same raw id updates the flare instead of creating a second one. Returns flares renamed."""
-    ledger = Ledger(cfg.paths)
-    mems = ledger.load()
-    n = 0
-    for m in list(mems.values()):
-        aid = m.meta.get("audit_id", "")
-        if m.category != "finding" or not aid.startswith(old + "-") or (only_source and m.meta.get("source_doc") != only_source):
-            continue
-        raw = m.meta.get("raw_id") or aid[len(old) + 1:]
-        ledger.delete(m.id)
-        del mems[m.id]
-        m.id = finding_id(new, raw)
-        m.meta["audit_id"] = f"{new}-{raw}"
-        mems[m.id] = m
-        n += 1
-    if n:
-        ledger.save_all(mems.values())
-    return n
+def prefix_note(cfg: Config) -> str:
+    """One line saying which prefix a new flare gets here, and why."""
+    pinned = str(cfg.get("flares.prefix") or "").strip()
+    if pinned:
+        return f"new flares get {pinned}- (pinned by flares.prefix in .cosmos/config.json; remove it to follow the lifecycle)"
+    stage, why = lifecycle_stage(cfg)
+    return f"new flares get {flare_prefix(cfg)}- (stage {stage}: {why})"
 
 
 def finding_id(prefix: str, raw_id: str) -> str:
@@ -114,10 +137,12 @@ def import_findings(cfg: Config, path: Path, prefix: str = "QA", source_doc: str
     mems = ledger.load()
     author, commit, t = git_author(cfg.paths.root), git_head(cfg.paths.root), today()
     new, updated, regressed = [], [], []
+    # a finding already filed under an earlier stage's prefix is the same finding: it keeps its id and is updated
+    by_origin = {(m.meta.get("source_doc"), m.meta.get("raw_id")): m for m in mems.values() if m.category == "finding" and m.meta.get("raw_id")}
     for item in items:
         inc = _from_json_item(item, prefix, source_doc or Path(path).name, author, commit)
         inc.files = [resolve_path(f, index) for f in inc.files]
-        cur = mems.get(inc.id)
+        cur = mems.get(inc.id) or by_origin.get((inc.meta["source_doc"], inc.meta["raw_id"]))
         if cur is None:
             inc.reason = f"Imported from {inc.meta['source_doc']} on {t}"
             mems[inc.id] = inc
@@ -140,7 +165,7 @@ def import_findings(cfg: Config, path: Path, prefix: str = "QA", source_doc: str
             cur.status = "forgotten" if now == "withdrawn" else "active"
         # else: incoming "open" never downgrades a local claimed/pr_open/needs_human/withdrawn
         cur.text, cur.details, cur.files = inc.text or cur.text, inc.details or cur.details, inc.files or cur.files
-        cur.meta.update({k: v for k, v in inc.meta.items() if k not in ("finding_status",) and v})
+        cur.meta.update({k: v for k, v in inc.meta.items() if k not in ("finding_status", "audit_id", "raw_id") and v})
         cur.evidence_count += 1
         cur.updated = cur.last_verified = t
         if cur not in regressed:
@@ -160,7 +185,8 @@ def findings(mems: Dict[str, Memory], status: Optional[str] = None, severity: Op
     return out
 
 
-def set_status(cfg: Config, mem: Memory, new_status: str, note: str = "") -> None:
+def set_status(cfg: Config, mem: Memory, new_status: str, note: str = "", commit: str = "", branch: str = "") -> None:
+    """commit / branch name where the work is when it is not this checkout (a fix made in another worktree)."""
     if mem.meta.get("finding_status") == NOTE or mem.meta.get("severity") == NOTE:
         raise SystemExit(f"{mem.meta.get('audit_id')} is a verification note — notes carry no lifecycle and cannot be {new_status}.")
     t = today()
@@ -169,12 +195,41 @@ def set_status(cfg: Config, mem: Memory, new_status: str, note: str = "") -> Non
     mem.meta["status_at"] = t
     if note:
         mem.meta["status_note"] = note
-    if new_status == "fixed" and git_head(cfg.paths.root):
-        mem.meta["fixed_commit"] = git_head(cfg.paths.root)
+    commit = commit or (git_head(cfg.paths.root) if new_status == "fixed" else "")
+    if commit:
+        mem.meta[f"{new_status}_commit"] = commit
+    if branch:
+        mem.meta[f"{new_status}_branch"] = branch
     mem.status = "forgotten" if new_status == "withdrawn" else "active"
     mem.updated = mem.last_verified = t
     mem.reason = f"Marked {new_status} on {t}" + (f": {note}" if note else "")
     Ledger(cfg.paths).save(mem)
+
+
+def edit_finding(cfg: Config, mem: Memory, title: Optional[str] = None, severity: Optional[str] = None,
+                 locations: Optional[str] = None, area: Optional[str] = None) -> List[str]:
+    """Correct what was filed; the audit id and the lifecycle stay. Returns the fields that changed."""
+    changed: List[str] = []
+    if title and title.strip() != mem.text:
+        mem.text = title.strip(); changed.append("title")
+    if severity and severity != mem.meta.get("severity"):
+        mem.meta["severity"] = severity
+        mem.importance = SEV_IMPORTANCE.get(severity, mem.importance)
+        mem.tags = [t for t in mem.tags if t not in SEV_IMPORTANCE] + [severity]
+        changed.append("severity")
+    if locations is not None and locations != mem.meta.get("locations"):
+        from .lanes import _tree_index, resolve_path
+        index = _tree_index(cfg.paths.root)
+        mem.meta["locations"] = locations
+        mem.files = [resolve_path(f, index) for f in parse_locations(locations) if not f.startswith("/")][:8] or mem.files
+        changed.append("locations")
+    if area is not None and area != mem.meta.get("area"):
+        mem.meta["area"] = area; changed.append("area")
+    if changed:
+        mem.updated = today()
+        mem.reason = f"Edited on {today()}: {', '.join(changed)}"
+        Ledger(cfg.paths).save(mem)
+    return changed
 
 
 def export_json(mems: Iterable[Memory]) -> List[Dict]:
@@ -227,7 +282,7 @@ def report_slack(cfg: Config, fs: List[Memory], title: str = "QA / Security Audi
     parent = (f"🐛 *{cfg.paths.root.name} — {title}* · `{git_head(cfg.paths.root)}`\n\n"
               f"*{len(open_)} open findings* — " + " · ".join(f"{SEV_ICON[s]} {c[s]} {s}" for s in SEVERITIES if c[s]) + "\n\n"
               + "\n".join(f"{SEV_ICON[m.meta.get('severity','medium')]} *{m.meta.get('audit_id')}* — {m.text}" for m in open_[:8])
-              + ("\n…" if len(open_) > 8 else "") + f"\n\n_Full detail per finding in thread · tracked in `.cosmos/ledger/finding/` · `cosmos audit list`_")
+              + ("\n…" if len(open_) > 8 else "") + f"\n\n_Full detail per finding in thread · tracked in `.cosmos/ledger/finding/` · `cosmos flares list`_")
     replies = []
     for m in open_:
         body = f"{SEV_ICON[m.meta.get('severity','medium')]} *{m.meta.get('audit_id')} · {m.meta.get('severity','').upper()}* — *{m.text}*\n"
@@ -237,6 +292,6 @@ def report_slack(cfg: Config, fs: List[Memory], title: str = "QA / Security Audi
             body += f"\n*{label}*\n{text[:900]}{'…' if len(text) > 900 else ''}\n"
         if m.meta.get("finding_status") == "regressed":
             body += f"\n⚠️ *REGRESSION* — was fixed, reported again. {m.reason}\n"
-        body += f"\n_ack with 👀 / ✅ / 🚫 · `cosmos audit fix {m.meta.get('audit_id')}`_"
+        body += f"\n_ack with 👀 / ✅ / 🚫 · `cosmos flares fix {m.meta.get('audit_id')}`_"
         replies.append({"audit_id": m.meta.get("audit_id"), "text": body})
     return {"parent": parent, "replies": replies}

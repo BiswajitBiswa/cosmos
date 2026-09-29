@@ -18,7 +18,7 @@ cosmos capture --agent claude --rebuild-journal
 
 ## 3. Bring in an existing audit
 ```bash
-cosmos flares import <findings.json> --prefix <ID-PREFIX> --source <report-name>
+cosmos flares import <findings.json> --source <report-name>   # ids follow the lifecycle stage (cosmos flares stage)
 cosmos flares slack --seed-state <legacy .slack-posted.json> --prefix <ID-PREFIX> --status
 ```
 

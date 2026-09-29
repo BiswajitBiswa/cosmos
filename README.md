@@ -12,7 +12,7 @@ cosmos brings your people, agents and context together: context that compounds, 
 
 ```bash
 # first person on the repo · once · the only command
-pip install cosmos-dev && cosmos init
+python3 -m pip install "git+https://github.com/BiswajitBiswa/cosmos" && cosmos init
 
 # everyone after that
 git clone <repo> && claude
@@ -168,7 +168,7 @@ git clone <repo> && claude
 | **Watch** | `cosmos watch` is one local process that tails every agent's own session files for this repository, all worktrees and subagents included, captures what is new, shows who is working on what right now in the console, and starts dreams when enough is waiting. It needs no hooks, so it also covers sessions opened before cosmos existed and agents without a hook system. |
 | **Recall at the edit** | The moment the agent opens a file to change it, it sees the open flares on that file, its explicit rules, and the facts that match the code being changed: a file can carry a hundred facts, and the one about the function being edited is the one that matters. Each fact is shown once per session, so a later edit elsewhere in the file brings what is relevant there. Knowledge arrives at the decision, not in a report afterwards. |
 | **Journal** | What the team did, not only what it learned: one line per agent turn with the ask, the files, the commits and the branch, filed by lane and person under `ledger/journal/`. A session that ships five commits and teaches no new fact is still on record. |
-| **Control room** | `cosmos ui`: overview, ledger, lanes, atlas, charter, horizon, flares, dreams, verdicts, activity, docs. Localhost only; picks a free port. |
+| **Control room** | `cosmos ui`: overview, ledger, lanes, atlas, charter, horizon, flares, dreams, verdicts, activity, docs. Localhost only; picks a free port. Long lists page in the browser (50 facts, 10 rules, 30 flares per column) and long texts fold to three lines, so a ledger of thousands needs no server; `cosmos ui --static` is the same page as one file. |
 | **The model** | Uses your existing Claude Code login by default (`claude -p`), or `ANTHROPIC_API_KEY`, or any OpenAI-compatible endpoint. `COSMOS_LLM_PROVIDER=none` runs heuristics only, and says so. |
 | **Privacy first** | API keys, tokens, passwords, private keys and credentials in URLs are redacted before anything is written. Sensitive folders can be excluded. Transcripts are read, never stored. |
 | **Never in the way** | Hooks finish in milliseconds and exit clean. The Gate is the one deliberate hold, and it explains itself. |
@@ -189,7 +189,7 @@ git clone <repo> && claude
 
 ### Cowork, and sessions that were already open
 
-**Cowork** runs Claude Code in a sandbox with its own settings, so a project's hooks and a local MCP server in Claude Desktop's config never reach it. The cosmos plugin does. This repository is also a plugin marketplace: in Cowork, add it as a marketplace (its GitHub `owner/cosmos` path) and install **cosmos**. The plugin finds every shared folder that has `.cosmos/`, one level down included (a workspace folder of several projects), and serves that repository's own copy of cosmos over MCP, so no install is needed inside the sandbox. Cowork starts a fresh process for each message, so the tools appear with your next message, in the session you already have open. The same plugin works in Claude Code: `/plugin marketplace add owner/cosmos`, then `/plugin install cosmos@cosmos`. Capture from Cowork needs no plugin: the watcher reads Cowork transcripts on the machine and maps the sandbox paths back.
+**Cowork** runs Claude Code in a sandbox with its own settings, so a project's hooks and a local MCP server in Claude Desktop's config never reach it. The cosmos plugin does. This repository is also a plugin marketplace: in Cowork, add it as a marketplace (its GitHub `owner/cosmos` path) and install **cosmos**. The plugin finds every shared folder that has `.cosmos/`, one level down included (a workspace folder of several projects), and serves that repository's own copy of cosmos over MCP, so no install is needed inside the sandbox. Cowork starts a fresh process for each message, so the tools appear with your next message, in the session you already have open. The same plugin works in Claude Code: in a terminal, `claude plugin marketplace add owner/cosmos` then `claude plugin install cosmos@cosmos` (inside the Claude Code CLI the same as `/plugin …`; the Claude desktop app has no `/plugin` command, use its Plugins screen). With the plugin, the commands are also `/cosmos:recall`, `/cosmos:flare` …. Capture from Cowork needs no plugin: the watcher reads Cowork transcripts on the machine and maps the sandbox paths back.
 
 **Sessions older than cosmos.** The user-level hooks run in every repository and check for `.cosmos/` on each event, so a Claude Code session that was open before `cosmos init` starts capturing on its next turn, and its next prompt carries the briefing it missed at start (Charter, key facts, handoff, Atlas). Nothing to restart.
 
@@ -197,13 +197,13 @@ git clone <repo> && claude
 
 **One person runs one command once. Everyone else clones.** Nothing else is a step: capture, reading, dreams, the watcher and the hook refresh happen by themselves.
 
-**1 · `cosmos init`, once.** Creates `.cosmos/` with the Charter, the Ledger, the first Atlas and the `/atlas` prompt; wires hooks at repo and user level, so every worktree is covered; writes MCP configs and the instruction files of every agent; reads the sessions this repo already had, writes their journal, marks the recent ones for the model, and starts the first dream and the watcher in the background.
+**1 · `cosmos init`, once.** Creates `.cosmos/` with the Charter, the Ledger, the first Atlas and the slash commands (`/cosmos` `/recall` `/remember` `/flare` `/flares` `/qa` `/reconcile` `/lanes` `/horizon` `/handoff` `/atlas`) for Claude Code, Gemini CLI, Cursor, Copilot and Windsurf, plus one per playbook the repository already has (a master QA protocol, a runbook: found by themselves, and `/qa` follows the QA one; `cosmos playbooks add qa` starts a generic one, `cosmos playbooks add <file>` brings one from another project); wires hooks at repo and user level, so every worktree is covered; writes MCP configs and the instruction files of every agent; reads the sessions this repo already had, writes their journal, marks the recent ones for the model, and starts the first dream and the watcher in the background.
 
 ```bash
-pip install cosmos-dev
+python3 -m pip install "git+https://github.com/BiswajitBiswa/cosmos"   # `python3 -m pip` keeps the `cosmos` command and its Python together
 cd <your-repo>
 cosmos init
-cosmos flares import <findings.json> --prefix <ID-PREFIX>   # only if you have an audit document
+cosmos flares import <findings.json>   # only if you have an audit document; ids follow the lifecycle stage
 ```
 
 **2 · Agree the Charter, then commit.** Edit `.cosmos/charter.md` in a pull request; that is the team agreeing on one style. Commit and the memory becomes the team's.
@@ -231,7 +231,7 @@ git clone <repo> && cd <repo>
 | | step | command |
 |---|---|---|
 | 1 | Initialise. This also reads every past session (all worktrees, subagents), writes their journal, marks recent history for the model, starts the first dream and the watcher | `cd <your-repo> && cosmos init` |
-| 2 | Bring in an existing audit, if there is one. If the file does not exist yet, cosmos asks before creating an empty one to fill in (`--yes` creates it without asking). | `cosmos flares import <findings.json> --prefix <ID-PREFIX> --source <report-name>` |
+| 2 | Bring in an existing audit, if there is one. If the file does not exist yet, cosmos asks before creating an empty one to fill in (`--yes` creates it without asking). | `cosmos flares import <findings.json> --source <report-name>` |
 | 3 | Look while the first dream finishes in the background | `cosmos ui` |
 | 4 | Agree the Charter and push | `cosmos charter edit` · `git push`. `cosmos init` committed `.cosmos/` and the agent wiring to the branch you ran it on; run it on a branch off your base branch if you want it reviewed in a pull request. |
 | 5 | Sessions that were already open | nothing to restart: the next prompt carries the briefing; in Cowork, install the cosmos plugin once ([plugin](docs/plugin.md)) |

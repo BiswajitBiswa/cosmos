@@ -226,6 +226,17 @@ class OpenAICompatibleProvider(Provider):
         return _first_json(content)
 
 
+def provider_reason(cfg_llm: Dict[str, Any]) -> str:
+    """Why get_provider picks what it picks, in words: auto never reads OPENAI_API_KEY or any key but Anthropic's."""
+    env = os.environ.get("COSMOS_LLM_PROVIDER")
+    prov = env or (cfg_llm or {}).get("provider", "auto")
+    where = "COSMOS_LLM_PROVIDER" if env else "llm.provider in .cosmos/config.json"
+    if prov != "auto":
+        return f"{where} = {prov}"
+    order = "auto: ANTHROPIC_API_KEY with the anthropic SDK, else your Claude Code login; other keys (OPENAI_API_KEY …) are used only with llm.provider openai / compatible"
+    return order + (" · ANTHROPIC_API_KEY is set" if os.environ.get("ANTHROPIC_API_KEY") else " · ANTHROPIC_API_KEY not set")
+
+
 def get_provider(cfg_llm: Dict[str, Any]) -> Optional[Provider]:
     """provider: auto (default) | claude-code | anthropic | openai | ollama | compatible | none.
     auto = Anthropic API if a key + SDK are present, else the developer's Claude Code login, else nothing."""

@@ -551,6 +551,12 @@ def dream(cfg: Config, use_llm: Optional[bool] = None, verbose: bool = False, re
     except Exception:
         pass
     try:
+        from .commands import refresh
+        refresh(cfg)                        # a playbook added, renamed or removed since: its commands follow, and go out with this commit
+    except OSError as e:
+        with (cfg.paths.state / "dream.log").open("a") as log:
+            log.write(f"playbook commands not refreshed: {e}\n")
+    try:
         from .sync import sync_background
         sync_background(cfg, "cosmos: dream — " + report.summary()[:100])
     except Exception:
@@ -562,20 +568,13 @@ def _name_findings(cfg: Config, mems: Dict[str, Memory]) -> int:
     """A finding the model wrote while reading a session has no flare id yet: give it one with the repo's prefix.
     Without a stated severity it is a note (a measurement, a verification) - kept, but never an open bug."""
     from .audit import flare_prefix
-    prefix = flare_prefix(cfg)
+    prefix = flare_prefix(cfg)                     # the stage the project is in now: a flare is named once, when found
     n = 0
-    # a session flare renamed to the repo's prefix while a dream held the old copy: keep the renamed one
-    current = {m.meta.get("raw_id") for m in mems.values() if m.category == "finding" and m.meta.get("audit_id", "").startswith(prefix + "-")}
-    for m in [m for m in mems.values() if m.category == "finding" and m.meta.get("source_doc") == "mcp"
-              and not m.meta.get("audit_id", "").startswith(prefix + "-") and m.meta.get("raw_id") in current]:
-        Ledger(cfg.paths).delete(m.id)
-        del mems[m.id]
-        n += 1
     for m in mems.values():
         if m.category != "finding" or m.meta.get("audit_id"):
             continue
         sev = m.meta.get("severity") or "note"
-        m.meta.update({"audit_id": f"{flare_prefix(cfg)}-{m.id[-6:]}", "raw_id": m.id[-6:], "severity": sev,
+        m.meta.update({"audit_id": f"{prefix}-{m.id[-6:]}", "raw_id": m.id[-6:], "severity": sev,
                        "finding_status": "note" if sev == "note" else m.meta.get("finding_status", "open")})
         n += 1
     return n
