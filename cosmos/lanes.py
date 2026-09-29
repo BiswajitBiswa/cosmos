@@ -35,9 +35,10 @@ DOC_DIRS = {"docs", "doc", "references", "reference", "adr", "rfcs", "wiki"}
 
 
 def canonical_lane(name: str, cfg: Config) -> str:
-    """lane_aliases in config.json folds near-duplicate names into one: {"deploy-config": "deployment", "chat-*": "ask-reten"}."""
+    """lane_aliases (or lanes_alias) in config.json folds near-duplicate names into one:
+    {"deploy-config": "deployment", "chat-*": "ask-reten"} — exact names first, then globs."""
     import fnmatch
-    aliases = cfg.get("lane_aliases") or {}
+    aliases = cfg.get("lane_aliases") or cfg.get("lanes_alias") or {}
     if not name or not isinstance(aliases, dict):
         return name
     if name in aliases:
@@ -236,7 +237,7 @@ def propose(cfg: Config, mems: Dict[str, Memory], observations: Iterable[Dict], 
     for p in seen:
         top[infer_lane([p])] += paths[p]
     det = {lane: [f"{lane}/**"] for lane in top if lane not in (GENERAL, "tooling", "docs") and not lane.startswith("../")}
-    out = {"source": "paths", "lanes": det, "counts": dict(top.most_common())}
+    out = {"source": "paths", "lanes": det, "counts": dict(top.most_common()), "aliases": alias_suggestions(mems, cfg)}
     if not use_llm:
         return out
     from .providers import get_provider
@@ -264,6 +265,45 @@ def propose(cfg: Config, mems: Dict[str, Memory], observations: Iterable[Dict], 
     except Exception as e:
         out["note"] = f"LLM proposal failed ({e}); showing the path-derived one"
     return out
+
+
+def _words(lane: str) -> List[str]:
+    """A lane's words, each cut to six letters, so deploy and deployment are the same word."""
+    return [w[:6] for w in lane.split("/")[-1].split("-") if w]
+
+
+def _near_duplicate(a: str, b: str) -> bool:
+    """One lane's words are the leading words of the other's: deploy ~ deploy-config ~ deployment, chat ~ chat-engine.
+    Siblings that only share a first word (audit-api, audit-cost) are separate lanes on purpose."""
+    wa, wb = _words(a), _words(b)
+    short, long_ = (wa, wb) if len(wa) <= len(wb) else (wb, wa)
+    return bool(short) and len(short[0]) >= 3 and long_[:len(short)] == short
+
+
+def alias_suggestions(mems: Dict[str, Memory], cfg: Config) -> Dict[str, str]:
+    """Near-duplicate lane names folded into the one with the most facts. A suggestion for `cosmos lanes --propose`;
+    nothing changes until the team writes it into lane_aliases."""
+    from collections import Counter
+    names = Counter(canonical_lane(m.lane, cfg) for m in mems.values() if m.lane and m.lane != GENERAL and m.status not in ("forgotten", "superseded"))
+    group = {n: n for n in names if not n.startswith("../")}
+    def root(n: str) -> str:
+        while group[n] != n:
+            n = group[n]
+        return n
+    ordered = sorted(group)
+    for i, x in enumerate(ordered):
+        for y in ordered[i + 1:]:
+            if _near_duplicate(x, y):
+                group[root(y)] = root(x)
+    members: Dict[str, List[str]] = defaultdict(list)
+    for n in group:
+        members[root(n)].append(n)
+    out: Dict[str, str] = {}
+    for ms in members.values():
+        if len(ms) > 1:
+            canon = max(ms, key=lambda n: (names[n], -len(n)))
+            out.update({n: canon for n in ms if n != canon})
+    return dict(sorted(out.items()))
 
 
 def norm_files(files: Iterable[str], cfg: Config) -> List[str]:

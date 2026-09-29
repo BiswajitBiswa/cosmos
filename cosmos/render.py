@@ -106,8 +106,9 @@ def write_lane_pages(cfg: Config, mems: Dict[str, Memory]) -> int:
     paths = ledger.paths_by_id(mems.values())
     report = {r["lane"]: r for r in lane_report(cfg, mems, list(Observations(cfg.paths).iter_all()))}
     by_lane: Dict[str, List[Memory]] = defaultdict(list)
+    from .lanes import canonical_lane
     for m in mems.values():
-        by_lane[m.lane or "general"].append(m)
+        by_lane[canonical_lane(m.lane, cfg) or "general"].append(m)      # an alias shares its canonical lane's page
     # horizon notes and atlas apps, for cross-links
     horizons = []
     hdir = cfg.paths.ledger / "horizon"

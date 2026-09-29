@@ -785,6 +785,60 @@ class TestLaneAliasesAndRepoint(unittest.TestCase):
             self.assertEqual((now["mem_a"].status, now["mem_a"].files), ("active", ["scripts/render_deploy.py"]))
             self.assertEqual(now["mem_c"].status, "stale-candidate", "nothing to follow: it stays for a human")
 
+    def test_repoint_counts_verified_still_stale_and_ambiguous(self):
+        import io, contextlib
+        from cosmos.cli import main
+        with Repo() as r:
+            _git(r.root, "config", "user.email", "t@example.com")
+            for f, body in (("src/a.py", "def keep_me():\n    pass\n"), ("src/b.py", "def old_name():\n    pass\n"), ("src/c.py", "def split_one():\n    pass\n")):
+                (r.root / f).write_text(body)
+            _git(r.root, "add", "-A"); _git(r.root, "commit", "-q", "-m", "one")
+            (r.root / "lib").mkdir()
+            _git(r.root, "mv", "src/a.py", "lib/a.py"); _git(r.root, "mv", "src/b.py", "lib/b.py")
+            (r.root / "lib" / "b.py").write_text("def new_name():\n    pass\n")
+            _git(r.root, "add", "-A"); _git(r.root, "commit", "-q", "-m", "move")
+            _git(r.root, "checkout", "-q", "-b", "other", "HEAD~1"); (r.root / "x").mkdir()
+            _git(r.root, "mv", "src/c.py", "x/c.py"); _git(r.root, "commit", "-q", "-m", "c here")
+            _git(r.root, "checkout", "-q", "-"); (r.root / "y").mkdir()
+            _git(r.root, "mv", "src/c.py", "y/c.py"); _git(r.root, "commit", "-q", "-m", "c there")
+            st = lambda i, t, f: Memory(id=i, text=t, category="workflow", files=[f], status="stale-candidate", reason="Stale candidate since 2026-09-01: none of the evidence files exist anymore")
+            Ledger(r.cfg.paths).save_all([st("mem_v", "Setup calls `keep_me` first", "src/a.py"), st("mem_s", "Cleanup calls `old_name`", "src/b.py"),
+                                          st("mem_q", "Import runs `split_one`", "src/c.py")])
+            out = io.StringIO()
+            cwd = os.getcwd(); os.chdir(r.root)
+            try:
+                with contextlib.redirect_stdout(out):
+                    self.assertEqual(main(["review", "--repoint", "--yes"]), 0)
+            finally:
+                os.chdir(cwd)
+            self.assertIn("2 repointed (1 verified", out.getvalue())
+            self.assertIn("1 still stale · 1 ambiguous", out.getvalue())
+            now = Ledger(r.cfg.paths).load()
+            self.assertEqual((now["mem_v"].status, now["mem_v"].files), ("active", ["lib/a.py"]))
+            self.assertEqual((now["mem_s"].status, now["mem_s"].files), ("stale-candidate", ["lib/b.py"]), "moved, but `old_name` is not there")
+            self.assertEqual((now["mem_q"].status, now["mem_q"].files), ("stale-candidate", ["src/c.py"]), "two places: left alone")
+
+    def test_near_duplicate_lanes_are_proposed_and_every_view_uses_the_alias(self):
+        from cosmos.lanes import alias_suggestions, canonical_lane
+        from cosmos.mcp import call_tool
+        from cosmos.render import render_all
+        with Repo() as r:
+            mems = {f"mem_{i}": Memory(id=f"mem_{i}", text=f"fact {i} about deploys", category="workflow", lane=lane, meta={"lane_by": "model"})
+                    for i, lane in enumerate(["deploy"] * 3 + ["deploy-config", "deployment", "chat", "chat-engine", "billing", "audit-api", "audit-cost"])}
+            self.assertEqual(alias_suggestions(mems, r.cfg), {"chat-engine": "chat", "deploy-config": "deploy", "deployment": "deploy"},
+                             "audit-api and audit-cost only share a first word: separate lanes")
+            data = json.loads(r.cfg.paths.config.read_text()); data["lanes_alias"] = {"deploy-config": "deploy", "deployment": "deploy"}
+            r.cfg.paths.config.write_text(json.dumps(data))
+            cfg = load_config(r.root)
+            self.assertEqual(canonical_lane("deployment", cfg), "deploy", "lanes_alias is read too")
+            Ledger(cfg.paths).save_all(mems.values()); render_all(cfg, Ledger(cfg.paths).load())
+            pages = {p.stem for p in (cfg.paths.ledger / "lanes").glob("*.md")}
+            self.assertIn("deploy", pages)
+            self.assertFalse({"deploy-config", "deployment"} & pages, "an alias has no page of its own")
+            text = call_tool(cfg, "cosmos_lanes", {})["content"][0]["text"]
+            self.assertIn("deploy: 5 facts", text)
+            self.assertNotIn("deployment:", text)
+
 
 class TestDoctorEntrypoints(unittest.TestCase):
     def test_a_desktop_entry_named_cosmos_for_another_repo_is_named(self):

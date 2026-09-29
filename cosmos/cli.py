@@ -484,42 +484,67 @@ def cmd_review(a) -> int:
     return 0
 
 
-def _review_repoint(cfg, mems, apply: bool) -> int:
-    """Stale facts whose evidence only moved: follow git's renames (and partial paths) to where the files are now, and
-    bring a fact back only when every identifier it names is still in the code. Age-based doubts are left alone."""
-    from .dream import _files_exist, _missing_identifiers, _present_in_repo, _renames
+def _new_locations(root, f: str, moved, tracked) -> List[str]:
+    """Where a missing evidence path went: git's renames first, then a unique tree path ending with the same name."""
     from .lanes import resolve_evidence
-    root, t = cfg.paths.root, today()
-    moved = _renames(root)
-    stale = [m for m in mems.values() if m.status == "stale-candidate" and m.files and _files_exist(root, m.files) is False]
-    plans = []
-    for m in stale:
-        new = list(dict.fromkeys(r for r in (resolve_evidence(root, moved.get(f, f)) for f in m.files) if r))[:8]
-        plans.append((m, new))
+    if f in moved:
+        if len(moved[f]) > 1:
+            return sorted(moved[f])                    # history split (renamed differently on two branches): ambiguous
+        return sorted(r for r in (resolve_evidence(root, x) for x in moved[f]) if r)
+    base = f.rsplit("/", 1)[-1]
+    same = sorted(t for t in tracked if t.rsplit("/", 1)[-1] == base and (root / t).exists())
+    if len(same) > 1 and "/" in f:
+        tail = [t for t in same if t.endswith("/" + f.split("/", 1)[1])]      # the path's own tail narrows it
+        same = tail or same
+    return same
+
+
+def _review_repoint(cfg, mems, apply: bool) -> int:
+    """Stale facts whose evidence files are gone: find where each file went (git's renames, then the tree), rewrite the
+    fact's files, and mark it verified only when the identifiers it names appear in the files at the new path.
+    Several possible new places for a file is ambiguous and left for a human; age-based doubts are never cleared."""
     from dataclasses import replace
-    trial = {m.id: replace(m, files=new) for m, new in plans if new}
-    idents = {mid: _missing_identifiers(root, x) for mid, x in trial.items()}
-    present = _present_in_repo(root, sorted({i for v in idents.values() for i in v}))
-    back, repointed, still = [], [], []
-    for m, new in plans:
+    from .dream import _files_exist, _repo_paths, named_identifiers, rename_targets
+    root, t = cfg.paths.root, today()
+    moved, tracked = rename_targets(root), _repo_paths(root)
+    stale = [m for m in mems.values() if m.status == "stale-candidate" and m.files and _files_exist(root, m.files) is False]
+    verified, repointed, still, ambiguous = [], [], [], []
+    for m in stale:
+        new, amb = [], False
+        for f in m.files:
+            cands = _new_locations(root, f, moved, tracked)
+            if len(cands) > 1:
+                amb = True
+            elif cands:
+                new.append(cands[0])
+        new = list(dict.fromkeys(new))[:8]
+        if amb:
+            ambiguous.append((m, new)); continue
         if not new:
-            still.append(m); continue
-        gone = [i for i in idents.get(m.id, []) if i not in present]
-        (repointed if gone else back).append((m, new, gone))
+            still.append((m, new)); continue
+        names = named_identifiers(m)
+        blobs = [(root / f).read_text(errors="ignore") for f in new if (root / f).is_file() and (root / f).stat().st_size < 2_000_000]
+        holds = bool(names) and all(any(n in b for b in blobs) for n in names)
+        (verified if holds else repointed).append((m, new))
     print(col(f"{len(stale)} stale fact(s) whose evidence files are gone:", "B"),
-          f"{len(back)} come back (files found, every identifier still in the code) · {len(repointed)} re-pointed but still doubtful · {len(still)} with no new location")
-    for m, new, gone in (back + repointed)[:12]:
-        print(f"  {'↺' if not gone else '→'} {m.id} {m.text[:70]}")
-        print(col(f"      {', '.join(m.files[:2])}  →  {', '.join(new[:2])}" + (f"   (`{gone[0]}` not found)" if gone else ""), "d"))
+          f"{len(verified) + len(repointed)} repointed ({len(verified)} verified: every identifier found at the new path) · "
+          f"{len(still) + len(repointed)} still stale · {len(ambiguous)} ambiguous")
+    for label, rows in (("✓ verified", verified), ("→ repointed, still stale", repointed), ("? ambiguous", ambiguous)):
+        for m, new in rows[:6]:
+            print(f"  {label}  {m.id} {m.text[:70]}")
+            print(col(f"      {', '.join(m.files[:2])}  →  {', '.join(new[:2]) or 'several places: ' + ', '.join(_new_locations(root, m.files[0], moved, tracked)[:3])}", "d"))
     if not apply:
         print(col("dry run — `cosmos review --repoint --yes` applies it", "d")); return 0
-    for m, new, gone in back + repointed:
+    for m, new in verified + repointed:
         m.files = new
-        if not gone:
-            m.status, m.updated, m.last_verified = "active", t, t
-            m.reason = f"Evidence re-pointed on {t} (moved files followed through git); every identifier still present"
+    for m, new in verified:
+        m.status, m.updated, m.last_verified = "active", t, t
+        m.reason = f"Evidence re-pointed on {t} (moved files followed through git); every identifier found at the new path"
+    for m, new in repointed:
+        m.updated = t
+        m.reason = f"Evidence re-pointed on {t}; still for a human: " + (m.reason or "no identifier to check at the new path")
     _finish(cfg, mems)
-    print(col("✓", "g"), f"{len(back)} fact(s) back · {len(repointed)} re-pointed, still for a human in Verdicts")
+    print(col("✓", "g"), f"{len(verified)} verified · {len(repointed)} repointed but still stale · {len(ambiguous)} ambiguous, unchanged")
     return 0
 
 
@@ -738,11 +763,18 @@ def cmd_lanes(a) -> int:
             print(f"  {k:<28} {', '.join(v)}")
         if res.get("note"):
             print(col("  " + res["note"], "d"))
+        if res.get("aliases"):
+            print(col("near-duplicate lanes → lane_aliases:", "B"))
+            for k, v in res["aliases"].items():
+                print(f"  {k:<28} → {v}")
         if a.write:
-            cfg.data["lanes"] = res["lanes"]; cfg.save()
+            cfg.data["lanes"] = res["lanes"]
+            if res.get("aliases"):
+                cfg.data["lane_aliases"] = {**res["aliases"], **(cfg.get("lane_aliases") or {})}   # the team's own entries win
+            cfg.save()
             n = assign_lanes(mems, cfg, only_missing=False); Ledger(cfg.paths).save_all(mems.values())
             from .render import render_all; render_all(cfg, mems)
-            print(col("✓", "g"), f"written to .cosmos/config.json → lanes; {n} memories re-filed")
+            print(col("✓", "g"), f"written to .cosmos/config.json → lanes{' and lane_aliases' if res.get('aliases') else ''}; {n} memories re-filed")
         else:
             print(col("  add --write to save into .cosmos/config.json and re-file every memory", "d"))
         return 0
