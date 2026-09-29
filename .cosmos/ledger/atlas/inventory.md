@@ -1,4 +1,5 @@
 ---
+type: Diagram
 tags: ["atlas"]
 ---
 # Atlas · Inventory — cosmos

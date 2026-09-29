@@ -1,4 +1,5 @@
 ---
+type: Diagram
 tags: ["atlas","diagram"]
 ---
 # Atlas · Containers — cosmos

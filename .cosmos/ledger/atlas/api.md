@@ -1,4 +1,5 @@
 ---
+type: Diagram
 tags: ["atlas"]
 ---
 # Atlas · API surface — cosmos

@@ -2,6 +2,8 @@
   "version": 1,
   "capture": {
     "enabled": true,
+    "mode": "auto",
+    "fallback_days": 3,
     "min_score": 0.5,
     "max_per_batch": 40,
     "explicit_prefixes": [
@@ -17,8 +19,18 @@
     "session_start_max": 10,
     "prompt_max": 6
   },
+  "watch": {
+    "auto": true,
+    "interval": 30
+  },
+  "sync": {
+    "commit": true,
+    "auto_push": true
+  },
   "dream": {
     "llm": false,
+    "auto_memory": true,
+    "read_budget": 30,
     "staleness_days": {
       "dependency": 45,
       "workflow": 120,
