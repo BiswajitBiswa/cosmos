@@ -218,6 +218,30 @@ class Memory:
         return mem
 
 
+def _remember_base(mem: "Memory", text: str) -> None:
+    """What the note was when this process read or wrote it: the base of a three-way save (Ledger.save)."""
+    mem._base = asdict(mem)
+    mem._base_text = text
+
+
+def _merge_into(mem: "Memory", base: Dict, mine: Dict, disk: Dict) -> None:
+    """Another process saved the note after this one read it. Keep what this process changed (field by field, and
+    key by key inside meta) and take everything else from the file, so a dream that ran for minutes cannot put back
+    a flare's older lifecycle state, and a status set meanwhile survives the dream's rewrite."""
+    for k, now in disk.items():
+        if k == "meta":
+            merged = dict(now)
+            for mk in set(base.get("meta", {})) | set(mine.get("meta", {})):
+                if mine["meta"].get(mk) != base["meta"].get(mk):
+                    if mk in mine["meta"]:
+                        merged[mk] = mine["meta"][mk]
+                    else:
+                        merged.pop(mk, None)
+            setattr(mem, k, merged)
+        elif mine.get(k) == base.get(k):
+            setattr(mem, k, now)
+
+
 class Ledger:
     """Directory of memory notes: ledger/<category>/<id>-<slug>.md"""
 
@@ -234,10 +258,12 @@ class Ledger:
             return out
         for p in sorted(self.dir.rglob("mem_*.md")):
             try:
-                mem = Memory.from_markdown(p.read_text())
+                text = p.read_text()
+                mem = Memory.from_markdown(text)
             except Exception:
                 mem = None
             if mem:
+                _remember_base(mem, text)
                 out[mem.id] = mem
         return out
 
@@ -258,13 +284,26 @@ class Ledger:
             mem.valid_to = ""
         if not mem.valid_from:
             mem.valid_from = mem.created
+        base = getattr(mem, "_base", None)
+        if base is not None:                         # loaded earlier by this process: someone may have saved it since
+            on_disk = next(iter(sorted(self.dir.rglob(f"{mem.id}-*.md"))), None)
+            disk_text = on_disk.read_text() if on_disk else None
+            if disk_text is not None and disk_text != getattr(mem, "_base_text", None):
+                disk = Memory.from_markdown(disk_text)
+                if disk is not None:
+                    mine = asdict(mem)
+                    if mine == base:
+                        return on_disk               # nothing changed here, and the file is newer: it stays
+                    _merge_into(mem, base, mine, asdict(disk))
         # remove old file if slug/category changed
         for old in self.dir.rglob(f"{mem.id}-*.md"):
             if old != self._path_for(mem):
                 old.unlink()
         p = self._path_for(mem)
         p.parent.mkdir(parents=True, exist_ok=True)
-        p.write_text(mem.to_markdown(paths if paths is not None else (self.paths_by_id() if mem.link_targets() else {})))
+        text = mem.to_markdown(paths if paths is not None else (self.paths_by_id() if mem.link_targets() else {}))
+        p.write_text(text)
+        _remember_base(mem, text)
         return p
 
     def save_all(self, mems: Iterable[Memory]) -> None:

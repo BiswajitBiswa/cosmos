@@ -48,3 +48,12 @@ reconciles whatever you keep. `sync.commit: false` in `.cosmos/config.json` turn
 
 **Opt-in: a separate branch.** `cosmos init --branch` keeps the ledger on its own `cosmos` branch instead (a worktree at
 `.cosmos/`, pushed by itself, ignored by code branches). `cosmos sync --inline` moves it back into the checked-out branch.
+
+## Several writers at once
+
+Dreams, the watcher, the console, MCP servers and CLI commands in several sessions all write the same ledger. Each note
+remembers what it was when a process read it, and a save is three-way: a note this process did not change is never
+written over a newer file, and a note both changed keeps this process's fields (key by key inside `meta`) and the
+file's for everything else. A dream that ran for minutes therefore cannot put a flare that another session moved to
+`pr_open` back to `open`. Files merge by union in git for the append-only parts; a note edited on two branches is
+reconciled by the next dream.
