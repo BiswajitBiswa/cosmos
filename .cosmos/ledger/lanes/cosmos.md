@@ -1,7 +1,7 @@
 ---
 type: "Lane"
 title: "cosmos"
-description: "5 active facts, 2 open flares, 2 people active in the last 30 days"
+description: "5 active facts, 0 open flares, 2 people active in the last 30 days"
 status: "stable"
 sources: [{"resource": "/../../cosmos", "title": "cosmos"}, {"resource": "/../../plugin", "title": "plugin"}]
 links: ["/architecture/mem_1f13b61a-slash-commands-for-every-agent-come-from-one-cat.md", "/architecture/mem_c2833030-excel-export-is-a-stdlib-xlsx-writer-cosmos-xlsx.md", "/constraint/mem_1192ca15-hooks-must-always-exit-0-the-gate-is-the-only-de.md", "/decision/mem_043ce3de-playbooks-a-repositorys-own-long-form-agent-prom.md", "/decision/mem_2b049e3f-a-flares-id-prefix-is-the-projects-lifecycle-sta.md"]
@@ -11,14 +11,9 @@ tags: ["lane", "cosmos"]
 
 # Lane · cosmos
 
-5 active facts, 2 open flares, 2 people active in the last 30 days.
+5 active facts, 0 open flares, 2 people active in the last 30 days.
 
 **Overlap:** 2 people active here this month: BiswajitBiswa, Biswajit Tripathy.
-
-## Open flares
-
-- [DEV-desktop-mcp-pinned](/finding/mem_1db8264f-a-claude-desktop-mcp-entry-named-cosmos-pinned-t.md) [medium] A Claude Desktop MCP entry named cosmos pinned to one repo sends every Desktop session's cosmos_remember/cosmos_flare to
-- [DEV-wrapper-prefers-stale-install](/finding/mem_5b583e8d-cosmosw-always-prefers-an-installed-cosmos-over.md) [medium] cosmosw always prefers an installed cosmos over the repo's vendored copy, even when the install is older
 
 ## Facts
 

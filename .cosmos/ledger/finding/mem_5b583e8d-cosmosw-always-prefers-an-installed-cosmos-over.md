@@ -25,12 +25,16 @@ authors: ["Biswajit Tripathy"]
 valid_from: "2026-09-29"
 meta_area: "install"
 meta_audit_id: "DEV-wrapper-prefers-stale-install"
-meta_finding_status: "open"
+meta_finding_status: "fixed"
+meta_fixed_commit: "0c11381"
+meta_fixed_on: "2026-09-29"
 meta_found_commit: "3f80c40"
 meta_locations: "`cosmos/wrapper.py:18`"
 meta_raw_id: "wrapper-prefers-stale-install"
 meta_severity: "medium"
 meta_source_doc: "qa-2026-09-29-commands"
+meta_status_at: "2026-09-29"
+meta_status_note: "the wrapper runs the newer of the installed and the vendored copy; doctor shows both versions"
 ---
 
 # cosmosw always prefers an installed cosmos over the repo's vendored copy, even when the install is older
@@ -45,7 +49,7 @@ meta_source_doc: "qa-2026-09-29-commands"
 ## Why we believe this
 - Observed 1× (first 2026-09-29, last 2026-09-29); source: explicit
 - Evidence file: `cosmos/wrapper.py`
-- Imported from qa-2026-09-29-commands on 2026-09-29
+- Marked fixed on 2026-09-29: the wrapper runs the newer of the installed and the vendored copy; doctor shows both versions
 
 ## Related
 - [[mem_1db8264f]]
