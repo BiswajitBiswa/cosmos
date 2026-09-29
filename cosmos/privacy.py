@@ -11,6 +11,8 @@ SECRET_PATTERNS: List[Tuple[str, re.Pattern]] = [
     ("aws_access_key", re.compile(r"\b(AKIA|ASIA)[0-9A-Z]{16}\b")),
     ("anthropic_key", re.compile(r"\bsk-ant-[A-Za-z0-9_\-]{20,}\b")),
     ("openai_key", re.compile(r"\bsk-(?:proj-)?[A-Za-z0-9_\-]{20,}\b")),
+    ("pypi_token", re.compile(r"\bpypi-[A-Za-z0-9_\-]{40,}")),
+    ("npm_token", re.compile(r"\bnpm_[A-Za-z0-9]{30,}\b")),
     ("github_token", re.compile(r"\b(?:ghp|gho|ghu|ghs|ghr|github_pat)_[A-Za-z0-9_]{20,}\b")),
     ("slack_token", re.compile(r"\b(?:xox[abeoprs]-[A-Za-z0-9\-]{10,}|xapp-[A-Za-z0-9\-]{10,})\b")),
     ("google_api_key", re.compile(r"\bAIza[0-9A-Za-z_\-]{35}\b")),
