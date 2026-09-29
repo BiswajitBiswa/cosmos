@@ -6,9 +6,11 @@ status: "stable"
 generated: {"by": "human:Biswajit Tripathy", "at": "2026-09-29T00:00:00Z"}
 sources: [{"resource": "cosmos/cli.py", "title": "cli.py"}]
 stale_after: "2027-03-28T00:00:00Z"
+links: ["/lanes/cosmos.md", "/finding/mem_1db8264f-a-claude-desktop-mcp-entry-named-cosmos-pinned-t.md", "/finding/mem_5b583e8d-cosmosw-always-prefers-an-installed-cosmos-over.md", "/finding/mem_9391c461-atlas-reported-0-endpoints-for-apps-without-an-o.md", "/finding/mem_b9641884-an-older-pip-install-shadowed-the-repos-cosmos-a.md"]
 id: "mem_5790a327"
 aliases: ["mem_5790a327"]
 category: "finding"
+lane: "cosmos"
 cosmos_status: "active"
 confidence: 0.9
 importance: 0.65
@@ -43,5 +45,18 @@ meta_source_doc: "session-2026-09-29"
 - Observed 1× (first 2026-09-29, last 2026-09-29); source: explicit
 - Evidence file: `cosmos/cli.py`
 - Imported from session-2026-09-29 on 2026-09-29
+
+## Related
+- [[mem_1db8264f]]
+- [[mem_5b583e8d]]
+- [[mem_9391c461]]
+- [[mem_b9641884]]
+
+## Links
+- lane: [cosmos](/lanes/cosmos.md)
+- related: [mem_1db8264f](/finding/mem_1db8264f-a-claude-desktop-mcp-entry-named-cosmos-pinned-t.md)
+- related: [mem_5b583e8d](/finding/mem_5b583e8d-cosmosw-always-prefers-an-installed-cosmos-over.md)
+- related: [mem_9391c461](/finding/mem_9391c461-atlas-reported-0-endpoints-for-apps-without-an-o.md)
+- related: [mem_b9641884](/finding/mem_b9641884-an-older-pip-install-shadowed-the-repos-cosmos-a.md)
 
 #finding #medium
