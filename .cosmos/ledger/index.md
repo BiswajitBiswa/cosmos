@@ -15,4 +15,4 @@ okf_version: "0.2"
 - [architecture/](architecture/) — 2 active architecture notes
 - [constraint/](constraint/) — 4 active constraint notes
 - [decision/](decision/) — 2 active decision notes
-- [finding/](finding/) — 10 active finding notes
+- [finding/](finding/) — 11 active finding notes
