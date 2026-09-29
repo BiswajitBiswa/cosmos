@@ -7,13 +7,14 @@ tags: ["cosmos", "moc"]
 
 # Ledger index
 
-22 memories · 20 active · 0 contradicted · 1 stale candidates · 4 lanes
+24 memories · 22 active · 0 contradicted · 1 stale candidates · 4 lanes
 
 Charter: [[charter]] · Atlas: [[inventory]] · [[containers]] · [[deployment]] · [[api]]
 
 ## Lane · cosmos
 ### Architecture
 - [[mem_1f13b61a-slash-commands-for-every-agent-come-from-one-cat|Slash commands for every agent come from one catalogue in cosmos/commands.py (Claude .claude/commands, Gemini .gemini/commands TOML, Cursor .cursor/commands, Copilot .github/prompts, Windsurf .windsurf/workflows, Codex only ~/.codex/prompts via --write-user, plugin/commands for the plugin). Files carrying 'written by cosmos' are rewritten; unmarked files are the team's own and never overwritten. plugin/commands must be regenerated when the catalogue changes (a test fails otherwise).]]
+- [[mem_b6b76950-the-atlas-has-a-peoples-view-cosmos-atlashtml-py|The Atlas has a people's view: cosmos/atlas_html.py renders every ledger/atlas/*.md into ledger/atlas/atlas.html (sidebar, pan/zoom/fit/full-screen diagrams, cosmos theme) after each build and deep pass; --format md or atlas.format md skips it. The Markdown stays the source agents and dreams read. The page reuses the console's mmdFix by extracting it from ui.HTML, so the Mermaid fixes have one copy.]]
 - [[mem_c2833030-excel-export-is-a-stdlib-xlsx-writer-cosmos-xlsx|Excel export is a stdlib xlsx writer (cosmos/xlsx.py: zip of SpreadsheetML parts, inline strings only so no cell is ever a formula); `cosmos export`, `flares export -o *.xlsx` and the console's /api/export.xlsx all use it. Reason: cosmos is stdlib-only, so no openpyxl.]]
 ### Constraint
 - [[mem_1192ca15-hooks-must-always-exit-0-the-gate-is-the-only-de|Hooks must always exit 0; the Gate is the only deliberate exit-2 and it never fires twice in one turn (stop_hook_active).]]
@@ -33,6 +34,8 @@ Charter: [[charter]] · Atlas: [[inventory]] · [[containers]] · [[deployment]]
 - [[mem_e522e056-console-rendered-every-fact-rule-and-flare-at-on|Console rendered every fact, rule and flare at once and rules sat in a narrow sidebar with unclamped text]]
 - [[mem_f2ac4098-a-token-pasted-in-a-prompt-was-written-verbatim|A token pasted in a prompt was written verbatim into the journal (`ask`) and the live view, and committed with .cosmos]]
 - [[mem_fcf6d908-new-slash-commands-reintroduced-names-retired-in|New slash commands reintroduced names retired in 5b289ba: /intake and cosmos_finding / cosmos_intake in command bodies]]
+### Workflow
+- [[mem_9fe4f5ce-horizon-notes-exist-only-when-someone-asks-for-o|Horizon notes exist only when someone asks for one (/horizon, cosmos horizon, cosmos_horizon, the console's Horizon page); nothing creates them by itself, so a repo that never ran one (retent on 2026-09-30) shows 0.]]
 
 ## Lane · docs
 ### Constraint
