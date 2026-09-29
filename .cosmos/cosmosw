@@ -2,15 +2,30 @@
 """cosmosw - runs cosmos without requiring an install (see .cosmos/vendor). Committed on purpose."""
 import os, sys
 here = os.path.dirname(os.path.abspath(__file__))
+repo = os.path.dirname(here)
+cwd = os.path.realpath(os.getcwd())
+if cwd != os.path.realpath(repo) and not cwd.startswith(os.path.realpath(repo) + os.sep):
+    os.chdir(repo)  # started from elsewhere (Claude Desktop, Cowork, a cron): this wrapper belongs to this repository
+import importlib.util, re
+def _ver(init):
+    try:
+        m = re.search(r'__version__\s*=\s*["\']([^"\']+)', open(init).read())
+    except (OSError, TypeError):
+        return ()
+    return tuple(int(x) for x in re.findall(r"\d+", m.group(1))[:4]) if m else ()
+vendor = os.path.join(here, "vendor")
+spec = importlib.util.find_spec("cosmos")
+if _ver(os.path.join(vendor, "cosmos", "__init__.py")) > _ver(spec.origin if spec else None):
+    sys.path.insert(0, vendor)  # the repository's copy is newer than the installed one (or there is none): it wins
 try:
-    import cosmos  # installed version wins
+    import cosmos  # otherwise the installed version
 except ImportError:
-    sys.path.insert(0, os.path.join(here, "vendor"))
+    sys.path.insert(0, vendor)
     try:
         import cosmos  # vendored copy shipped with the repo
     except ImportError:
         if "hook" in sys.argv[1:]:
             sys.exit(0)  # never block a Claude Code session
-        sys.exit("cosmos is not installed and .cosmos/vendor is missing: pip install cosmos-dev")
+        sys.exit("cosmos is not installed and .cosmos/vendor is missing: python3 -m pip install cosmos-dev")
 from cosmos.cli import main
 sys.exit(main())
