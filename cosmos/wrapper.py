@@ -29,7 +29,7 @@ except ImportError:
     except ImportError:
         if "hook" in sys.argv[1:]:
             sys.exit(0)  # never block a Claude Code session
-        sys.exit("cosmos is not installed and .cosmos/vendor is missing: python3 -m pip install git+https://github.com/BiswajitBiswa/cosmos")
+        sys.exit("cosmos is not installed and .cosmos/vendor is missing: python3 -m pip install cosmos-dev")
 from cosmos.cli import main
 sys.exit(main())
 '''

@@ -1,4 +1,6 @@
-<p align="center"><img src="docs/assets/wordmark.svg" alt="cosmos" width="300"></p>
+<p align="center"><img src="https://raw.githubusercontent.com/BiswajitBiswa/cosmos/main/docs/assets/wordmark.svg" alt="cosmos" width="300"></p>
+
+<p align="center"><a href="https://pypi.org/project/cosmos-dev/"><img src="https://img.shields.io/pypi/v/cosmos-dev?label=pip%20install%20cosmos-dev" alt="PyPI"></a> <a href="https://github.com/BiswajitBiswa/cosmos"><img src="https://img.shields.io/github/stars/BiswajitBiswa/cosmos?style=social" alt="GitHub"></a></p>
 
 <p align="center"><strong>The minimal operating layer for a team building software with AI.</strong><br>One committed folder · zero dependencies · git is the database</p>
 
@@ -6,13 +8,13 @@
 <a href="#the-problems">Problems</a> · <a href="#for-your-role">Roles</a> · <a href="#how-it-works">How it works</a> · <a href="#every-feature-explained">Features</a> · <a href="#every-agent--one-point-of-contact">Agents</a> · <a href="#getting-started">Get started</a> · <a href="#honest-assessment">Honest assessment</a>
 </p>
 
-<p class="md-hero"><img src="docs/assets/hero.svg" alt="One system. Every agent. In sync." width="100%"></p>
+<p class="md-hero"><img src="https://raw.githubusercontent.com/BiswajitBiswa/cosmos/main/docs/assets/hero.svg" alt="One system. Every agent. In sync." width="100%"></p>
 
 cosmos brings your people, agents and context together: context that compounds, one coding style for every AI, an architecture map that cannot go stale, and a gate for the review checklist. Committed to git; nothing to run.
 
 ```bash
 # first person on the repo · once · the only command
-python3 -m pip install "git+https://github.com/BiswajitBiswa/cosmos" && cosmos init
+python3 -m pip install cosmos-dev && cosmos init
 
 # everyone after that
 git clone <repo> && claude
@@ -20,19 +22,19 @@ git clone <repo> && claude
 
 <table align="center">
 <tr>
-<td align="center" width="33%"><img src="docs/assets/icon-ledger.svg" width="44" alt=""><br><strong>Ledger</strong><br><sub>Context that compounds</sub></td>
-<td align="center" width="33%"><img src="docs/assets/icon-charter.svg" width="44" alt=""><br><strong>Charter</strong><br><sub>One style for every AI</sub></td>
-<td align="center" width="33%"><img src="docs/assets/icon-atlas.svg" width="44" alt=""><br><strong>Atlas</strong><br><sub>Your living product map</sub></td>
+<td align="center" width="33%"><img src="https://raw.githubusercontent.com/BiswajitBiswa/cosmos/main/docs/assets/icon-ledger.svg" width="44" alt=""><br><strong>Ledger</strong><br><sub>Context that compounds</sub></td>
+<td align="center" width="33%"><img src="https://raw.githubusercontent.com/BiswajitBiswa/cosmos/main/docs/assets/icon-charter.svg" width="44" alt=""><br><strong>Charter</strong><br><sub>One style for every AI</sub></td>
+<td align="center" width="33%"><img src="https://raw.githubusercontent.com/BiswajitBiswa/cosmos/main/docs/assets/icon-atlas.svg" width="44" alt=""><br><strong>Atlas</strong><br><sub>Your living product map</sub></td>
 </tr>
 <tr>
-<td align="center" width="33%"><img src="docs/assets/icon-lanes.svg" width="44" alt=""><br><strong>Lanes</strong><br><sub>Focus and avoid overlap</sub></td>
-<td align="center" width="33%"><img src="docs/assets/icon-horizon.svg" width="44" alt=""><br><strong>Horizon</strong><br><sub>See a feature before it lands</sub></td>
-<td align="center" width="33%"><img src="docs/assets/icon-gate.svg" width="44" alt=""><br><strong>Gate</strong><br><sub>The checklist, kept by the machine</sub></td>
+<td align="center" width="33%"><img src="https://raw.githubusercontent.com/BiswajitBiswa/cosmos/main/docs/assets/icon-lanes.svg" width="44" alt=""><br><strong>Lanes</strong><br><sub>Focus and avoid overlap</sub></td>
+<td align="center" width="33%"><img src="https://raw.githubusercontent.com/BiswajitBiswa/cosmos/main/docs/assets/icon-horizon.svg" width="44" alt=""><br><strong>Horizon</strong><br><sub>See a feature before it lands</sub></td>
+<td align="center" width="33%"><img src="https://raw.githubusercontent.com/BiswajitBiswa/cosmos/main/docs/assets/icon-gate.svg" width="44" alt=""><br><strong>Gate</strong><br><sub>The checklist, kept by the machine</sub></td>
 </tr>
 <tr>
-<td align="center" width="33%"><img src="docs/assets/icon-flares.svg" width="44" alt=""><br><strong>Flares</strong><br><sub>QA that follows the code</sub></td>
-<td align="center" width="33%"><img src="docs/assets/icon-dream.svg" width="44" alt=""><br><strong>Dreams</strong><br><sub>From activity to direction</sub></td>
-<td align="center" width="33%"><img src="docs/assets/icon-verdicts.svg" width="44" alt=""><br><strong>Verdicts</strong><br><sub>The human gate</sub></td>
+<td align="center" width="33%"><img src="https://raw.githubusercontent.com/BiswajitBiswa/cosmos/main/docs/assets/icon-flares.svg" width="44" alt=""><br><strong>Flares</strong><br><sub>QA that follows the code</sub></td>
+<td align="center" width="33%"><img src="https://raw.githubusercontent.com/BiswajitBiswa/cosmos/main/docs/assets/icon-dream.svg" width="44" alt=""><br><strong>Dreams</strong><br><sub>From activity to direction</sub></td>
+<td align="center" width="33%"><img src="https://raw.githubusercontent.com/BiswajitBiswa/cosmos/main/docs/assets/icon-verdicts.svg" width="44" alt=""><br><strong>Verdicts</strong><br><sub>The human gate</sub></td>
 </tr>
 </table>
 
@@ -43,14 +45,14 @@ git clone <repo> && claude
 **Eight things every team building with AI says out loud, three months into a real project.** Each one is a symptom of the same cause: knowledge, rules and structure live in individual sessions instead of in the repository.
 
 <table>
-<tr><td width="44"><img src="docs/assets/icon-ledger.svg" width="36" alt=""></td><td><em>“Everyone rescans the codebase.”</em><br><strong>Ledger</strong> · What one person's AI learns is captured, checked and handed to the next person's session before they ask.</td></tr>
-<tr><td><img src="docs/assets/icon-charter.svg" width="36" alt=""></td><td><em>“Everyone tells the AI a different coding style.”</em><br><strong>Charter</strong> · One working agreement, committed and changed in pull requests, injected into every AI session on every machine.</td></tr>
-<tr><td><img src="docs/assets/icon-lanes.svg" width="36" alt=""></td><td><em>“People work across overlapping features.”</em><br><strong>Lanes</strong> · Facts, findings and diagrams are filed by feature lane; two people active in one lane this month is shown before it becomes a merge conflict.</td></tr>
-<tr><td><img src="docs/assets/icon-charter.svg" width="36" alt=""></td><td><em>“Everyone has different strengths and thinking.”</em><br><strong>Charter + Ledger</strong> · Strengths become team property: the person who knows Redis writes the constraint once; every AI inherits it. Thinking stays personal, decisions get a recorded reason.</td></tr>
-<tr><td><img src="docs/assets/icon-horizon.svg" width="36" alt=""></td><td><em>“Product keeps dumping features; the app gets confusing.”</em><br><strong>Horizon</strong> · A feature enters with its lanes, the decisions it collides with, the open findings in the way and the people already there, before code is written.</td></tr>
-<tr><td><img src="docs/assets/icon-atlas.svg" width="36" alt=""></td><td><em>“No architecture diagram. If there is one, it is out of date.”</em><br><strong>Atlas</strong> · Diagrams generated from the repository itself (manifests, compose, Kubernetes, Terraform, OpenAPI) and drift-checked every time those files change.</td></tr>
-<tr><td><img src="docs/assets/icon-lanes.svg" width="36" alt=""></td><td><em>“Memory is one flat list, not organised by feature.”</em><br><strong>Lanes</strong> · The ledger, the index and <code>CLAUDE.md</code> are grouped by lane, the way the team actually talks about the product.</td></tr>
-<tr><td><img src="docs/assets/icon-gate.svg" width="36" alt=""></td><td><em>“Every call: did you self-review, point precisely, run the tests?”</em><br><strong>Gate</strong> · A hook holds the AI's turn until the tests for touched files ran, each change cites <code>file:line</code>, open findings on those files are addressed, a large change got a dead-code scan (vulture, knip), and the diff is reviewed against the Charter.</td></tr>
+<tr><td width="44"><img src="https://raw.githubusercontent.com/BiswajitBiswa/cosmos/main/docs/assets/icon-ledger.svg" width="36" alt=""></td><td><em>“Everyone rescans the codebase.”</em><br><strong>Ledger</strong> · What one person's AI learns is captured, checked and handed to the next person's session before they ask.</td></tr>
+<tr><td><img src="https://raw.githubusercontent.com/BiswajitBiswa/cosmos/main/docs/assets/icon-charter.svg" width="36" alt=""></td><td><em>“Everyone tells the AI a different coding style.”</em><br><strong>Charter</strong> · One working agreement, committed and changed in pull requests, injected into every AI session on every machine.</td></tr>
+<tr><td><img src="https://raw.githubusercontent.com/BiswajitBiswa/cosmos/main/docs/assets/icon-lanes.svg" width="36" alt=""></td><td><em>“People work across overlapping features.”</em><br><strong>Lanes</strong> · Facts, findings and diagrams are filed by feature lane; two people active in one lane this month is shown before it becomes a merge conflict.</td></tr>
+<tr><td><img src="https://raw.githubusercontent.com/BiswajitBiswa/cosmos/main/docs/assets/icon-charter.svg" width="36" alt=""></td><td><em>“Everyone has different strengths and thinking.”</em><br><strong>Charter + Ledger</strong> · Strengths become team property: the person who knows Redis writes the constraint once; every AI inherits it. Thinking stays personal, decisions get a recorded reason.</td></tr>
+<tr><td><img src="https://raw.githubusercontent.com/BiswajitBiswa/cosmos/main/docs/assets/icon-horizon.svg" width="36" alt=""></td><td><em>“Product keeps dumping features; the app gets confusing.”</em><br><strong>Horizon</strong> · A feature enters with its lanes, the decisions it collides with, the open findings in the way and the people already there, before code is written.</td></tr>
+<tr><td><img src="https://raw.githubusercontent.com/BiswajitBiswa/cosmos/main/docs/assets/icon-atlas.svg" width="36" alt=""></td><td><em>“No architecture diagram. If there is one, it is out of date.”</em><br><strong>Atlas</strong> · Diagrams generated from the repository itself (manifests, compose, Kubernetes, Terraform, OpenAPI) and drift-checked every time those files change.</td></tr>
+<tr><td><img src="https://raw.githubusercontent.com/BiswajitBiswa/cosmos/main/docs/assets/icon-lanes.svg" width="36" alt=""></td><td><em>“Memory is one flat list, not organised by feature.”</em><br><strong>Lanes</strong> · The ledger, the index and <code>CLAUDE.md</code> are grouped by lane, the way the team actually talks about the product.</td></tr>
+<tr><td><img src="https://raw.githubusercontent.com/BiswajitBiswa/cosmos/main/docs/assets/icon-gate.svg" width="36" alt=""></td><td><em>“Every call: did you self-review, point precisely, run the tests?”</em><br><strong>Gate</strong> · A hook holds the AI's turn until the tests for touched files ran, each change cites <code>file:line</code>, open findings on those files are addressed, a large change got a dead-code scan (vulture, knip), and the diff is reviewed against the Charter.</td></tr>
 </table>
 
 ## For your role
@@ -69,7 +71,7 @@ git clone <repo> && claude
 
 **Five steps. The developer does only the first.** The gold step is where the model curates; a person decides only what evidence cannot settle.
 
-<p class="md-wide"><img src="docs/assets/pipeline.svg" alt="Work → Capture → Model curates → Ledger → Recall" width="100%"></p>
+<p class="md-wide"><img src="https://raw.githubusercontent.com/BiswajitBiswa/cosmos/main/docs/assets/pipeline.svg" alt="Work → Capture → Model curates → Ledger → Recall" width="100%"></p>
 
 | | step | what happens |
 |---|---|---|
@@ -85,7 +87,7 @@ git clone <repo> && claude
 
 **What it is, what you do, what you get, and the command.** Nothing here needs a server or an account.
 
-### <img src="docs/assets/icon-ledger.svg" width="28" alt=""> Ledger · what the team knows
+### <img src="https://raw.githubusercontent.com/BiswajitBiswa/cosmos/main/docs/assets/icon-ledger.svg" width="28" alt=""> Ledger · what the team knows
 
 | | |
 |---|---|
@@ -94,7 +96,7 @@ git clone <repo> && claude
 | **you get** | Your next session, and every teammate's, starts knowing what the last one learned, one line per fact with its id; the full note with evidence and history is one call away (`cosmos_why`). Every fact carries when it became true and when it stopped. |
 | **command** | `cosmos capture` · `cosmos why` · `cosmos search` · `cosmos remember` |
 
-### <img src="docs/assets/icon-charter.svg" width="28" alt=""> Charter · one style for every AI
+### <img src="https://raw.githubusercontent.com/BiswajitBiswa/cosmos/main/docs/assets/icon-charter.svg" width="28" alt=""> Charter · one style for every AI
 
 | | |
 |---|---|
@@ -103,7 +105,7 @@ git clone <repo> && claude
 | **you get** | Every AI session on every machine reads it first. Personal preferences stop leaking into the codebase. Explicit rules outrank anything the AI inferred. |
 | **command** | `cosmos charter` · `cosmos charter add "…"` · `cosmos charter edit` |
 
-### <img src="docs/assets/icon-atlas.svg" width="28" alt=""> Atlas · architecture that stays true
+### <img src="https://raw.githubusercontent.com/BiswajitBiswa/cosmos/main/docs/assets/icon-atlas.svg" width="28" alt=""> Atlas · architecture that stays true
 
 | | |
 |---|---|
@@ -112,7 +114,7 @@ git clone <repo> && claude
 | **you get** | A diagram that cannot quietly go stale: when compose or manifests change and the picture does not, everyone is told at the start of their session and on the Atlas page. |
 | **command** | `cosmos atlas` · `cosmos atlas --deep` · `cosmos atlas --check` · `/atlas` |
 
-### <img src="docs/assets/icon-lanes.svg" width="28" alt=""> Lanes · memory by feature
+### <img src="https://raw.githubusercontent.com/BiswajitBiswa/cosmos/main/docs/assets/icon-lanes.svg" width="28" alt=""> Lanes · memory by feature
 
 | | |
 |---|---|
@@ -121,7 +123,7 @@ git clone <repo> && claude
 | **you get** | A ledger organised the way the team talks about the product; per lane, who has been active in the last 30 days and where two people overlap, before it becomes a merge conflict. Each lane is an OKF concept page under `ledger/lanes/` that links its facts, flares, horizon notes and services, so the graph of the product is a folder anyone can open. |
 | **command** | `cosmos lanes` · `cosmos lanes --propose --write` |
 
-### <img src="docs/assets/icon-horizon.svg" width="28" alt=""> Horizon · features arrive with a map
+### <img src="https://raw.githubusercontent.com/BiswajitBiswa/cosmos/main/docs/assets/icon-horizon.svg" width="28" alt=""> Horizon · features arrive with a map
 
 | | |
 |---|---|
@@ -130,7 +132,7 @@ git clone <repo> && claude
 | **you get** | The conversation about a feature happens before the code, with facts. The note is saved next to the code the feature will change and travels with the pull request. |
 | **command** | `cosmos horizon "…" [-f file-or-folder] [--attach file] [--brief file]` |
 
-### <img src="docs/assets/icon-gate.svg" width="28" alt=""> Gate · the review checklist, applied by the machine
+### <img src="https://raw.githubusercontent.com/BiswajitBiswa/cosmos/main/docs/assets/icon-gate.svg" width="28" alt=""> Gate · the review checklist, applied by the machine
 
 | | |
 |---|---|
@@ -139,7 +141,7 @@ git clone <repo> && claude
 | **you get** | “Did you test? Point precisely. Review your own change.” stops being something a person says on every call, and the agent writes down what it learned while it still has the full context. Proportional: a change under 400 characters in one file is held only for its `file:line` and open flares. A turn is held at most once; documentation edits are never held. Bugs found are filed as flares without asking. |
 | **command** | `cosmos gate` · `cosmos gate --transcript FILE` |
 
-### <img src="docs/assets/icon-flares.svg" width="28" alt=""> Flares · QA that follows the code
+### <img src="https://raw.githubusercontent.com/BiswajitBiswa/cosmos/main/docs/assets/icon-flares.svg" width="28" alt=""> Flares · QA that follows the code
 
 | | |
 |---|---|
@@ -148,7 +150,7 @@ git clone <repo> && claude
 | **you get** | Flares show up when someone touches the affected file. Slack cards post once, with reactions to claim or close. A report can be regenerated any time. |
 | **command** | `cosmos flares import\|list\|fix\|withdraw\|slack\|report` |
 
-### <img src="docs/assets/icon-dream.svg" width="28" alt=""> Dream & Verdicts · keeping it true
+### <img src="https://raw.githubusercontent.com/BiswajitBiswa/cosmos/main/docs/assets/icon-dream.svg" width="28" alt=""> Dream & Verdicts · keeping it true
 
 | | |
 |---|---|
@@ -179,9 +181,9 @@ git clone <repo> && claude
 
 <table>
 <tr>
-<td width="33%" valign="top"><img src="docs/assets/icon-charter.svg" width="36" alt=""><br><strong>They read the same rules</strong><br>The Charter and the key facts are written to every tool's own instruction file, kept in sync automatically.<br><br><code>CLAUDE.md</code> — Claude Code, Cowork<br><code>AGENTS.md</code> — Codex, Cursor, Copilot CLI, Gemini<br><code>GEMINI.md</code>, <code>.cursor/rules/</code>, <code>.github/copilot-instructions.md</code>, <code>.clinerules</code>, <code>.windsurfrules</code></td>
-<td width="33%" valign="top"><img src="docs/assets/icon-agents.svg" width="36" alt=""><br><strong>They call the same tools</strong><br><code>cosmos mcp</code> is a Model Context Protocol server every one of these agents can connect to. <code>cosmos init</code> writes the configs.<br><br><code>cosmos_recall</code> — facts and findings for the files you are about to touch<br><code>cosmos_remember</code>, <code>cosmos_flare</code> — write back from any tool<br><code>cosmos_charter</code>, <code>cosmos_atlas</code>, <code>cosmos_lanes</code>, <code>cosmos_horizon</code>, <code>cosmos_why</code></td>
-<td width="33%" valign="top"><img src="docs/assets/icon-session.svg" width="36" alt=""><br><strong>They feed the same memory</strong><br>Claude Code captures through hooks, in every worktree. <code>cosmos watch</code> follows Claude Code, Codex and Gemini session files on the machine whether hooks fired or not, and keeps a live picture of who is doing what. Web and cloud sessions are covered by the committed hooks and MCP tools. Anything else writes through MCP.<br><br>hooks in the repo and for your user, written by <code>cosmos init</code><br>the watcher starts with the first session and stops after two idle hours<br><code>git push</code>: every teammate on every tool has it<br><br><sub>Nothing to run after <code>cosmos init</code>. <code>cosmos connect all</code>, <code>cosmos watch</code> and <code>cosmos hooks --user</code> repair a setup or add a tool you install later.</sub></td>
+<td width="33%" valign="top"><img src="https://raw.githubusercontent.com/BiswajitBiswa/cosmos/main/docs/assets/icon-charter.svg" width="36" alt=""><br><strong>They read the same rules</strong><br>The Charter and the key facts are written to every tool's own instruction file, kept in sync automatically.<br><br><code>CLAUDE.md</code> — Claude Code, Cowork<br><code>AGENTS.md</code> — Codex, Cursor, Copilot CLI, Gemini<br><code>GEMINI.md</code>, <code>.cursor/rules/</code>, <code>.github/copilot-instructions.md</code>, <code>.clinerules</code>, <code>.windsurfrules</code></td>
+<td width="33%" valign="top"><img src="https://raw.githubusercontent.com/BiswajitBiswa/cosmos/main/docs/assets/icon-agents.svg" width="36" alt=""><br><strong>They call the same tools</strong><br><code>cosmos mcp</code> is a Model Context Protocol server every one of these agents can connect to. <code>cosmos init</code> writes the configs.<br><br><code>cosmos_recall</code> — facts and findings for the files you are about to touch<br><code>cosmos_remember</code>, <code>cosmos_flare</code> — write back from any tool<br><code>cosmos_charter</code>, <code>cosmos_atlas</code>, <code>cosmos_lanes</code>, <code>cosmos_horizon</code>, <code>cosmos_why</code></td>
+<td width="33%" valign="top"><img src="https://raw.githubusercontent.com/BiswajitBiswa/cosmos/main/docs/assets/icon-session.svg" width="36" alt=""><br><strong>They feed the same memory</strong><br>Claude Code captures through hooks, in every worktree. <code>cosmos watch</code> follows Claude Code, Codex and Gemini session files on the machine whether hooks fired or not, and keeps a live picture of who is doing what. Web and cloud sessions are covered by the committed hooks and MCP tools. Anything else writes through MCP.<br><br>hooks in the repo and for your user, written by <code>cosmos init</code><br>the watcher starts with the first session and stops after two idle hours<br><code>git push</code>: every teammate on every tool has it<br><br><sub>Nothing to run after <code>cosmos init</code>. <code>cosmos connect all</code>, <code>cosmos watch</code> and <code>cosmos hooks --user</code> repair a setup or add a tool you install later.</sub></td>
 </tr>
 </table>
 
@@ -200,7 +202,7 @@ git clone <repo> && claude
 **1 · `cosmos init`, once.** Creates `.cosmos/` with the Charter, the Ledger, the first Atlas and the slash commands (`/cosmos` `/recall` `/remember` `/flare` `/flares` `/qa` `/reconcile` `/lanes` `/horizon` `/handoff` `/atlas`) for Claude Code, Gemini CLI, Cursor, Copilot and Windsurf, plus one per playbook the repository already has (a master QA protocol, a runbook: found by themselves, and `/qa` follows the QA one; `cosmos playbooks add qa` starts a generic one, `cosmos playbooks add <file>` brings one from another project); wires hooks at repo and user level, so every worktree is covered; writes MCP configs and the instruction files of every agent; reads the sessions this repo already had, writes their journal, marks the recent ones for the model, and starts the first dream and the watcher in the background.
 
 ```bash
-python3 -m pip install "git+https://github.com/BiswajitBiswa/cosmos"   # `python3 -m pip` keeps the `cosmos` command and its Python together
+python3 -m pip install cosmos-dev   # `python3 -m pip` keeps the `cosmos` command and its Python together
 cd <your-repo>
 cosmos init
 cosmos flares import <findings.json>   # only if you have an audit document; ids follow the lifecycle stage
@@ -226,7 +228,7 @@ git clone <repo> && cd <repo>
 
 ## Already have a codebase?
 
-**Link an existing project and its past sessions.** Most projects already have months of history: AI sessions on several machines, an audit document, branches nobody has drawn. `cosmos init` brings the sessions in by itself; the rest is agreeing the Charter and committing. Full guide: [docs/link-existing-codebase.md](docs/link-existing-codebase.md).
+**Link an existing project and its past sessions.** Most projects already have months of history: AI sessions on several machines, an audit document, branches nobody has drawn. `cosmos init` brings the sessions in by itself; the rest is agreeing the Charter and committing. Full guide: [docs/link-existing-codebase.md](https://github.com/BiswajitBiswa/cosmos/blob/main/docs/link-existing-codebase.md).
 
 | | step | command |
 |---|---|---|
@@ -234,7 +236,7 @@ git clone <repo> && cd <repo>
 | 2 | Bring in an existing audit, if there is one. If the file does not exist yet, cosmos asks before creating an empty one to fill in (`--yes` creates it without asking). | `cosmos flares import <findings.json> --source <report-name>` |
 | 3 | Look while the first dream finishes in the background | `cosmos ui` |
 | 4 | Agree the Charter and push | `cosmos charter edit` · `git push`. `cosmos init` committed `.cosmos/` and the agent wiring to the branch you ran it on; run it on a branch off your base branch if you want it reviewed in a pull request. |
-| 5 | Sessions that were already open | nothing to restart: the next prompt carries the briefing; in Cowork, install the cosmos plugin once ([plugin](docs/plugin.md)) |
+| 5 | Sessions that were already open | nothing to restart: the next prompt carries the briefing; in Cowork, install the cosmos plugin once ([plugin](https://github.com/BiswajitBiswa/cosmos/blob/main/docs/plugin.md)) |
 | 6 | Teammates | `git pull`, then open their agent |
 
 Transcripts live in `~/.claude/projects/<repo path, slashes → dashes>/` (Claude Code), `~/.codex/sessions/` (Codex), `~/.gemini/` (Gemini). They are read, never stored; secrets are redacted. `.claude/settings.local.json` is personal and untouched; `.cosmos/state/` is gitignored.
@@ -294,6 +296,6 @@ The tools we looked at either wanted a hosted service or solved one slice. We wa
   state/              gitignored: pending observations, dream runs
 ```
 
-Guides: [plugin (Cowork, Claude Code)](docs/plugin.md) · [memory model](docs/memory-model.md) · [charter and gate](docs/charter-and-gate.md) · [lanes and horizon](docs/lanes-and-horizon.md) · [atlas](docs/atlas.md) · [audit and findings](docs/flares.md) · [hooks](docs/hooks.md) · [Obsidian](docs/obsidian.md) · [link an existing codebase](docs/link-existing-codebase.md)
+Guides: [plugin (Cowork, Claude Code)](https://github.com/BiswajitBiswa/cosmos/blob/main/docs/plugin.md) · [memory model](https://github.com/BiswajitBiswa/cosmos/blob/main/docs/memory-model.md) · [charter and gate](https://github.com/BiswajitBiswa/cosmos/blob/main/docs/charter-and-gate.md) · [lanes and horizon](https://github.com/BiswajitBiswa/cosmos/blob/main/docs/lanes-and-horizon.md) · [atlas](https://github.com/BiswajitBiswa/cosmos/blob/main/docs/atlas.md) · [audit and findings](https://github.com/BiswajitBiswa/cosmos/blob/main/docs/flares.md) · [hooks](https://github.com/BiswajitBiswa/cosmos/blob/main/docs/hooks.md) · [Obsidian](https://github.com/BiswajitBiswa/cosmos/blob/main/docs/obsidian.md) · [link an existing codebase](https://github.com/BiswajitBiswa/cosmos/blob/main/docs/link-existing-codebase.md)
 
 <p align="center"><sub>cosmos · MIT licence · Python 3.9+, standard library only · <code>cosmos doctor</code> checks a setup · <code>cosmos ui</code> opens the control room</sub></p>
