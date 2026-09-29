@@ -1,6 +1,6 @@
 {
   "name": "cosmos",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Connects the session to the cosmos of every shared folder that has .cosmos/: Charter, Ledger, flares, Atlas, handoffs.",
   "mcpServers": {
     "cosmos": {
