@@ -611,10 +611,15 @@ class TestNoRetiredNames(unittest.TestCase):
 
 class TestConsoleScripts(unittest.TestCase):
     def _js(self, name):
-        import re
+        """Exactly one function from the console's script, by matching its braces."""
         from cosmos.ui import HTML
-        m = re.search(r"^function %s\(.*?^}" % name, HTML, re.S | re.M) or re.search(r"^function %s\(.*$" % name, HTML, re.M)
-        return m.group(0)
+        start = HTML.index("function %s(" % name)
+        depth, i = 0, HTML.index("{", start)
+        while True:
+            depth += {"{": 1, "}": -1}.get(HTML[i], 0)
+            if depth == 0:
+                return HTML[start:i + 1]
+            i += 1
 
     @unittest.skipUnless(__import__("shutil").which("node"), "node not installed")
     def test_mermaid_labels_the_model_writes_are_made_parseable(self):
