@@ -6,9 +6,11 @@ status: "stable"
 generated: {"by": "human:Biswajit Tripathy", "at": "2026-09-29T00:00:00Z"}
 sources: [{"resource": "cosmos/ui.py", "title": "ui.py"}]
 stale_after: "2027-03-28T00:00:00Z"
+links: ["/lanes/cosmos.md", "/finding/mem_10ab2ec4-console-docs-said-horizon-notes-are-saved-in-cos.md", "/finding/mem_498078e0-atlas-page-4-of-8-deep-pass-diagrams-failed-unde.md", "/finding/mem_d4c37ea1-slack-cards-and-the-slack-report-told-people-to.md", "/finding/mem_fcf6d908-new-slash-commands-reintroduced-names-retired-in.md"]
 id: "mem_e522e056"
 aliases: ["mem_e522e056"]
 category: "finding"
+lane: "cosmos"
 cosmos_status: "active"
 confidence: 0.9
 importance: 0.45
@@ -42,5 +44,18 @@ meta_source_doc: "session-2026-09-29"
 - Observed 1× (first 2026-09-29, last 2026-09-29); source: explicit
 - Evidence file: `cosmos/ui.py`
 - Imported from session-2026-09-29 on 2026-09-29
+
+## Related
+- [[mem_10ab2ec4]]
+- [[mem_498078e0]]
+- [[mem_d4c37ea1]]
+- [[mem_fcf6d908]]
+
+## Links
+- lane: [cosmos](/lanes/cosmos.md)
+- related: [mem_10ab2ec4](/finding/mem_10ab2ec4-console-docs-said-horizon-notes-are-saved-in-cos.md)
+- related: [mem_498078e0](/finding/mem_498078e0-atlas-page-4-of-8-deep-pass-diagrams-failed-unde.md)
+- related: [mem_d4c37ea1](/finding/mem_d4c37ea1-slack-cards-and-the-slack-report-told-people-to.md)
+- related: [mem_fcf6d908](/finding/mem_fcf6d908-new-slash-commands-reintroduced-names-retired-in.md)
 
 #finding #low #console

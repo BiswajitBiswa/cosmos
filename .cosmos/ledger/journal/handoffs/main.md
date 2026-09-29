@@ -3,8 +3,8 @@ type: Handoff
 kind: handoff
 branch: "main"
 by: "Biswajit Tripathy"
-at: "2026-09-29T10:28:05Z"
+at: "2026-09-29T10:54:56Z"
 how: auto
 ---
 
-That search came up empty because `cosmos-dev` isn't on PyPI yet; I just checked and it's still not there. The upload was left to you, since I won't sign in with a token. Once it's up, Google can take days or weeks to list it, but `pip install cosmos-dev` works within about a minute. The package is already built from the pushed code. In a terminal, from the cosmos folder: ```bash cd ~/Desktop/shyftlabs/ideator/cosmos ``` ```bash TWINE_USERNAME=__token__ python3.11 -m twine upload dist/* ``` When it asks for a password, paste your PyPI token, the one starting with `pypi-`. Then revoke that token on PyPI, since it's in this chat. To check it worked: ```bash python3 -m pip index versions cosmos …
+I updated the About section on both GitHub repos, BiswajitBiswa/cosmos and ideatorlabs/cosmos: - **Description:** now names every feature with its current name ("horizon" and "flares" replace the retired "intake"), adds slash commands, and says `pip install cosmos-dev`. - **Topics:** added 18, including `claude-code`, `codex`, `gemini-cli`, `cursor`, `copilot`, `mcp`, `ai-agents`, `developer-tools`, `obsidian`, `pypi`, `qa` and `architecture-diagrams`. These are what GitHub search and topic pages use. - **Homepage:** both point at the docs site, https://biswajitbiswa.github.io/cosmos/. ideatorlabs had none before. ideatorlabs's code is still not in sync: its `main` has diverged from this rep …
