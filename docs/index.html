@@ -136,6 +136,43 @@ tr:last-child td{border-bottom:0}td:first-child{color:var(--fg);white-space:nowr
 .quote{font-family:"Cormorant Garamond",serif;font-size:32px;line-height:1.25;color:var(--fg);font-style:italic;border-left:1px solid var(--warm);padding-left:22px;margin-top:30px;font-weight:300}
 .case .lastline{margin-top:64px;display:flex;justify-content:space-between;gap:16px;flex-wrap:wrap;font-size:11px;letter-spacing:.2em;text-transform:uppercase;color:var(--mut)}
 a{color:var(--warm2)}
+
+/* Night storm behind the page, as in the console: drawn once, moved only by a slow CSS drift and a flash every few
+   seconds (still under reduced motion). Sections are transparent; content sits on glass that keeps text at 4.5:1+. */
+:root{--mut:#9A998F;--dim:#8A8984;--glass:rgba(13,13,16,.62);--glass2:rgba(20,20,24,.72);--gline:rgba(236,234,228,.10);
+ --sky0:#010306;--sky1:#07121B;--sky2:#1B3646;--sky3:#8FB7CC;--bolt:rgba(214,238,252,.42)}
+body{font-weight:400;background:transparent}html{background:var(--sky0)}
+#sky{position:fixed;inset:0;z-index:-1;pointer-events:none;overflow:hidden;background:var(--sky0)}
+#sky canvas{position:absolute;inset:-8%;width:116%;height:116%;filter:blur(2.5px);animation:drift 120s ease-in-out infinite alternate}
+#sky:after{content:'';position:absolute;inset:0;background:rgba(1,3,6,.34)}
+#sky .bolt{position:absolute;inset:0;background:radial-gradient(38% 30% at 78% 22%,var(--bolt),transparent 70%);opacity:0;animation:flash 7s infinite}
+#sky .bolt:before{content:'';position:absolute;inset:0;background:radial-gradient(30% 24% at 16% 62%,var(--bolt),transparent 70%);opacity:0;animation:flash 7s infinite;animation-delay:3.6s}
+@keyframes drift{from{transform:translate3d(0,0,0) scale(1)}to{transform:translate3d(-3%,-2%,0) scale(1.05)}}
+@keyframes flash{0%,84%,100%{opacity:0}85%{opacity:.9}86.5%{opacity:.2}88%{opacity:.7}91%{opacity:0}}
+@media (prefers-reduced-motion: reduce){#sky canvas,#sky .bolt,#sky .bolt:before{animation:none}}
+
+section,section.tint,section.sage,section.dusty,section.case,header.hero,footer{background:transparent!important}
+section{border-color:var(--gline)!important}
+/* glass */
+.ex,.pain,.role,.step,.ag,.feat>div,.cmd,.remember,.explained+.head+.feat>div{background:var(--glass);border:1px solid var(--gline);border-radius:12px;
+ -webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px)}
+.ex{padding:28px 30px}.pain,.role,.ag,.feat>div{padding:22px 24px}.step{padding:22px 24px}.cmd{border-radius:10px}
+.remember{padding:18px 22px;border-left:3px solid var(--warm)}
+pre{background:rgba(5,5,6,.72);border:1px solid var(--gline);border-radius:10px}
+code{background:rgba(255,255,255,.06)}
+/* buttons */
+.btn{box-sizing:border-box;height:44px;padding:0 20px;border-radius:10px;gap:10px;font-weight:500;font-size:14.5px;
+ background:linear-gradient(180deg,rgba(255,255,255,.075),rgba(255,255,255,.025));border:1px solid rgba(236,234,228,.16);
+ box-shadow:inset 0 1px 0 rgba(255,255,255,.06),0 1px 2px rgba(0,0,0,.4);transition:background .15s,border-color .15s,transform .08s}
+.btn:hover{background:linear-gradient(180deg,rgba(255,255,255,.12),rgba(255,255,255,.045));border-color:rgba(236,234,228,.28)}
+.btn:active{transform:translateY(1px)}.btn:focus-visible{outline:2px solid var(--warm);outline-offset:3px}
+.btn.primary{background:linear-gradient(180deg,#F2DFB6,#DCBE85);border-color:#E8CFA0;color:#1B1609;font-weight:600;
+ box-shadow:inset 0 1px 0 rgba(255,255,255,.45),0 4px 18px -6px rgba(232,207,160,.7)}
+.btn.primary:hover{background:linear-gradient(180deg,#F7E8C8,#E4C993)}
+.btn.primary:before{content:none}.btn.primary:after{content:"→";font-size:16px;font-weight:500}
+.btn.ghost{color:var(--fg);font-size:14.5px;letter-spacing:0}
+.mast{background:rgba(5,5,6,.55)!important;-webkit-backdrop-filter:blur(12px);backdrop-filter:blur(12px);border-bottom:1px solid var(--gline)}.live{background:var(--glass);-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px);border-color:rgba(236,234,228,.16)}
+@media(max-width:640px){.ex{padding:20px}.pain,.role,.ag,.feat>div,.step{padding:18px}.btn{height:42px;padding:0 16px}}
 </style>
 
 <div class="mast"><div class="wrap">
@@ -143,6 +180,7 @@ a{color:var(--warm2)}
   <nav><a href="https://github.com/BiswajitBiswa/cosmos#readme">README</a><a href="https://github.com/BiswajitBiswa/cosmos/tree/main/docs">Guides</a><a href="#features">Features</a><a href="#roles">Roles</a><a href="#agents">Agents</a><a href="#start">Get started</a><span class="live">Live</span></nav>
 </div></div>
 
+<div id="sky" aria-hidden="true"><canvas id="skyc"></canvas><div class="bolt"></div></div>
 <header class="hero"><div class="eclipse"><div class="stars"></div><div class="glow"></div><div class="planet"></div><div class="axis"></div><div class="cross"></div><div class="moon"></div><div class="side">Less chaos.<br>More cosmos.</div></div><div class="wrap">
   <div>
     <div class="eyebrow">The operating system for<br>modern software teams</div>
@@ -345,3 +383,16 @@ claude plugin install cosmos@cosmos</pre></div></div>
   </div>
   <div class="lastline"><span>cosmos · MIT licence · Python 3.9+, standard library only</span><span><code>cosmos doctor</code> checks a setup · <code>cosmos ui</code> opens the control room</span></div>
 </div></section>
+<script>
+(function sky(){const cv=document.getElementById('skyc');if(!cv)return;const W=360,H=225;cv.width=W;cv.height=H;const x=cv.getContext('2d'),img=x.createImageData(W,H);
+ const v=n=>getComputedStyle(document.documentElement).getPropertyValue('--'+n).trim();
+ const hex=h=>{const m=h.replace('#','').match(/\w\w/g);return m?m.map(t=>parseInt(t,16)):[0,0,0]};
+ const C=[hex(v('sky0')),hex(v('sky1')),hex(v('sky2')),hex(v('sky3'))];let seed=7;const rnd=()=>(seed=(seed*16807)%2147483647)/2147483647;
+ const G=64,g=Array.from({length:G*G},rnd),at=(i,j)=>g[((j%G+G)%G)*G+((i%G+G)%G)],sm=t=>t*t*(3-2*t);
+ const noise=(px,py)=>{const i=Math.floor(px),j=Math.floor(py),fx=sm(px-i),fy=sm(py-j);const a=at(i,j),b=at(i+1,j),c=at(i,j+1),d=at(i+1,j+1);return a+(b-a)*fx+(c-a)*fy+(a-b-c+d)*fx*fy};
+ const mix=(p,q,t)=>p.map((k,i)=>k+(q[i]-k)*t);
+ for(let yy=0;yy<H;yy++)for(let xx=0;xx<W;xx++){let f=0,amp=.55,fr=1/54;for(let o=0;o<6;o++){f+=amp*noise(xx*fr+o*1.7,yy*fr);amp*=.52;fr*=2.05}
+  const t=Math.max(0,Math.min(1,Math.pow(Math.max(0,f-.3)/.55,1.6)));const col=t<.45?mix(C[0],C[1],t/.45):t<.82?mix(C[1],C[2],(t-.45)/.37):mix(C[2],C[3],(t-.82)/.18);
+  const o4=(yy*W+xx)*4;img.data[o4]=col[0];img.data[o4+1]=col[1];img.data[o4+2]=col[2];img.data[o4+3]=255}
+ x.putImageData(img,0,0)})();
+</script>
