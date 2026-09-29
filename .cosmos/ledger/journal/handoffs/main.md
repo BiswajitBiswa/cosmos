@@ -3,8 +3,8 @@ type: Handoff
 kind: handoff
 branch: "main"
 by: "Biswajit Tripathy"
-at: "2026-09-29T21:26:22Z"
+at: "2026-09-29T21:36:21Z"
 how: auto
 ---
 
-Buttons and form fields are rebuilt as one set, and the console now fits phone and tablet screens. It's all in the preview, uncommitted in the `cosmos-palette` worktree; nothing is pushed, and 135/135 tests pass there. **Buttons and fields** - **Look like buttons now:** 34px tall (28px for small ones), rounded corners, a soft glass fill with a visible edge, and a slight shadow. - **Readable labels:** 13px, normal capitalisation, no wide letter-spacing, and never split onto two lines. "Run dream" used to wrap, which is what threw off the header. - **Primary actions** (Run dream, Record, Save): solid cosmos gold with dark text. - **Fixed, Won't fix and Withdraw:** a tinted edge in their status …
+The site is redesigned in the same look as the console, and it's open in the preview. Nothing is committed or pushed: it's all in a separate worktree, `cosmos-site`, and the live site is unchanged. **What changed:** - **Background:** the same night-storm sky and occasional lightning as the console, drifting behind the whole page. The glowing ring behind the headline is kept. - **Glass:** the top bar is now frosted glass. The eight problem cards, the role cards, the feature explanations, the agent cards, the "at a glance" tiles, the getting-started steps, the install boxes and the code blocks are all glass cards. - **Buttons:** "Get Started" is the solid gold button with an arrow, and "Honest …
