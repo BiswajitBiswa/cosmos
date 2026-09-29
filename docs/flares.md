@@ -80,6 +80,8 @@ cosmos flares fix QA-12 "PR #<n>" --commit 862f73c --branch qa/fixes   # the fix
 cosmos flares edit QA-12 --title "…" --severity high --locations "api/x.py:42"   # correct a flare; its id stays
 cosmos flares stage                                            # the prefix a new flare gets here, and why
 cosmos flares export -o docs/qa-findings.json                  # same schema back out
+cosmos flares export -o flares.xlsx                            # an Excel sheet: id, severity, status, title, locations, what / impact / fix, commits, dates
+cosmos export -o team.xlsx                                     # flares, facts, rules, lanes, endpoints, playbooks — one sheet each
 cosmos flares report --format md -o docs/qa-flares.md           # regenerated from the ledger
 cosmos flares report --format slack                            # parent + threaded replies as JSON
 ```

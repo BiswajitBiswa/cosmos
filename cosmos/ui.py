@@ -247,6 +247,18 @@ class _Handler(BaseHTTPRequestHandler):
                 if len(items) >= 300:
                     break
             self._send(200, json.dumps(items).encode(), "application/json")
+        elif self.path.startswith("/api/export.xlsx"):
+            import urllib.parse
+            from .xlsx import SHEETS, build
+            q = urllib.parse.parse_qs(urllib.parse.urlparse(self.path).query)
+            which = [w for w in (q.get("sheets", [""])[0] or ",".join(SHEETS)).split(",") if w in SHEETS] or SHEETS
+            body = build(self.cfg, which)
+            self.send_response(200)
+            self.send_header("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+            self.send_header("Content-Disposition", f'attachment; filename="{self.cfg.paths.root.name}-{"-".join(which) if len(which) < len(SHEETS) else "cosmos"}.xlsx"')
+            self.send_header("Content-Length", str(len(body)))
+            self.end_headers()
+            self.wfile.write(body)
         elif self.path.startswith("/api/note/"):
             mid = self.path.rsplit("/", 1)[-1]
             for p in self.cfg.paths.ledger.rglob(f"{mid}-*.md"):
@@ -543,6 +555,7 @@ const ICONS={
  <div class="readonly" id="ro">Static snapshot — actions are disabled. Run <code>cosmos ui</code> for the live control room.</div>
  <header class="top"><h1 id="title">Overview</h1><span class="sub" id="subtitle"></span><span class="spacer"></span>
   <input id="q" placeholder="Search everything…" style="width:260px">
+  <a class="btn" id="xlsx" href="/api/export.xlsx" download title="Excel workbook: flares, facts, rules, lanes, endpoints, playbooks (also: cosmos export)">⬇ Excel</a>
   <button class="btn" id="capture" title="Backfill from every Claude transcript of this repo">⤓ Capture</button>
   <button class="btn primary" id="dream">💤 Run dream</button></header>
  <section id="page"></section>
@@ -551,6 +564,7 @@ const ICONS={
 <script src="https://cdn.jsdelivr.net/npm/mermaid@10.9.1/dist/mermaid.min.js" onerror="window.__nomermaid=1"></script>
 <script>
 const LIVE = location.protocol.startsWith('http');
+document.addEventListener('DOMContentLoaded',()=>{const x=document.getElementById('xlsx');if(x&&!LIVE)x.style.display='none'});
 if(window.mermaid){mermaid.initialize({startOnLoad:false,suppressErrorRendering:true,theme:'base',flowchart:{curve:'basis',padding:14,nodeSpacing:40,rankSpacing:56,htmlLabels:true},themeVariables:{primaryColor:'#15151b',primaryTextColor:'#ECEAE4',primaryBorderColor:'#E8CFA0',lineColor:'#8a8577',secondaryColor:'#141418',tertiaryColor:'#0b0b0e',clusterBkg:'#0e0e12',clusterBorder:'#2c2c34',edgeLabelBackground:'#0d0d10',titleColor:'#E8CFA0',fontFamily:'inherit',fontSize:'14px'}})}
 /* the model's Mermaid often carries ( ) { } in unquoted labels, which mermaid 10 cannot parse: quote them */
 function mmdFix(src){if(/^\s*sequenceDiagram\b/.test(src))return src.replace(/^([^:\n]*:)(.*)$/gm,(m,a,t)=>a+t.replace(/;/g,'#59;'));  /* ; ends a statement there */
@@ -827,6 +841,7 @@ function flaresPage(){
  const cols=FSTAT.filter(s=>fs.some(f=>fstatus(f)===s)||['open','claimed','pr_open','needs_human','fixed'].includes(s));
  $('#page').innerHTML=`${fs.length?statsRow([[openL.length,'open findings',`${fs.length} total`],[sev('critical'),'critical','',sev('critical')?'bad':''],[sev('high'),'high','',sev('high')?'warn':''],[sev('medium')+sev('low'),'medium & low',''],[fs.filter(m=>fstatus(m)==='needs_human').length,'need a human','could not reproduce / unclear',fs.filter(m=>fstatus(m)==='needs_human').length?'warn':''],[fs.filter(m=>fstatus(m)==='fixed').length,'fixed','']])+'<div style="height:18px"></div>':'<div class="empty">No findings yet. <code>cosmos flares import &lt;findings.json&gt;</code></div>'}
   ${fs.length?stepper([{icon:'imp',title:'Import or file',desc:'audit JSON, or flare: in a session',value:fs.length,unit:'flares',lit:true},{icon:'board',title:'Triage',desc:'kanban by lifecycle',value:openL.length,unit:'open',lit:openL.length},{icon:'human',title:'Claim / needs human',desc:'a person or the fix loop takes it',value:fs.filter(m=>['claimed','pr_open','needs_human'].includes(fstatus(m))).length,unit:'in progress',lit:fs.some(m=>['claimed','pr_open','needs_human'].includes(fstatus(m)))},{icon:'fix',title:'Fix',desc:'commit recorded',value:fs.filter(m=>fstatus(m)==='fixed').length,unit:'fixed',lit:fs.some(m=>fstatus(m)==='fixed')},{icon:'regress',title:'Regression watch',desc:'a fixed bug reported again is flagged',value:fs.filter(m=>fstatus(m)==='regressed').length,unit:'regressed',lit:fs.some(m=>fstatus(m)==='regressed')},{icon:'slack',title:'Slack',desc:'one card per finding, never twice'}],{compact:true,title:'The finding lifecycle'})+'<div style="height:14px"></div>':''}
+  ${LIVE&&fs.length?'<div class="row" style="margin:0 0 10px"><span class="spacer"></span><a class="btn sm" href="/api/export.xlsx?sheets=flares" download>⬇ Flares as Excel</a></div>':''}
   <div class="${m?'split':''}"><div class="board">${cols.map(s=>{const L=fs.filter(f=>fstatus(f)===s).sort((a,b)=>sevOrder[a.meta.severity]-sevOrder[b.meta.severity]);
    const P=paged('flares-'+s,L,30);
    return `<div class="col"><h4><span>${s.replace('_',' ')}</span><span>${L.length}</span></h4>${P.rows.map(f=>`<div class="fcard" data-id="${f.id}" style="--c:${cc(f.meta.severity)}"><div class="id">${esc(f.meta.audit_id)}${f.meta.area?' · '+esc(f.meta.area):''}</div><div class="t">${md(f.text)}</div>${f.files[0]?`<code>${esc(f.files[0])}</code>`:''}</div>`).join('')}${P.bar}</div>`}).join('')}</div>
@@ -1033,6 +1048,7 @@ fixed/wontfix reported again by a later audit → regressed ⚠️</pre>
   <tr><td>Fix</td><td><code>cosmos flares claim QA-12</code> → <code>pr-open</code> → <code>fix QA-12 "PR #<n>"</code> (records the commit; the status's own name works too: <code>claimed</code>, <code>fixed</code>, <code>pr_open</code>). Work in another worktree or branch: <code>--commit &lt;sha&gt; --branch &lt;name&gt;</code>. Filed something wrong: <code>cosmos flares edit QA-12 --title … --severity … --locations …</code> (the id stays). Or the buttons in the card. Or the QA fix loop, which writes <code>status</code>/<code>status_note</code>/<code>status_at</code> into the JSON — re-import is the sync point; an incoming <i>open</i> never downgrades a local <i>claimed</i>.</td></tr>
   <tr><td>Withdraw</td><td><code>cosmos flares withdraw QA-8 "shared reference data by design"</code>. Kept forever so nobody re-files it; hidden from retrieval.</td></tr>
   <tr><td>Publish</td><td><code>cosmos flares slack --validate</code> → <code>cosmos flares slack --send --channel C…</code> (token from <code>SLACK_BOT_TOKEN</code> only). One Block Kit card per open finding, 👀 ✅ 🚫 pre-seeded, never double-posts. <code>--convert</code> rewrites already-posted messages in place.</td></tr>
+  <tr><td>Excel</td><td><code>cosmos flares export -o flares.xlsx</code> (id, severity, status, title, area, lane, locations, what / impact / fix, commits, dates) or <b>⬇ Flares as Excel</b> on the Flares page; <code>cosmos export</code> adds facts, rules, lanes, endpoints and playbooks as sheets.</td></tr>
   <tr><td>Report</td><td><code>cosmos flares report -o docs/qa-audit.md</code> regenerates the full report from the ledger. <code>cosmos flares export</code> writes the JSON back.</td></tr>
   <tr><td>Lint</td><td><code>cosmos flares lint …</code> flags repository filter keys that are not real model columns (the bug class behind two findings).</td></tr></table>
   <p>Severity <code>note</code> items are verification notes: no lifecycle, never claimable.</p>`],
@@ -1060,6 +1076,7 @@ cosmos obsidian --vault ~/Obsidian/Team  # link several repos' ledgers into one 
   <tr><td><code>cosmos render</code></td><td>rewrite CLAUDE.md/AGENTS.md block and ledger index</td></tr>
   <tr><td><code>cosmos update</code> · <code>uninstall</code></td><td>refresh the vendored copy · remove hooks</td></tr>
   <tr><td><code>cosmos flares import|list|show|claim|pr-open|needs-human|fix|wontfix|withdraw|reopen|set|edit|stage|export|report|slack|lint</code></td><td>QA findings lifecycle (section 10); <code>stage</code>: the prefix a new flare gets here and why</td></tr>
+  <tr><td><code>cosmos export [-o F.xlsx] [--only flares,facts,rules,lanes,endpoints,playbooks]</code></td><td>one Excel workbook (standard library only; header bold, frozen, filtered; text never runs as a formula) · the <b>⬇ Excel</b> button in this console downloads the same, the Flares page just the flares · <code>cosmos flares export --format xlsx</code></td></tr>
   <tr><td><code>cosmos playbooks [list|add &lt;file|qa&gt;]</code></td><td>the team's long-form prompts (a master QA protocol, runbooks) found in the repo, each a slash command for every agent; <code>/qa</code> follows the QA one · bring one in from another project, or start from the generic QA playbook</td></tr>
   <tr><td><code>cosmos eval</code></td><td>measure retrieval now: before-edit hit rate and recall@5 (dreams do it after each change)</td></tr>
   <tr><td><code>cosmos hook</code></td><td>the hook entrypoint Claude Code calls (reads the event on stdin; not for people)</td></tr>
