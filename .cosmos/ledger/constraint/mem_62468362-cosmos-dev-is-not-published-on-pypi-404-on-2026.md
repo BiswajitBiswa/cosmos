@@ -6,9 +6,11 @@ status: "stable"
 generated: {"by": "human:Biswajit Tripathy", "at": "2026-09-29T00:00:00Z"}
 sources: [{"resource": "README.md", "title": "README.md"}, {"resource": "docs/plugin.md", "title": "plugin.md"}, {"resource": "pyproject.toml", "title": "pyproject.toml"}]
 stale_after: "2027-03-28T00:00:00Z"
+links: ["/lanes/docs.md", "/constraint/mem_6381abbc-cosmos-is-stdlib-only-the-anthropic-sdk-is-an-op.md"]
 id: "mem_62468362"
 aliases: ["mem_62468362"]
 category: "constraint"
+lane: "docs"
 cosmos_status: "active"
 confidence: 0.95
 importance: 0.95
@@ -31,3 +33,10 @@ valid_from: "2026-09-29"
 - Evidence file: `README.md`
 - Evidence file: `docs/plugin.md`
 - Evidence file: `pyproject.toml`
+
+## Related
+- [[mem_6381abbc]]
+
+## Links
+- lane: [docs](/lanes/docs.md)
+- related: [mem_6381abbc](/constraint/mem_6381abbc-cosmos-is-stdlib-only-the-anthropic-sdk-is-an-op.md)

@@ -6,9 +6,11 @@ status: "stable"
 generated: {"by": "human:Biswajit Tripathy", "at": "2026-09-29T00:00:00Z"}
 sources: [{"resource": "cosmos/playbooks.py", "title": "playbooks.py"}, {"resource": "cosmos/commands.py", "title": "commands.py"}]
 stale_after: "2027-03-28T00:00:00Z"
+links: ["/lanes/cosmos.md", "/architecture/mem_1f13b61a-slash-commands-for-every-agent-come-from-one-cat.md", "/finding/mem_fcf6d908-new-slash-commands-reintroduced-names-retired-in.md"]
 id: "mem_043ce3de"
 aliases: ["mem_043ce3de"]
 category: "decision"
+lane: "cosmos"
 cosmos_status: "active"
 confidence: 0.95
 importance: 0.95
@@ -30,3 +32,12 @@ valid_from: "2026-09-29"
 - Observed 1× (first 2026-09-29, last 2026-09-29); source: explicit
 - Evidence file: `cosmos/playbooks.py`
 - Evidence file: `cosmos/commands.py`
+
+## Related
+- [[mem_1f13b61a]]
+- [[mem_fcf6d908]]
+
+## Links
+- lane: [cosmos](/lanes/cosmos.md)
+- related: [mem_1f13b61a](/architecture/mem_1f13b61a-slash-commands-for-every-agent-come-from-one-cat.md)
+- related: [mem_fcf6d908](/finding/mem_fcf6d908-new-slash-commands-reintroduced-names-retired-in.md)
