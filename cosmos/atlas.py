@@ -410,7 +410,15 @@ def build(cfg: Config) -> Dict[str, Any]:
         A += ["No OpenAPI / Swagger spec found. Run `/atlas` in Claude Code for a code-derived API index.", ""]
     (d / "api.md").write_text("\n".join(A))
     (d / "atlas.json").write_text(json.dumps(inv, indent=1))
+    _write_page(cfg)
     return inv
+
+
+def _write_page(cfg: Config, fmt: str = "") -> None:
+    """The people's view of the Atlas (atlas.html) beside the Markdown, unless atlas.format / --format says md."""
+    from .atlas_html import wanted, write
+    if wanted(cfg, fmt):
+        write(cfg)
 
 
 def check(cfg: Config) -> Dict[str, Any]:
@@ -550,6 +558,7 @@ def _finish_deep(cfg: Config, rc: int) -> None:
     if rc == 0 and written:
         d.update({"finished": now_iso(), "files": written})
         d.pop("failed_at", None)
+        _write_page(cfg)                              # the model's diagrams reach the page too
     else:
         d.update({"failed_at": now_iso(), "rc": rc})
     st.data["atlas_deep"] = d

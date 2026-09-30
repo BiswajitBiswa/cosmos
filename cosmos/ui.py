@@ -273,6 +273,12 @@ class _Handler(BaseHTTPRequestHandler):
             self.send_header("Content-Length", str(len(body)))
             self.end_headers()
             self.wfile.write(body)
+        elif self.path.startswith("/atlas.html"):
+            f = self.cfg.paths.ledger / "atlas" / "atlas.html"
+            if not f.exists():
+                from .atlas_html import write
+                write(self.cfg)
+            self._send(200, f.read_bytes(), "text/html; charset=utf-8")
         elif self.path.startswith("/api/background"):
             self._send_background()
         elif self.path.startswith("/api/note/"):
@@ -803,7 +809,7 @@ function atlas(){
  const K=c.counts||{};
  $('#page').innerHTML=`${c.exists?statsRow([[drift?'drift':'in sync','status',drift?`${c.drift.length+c.missing.length} source file(s) changed`:`generated ${c.generated}`,drift?'warn':''],[K.apps||0,'apps & packages',''],[K.services||0,'services','docker-compose'],[K.stores||0,'stores & queues',''],[K.k8s||0,'k8s objects',''],[K.endpoints||0,'api endpoints','from OpenAPI']]):''}
   ${stepper([{icon:'manifest',title:'Read the repo',desc:'manifests · compose · k8s · Terraform · OpenAPI',value:c.exists?(S.atlas.docs.inventory||'').split('\n- `').length-1:'',unit:'sources',lit:c.exists},{icon:'inventory',title:'Inventory',desc:'apps, services, stores, endpoints, config keys',value:c.exists?(K.apps||0)+(K.services||0)+(K.stores||0):'',unit:'components',lit:c.exists},{icon:'diagram',title:'Diagrams',desc:'containers · deployment · api, in Mermaid',value:c.exists?Object.keys(S.atlas.docs).length:'',unit:'documents',lit:c.exists},{icon:'curate',title:'Deep pass',desc:'/atlas: data flows, dependency index, lanes',value:S.atlas.docs['data-flow']||S.atlas.docs.dependencies?'done':'not yet',unit:'',lit:!!(S.atlas.docs['data-flow']||S.atlas.docs.dependencies),llm:true},{icon:'fingerprint',title:'Fingerprint',desc:'every source file hashed',value:'',unit:'',lit:c.exists},{icon:'drift',title:'Drift',desc:'reported when the code moves and the picture does not',value:c.exists?(c.drift.length+c.missing.length):'',unit:'changed files',lit:drift}],{compact:true,title:'How the atlas stays true'})}
-  <div class="row" style="margin:0 0 12px"><span class="spacer"></span><button class="btn sm" id="atlasrun">↻ Rebuild</button><span class="small dim">deep pass: the model, with each dream when the map is missing or has moved · <code>cosmos atlas --deep</code> now</span></div>
+  <div class="row" style="margin:0 0 12px"><span class="spacer"></span><a class="btn sm" href="/atlas.html" target="_blank" rel="noopener" ${LIVE?'':'hidden'}>⤢ Open the Atlas page</a><button class="btn sm" id="atlasrun">↻ Rebuild</button><span class="small dim">deep pass: the model, with each dream when the map is missing or has moved · <code>cosmos atlas --deep</code> now</span></div>
   ${names.length?`<div class="tabs">${names.map(n=>`<span class="chip ${n===atlasTab?'on':''}" data-tab="${n}">${n}</span>`).join('')}</div>
   ${body}`:'<div class="empty">Run <code>cosmos atlas</code> (or the button above) to generate inventory and diagrams from the repository.</div>'}`;
  document.querySelectorAll('[data-tab]').forEach(t=>t.onclick=()=>{atlasTab=t.dataset.tab;render()});
@@ -1076,7 +1082,7 @@ cosmos gate            # effective rules
 cosmos gate --transcript ~/.claude/projects/&lt;repo&gt;/&lt;session&gt;.jsonl   # dry run</pre>`],
  ['atlas','7 · Atlas & Lanes',`
   <p><b>Atlas</b> — architecture generated from the repository: manifests, docker-compose, k8s, Terraform, OpenAPI, <code>.env.example</code>, README → inventory, containers and deployment diagrams (Mermaid), API surface. Every source is hashed; when the code moves and the picture does not, everyone sees <i>drift</i> at SessionStart, in dreams and on the Atlas page. <code>/atlas</code> in Claude Code runs the deeper LLM pass (dependency index, data flows, proposed lanes).</p>
-  <p><b>Lanes</b> — every fact, finding and diagram is filed under the feature/module it belongs to, inferred from its files (or configured in <code>config.json → lanes</code>). The Lanes page shows facts, open findings and the people active in each lane over the last 30 days, and flags overlap. Near-duplicate names (<code>deploy</code>, <code>deploy-config</code>, <code>deployment</code>) fold into one with <code>lane_aliases</code> in <code>config.json</code> — the lane pages, this page and <code>cosmos_lanes</code> use the canonical name; <code>cosmos lanes --propose</code> suggests the aliases. The Atlas also reads routes declared in code (FastAPI, Flask, Express) when there is no OpenAPI spec, and draws every diagram of a document; one Mermaid cannot parse is shown as text with its error.</p>
+  <p><b>Lanes</b> — every fact, finding and diagram is filed under the feature/module it belongs to, inferred from its files (or configured in <code>config.json → lanes</code>). The Lanes page shows facts, open findings and the people active in each lane over the last 30 days, and flags overlap. Near-duplicate names (<code>deploy</code>, <code>deploy-config</code>, <code>deployment</code>) fold into one with <code>lane_aliases</code> in <code>config.json</code> — the lane pages, this page and <code>cosmos_lanes</code> use the canonical name; <code>cosmos lanes --propose</code> suggests the aliases. The Atlas also reads routes declared in code (FastAPI, Flask, Express) when there is no OpenAPI spec, and draws every diagram of a document; one Mermaid cannot parse is shown as text with its error. Every build also writes <code>ledger/atlas/atlas.html</code>: all diagrams on one navigable page (sidebar, pan, zoom, fit, full screen) in cosmos's look — <b>⤢ Open the Atlas page</b>; <code>--format md</code> keeps to Markdown.</p>
   <pre>cosmos atlas            # build · cosmos atlas --check   # drift
 cosmos lanes [--days 30] · cosmos lanes --propose [--write]
 cosmos review --repoint [--yes]   # stale facts whose files moved</pre>`],
@@ -1115,7 +1121,7 @@ cosmos obsidian --vault ~/Obsidian/Team  # link several repos' ledgers into one 
   <tr><th>command</th><th>does</th></tr>
   <tr><td><code>cosmos init [--no-vendor]</code></td><td>set up this repo (charter, hooks, ledger, atlas, slash commands for every agent, wrapper, CLAUDE.md/AGENTS.md block, vault)</td></tr>
   <tr><td><code>cosmos charter [show|add|edit|gate]</code> · <code>gate [--transcript F]</code></td><td>the working agreement · the Stop-hook checklist</td></tr>
-  <tr><td><code>cosmos atlas [--check]</code> · <code>lanes [--days N] [--propose [--write]]</code> · <code>horizon "…" [-f F]</code></td><td>architecture from the repo · feature lanes and overlap · map a feature before coding</td></tr>
+  <tr><td><code>cosmos atlas [--check] [--deep] [--format html|md]</code> · <code>lanes [--days N] [--propose [--write]]</code> · <code>horizon "…" [-f F]</code></td><td>architecture from the repo · feature lanes and overlap · map a feature before coding</td></tr>
   <tr><td><code>cosmos connect [all|claude|codex|gemini|cursor|copilot|cline|windsurf]</code> · <code>mcp</code> · <code>capture --agent all</code></td><td>wire every agent (instruction files, MCP configs, slash commands; <code>codex --write-user</code> for Codex's user-level config and prompts) · the MCP server · read other agents' session logs</td></tr>
   <tr><td><code>cosmos status</code> · <code>doctor</code> · <code>health</code></td><td>quick state · installation check (every <code>cosmos</code> on PATH, the model and why, push, flare prefix, slash commands) · memory quality metrics</td></tr>
   <tr><td><code>cosmos ui</code> [<code>--static</code>] · <code>ledger --obsidian</code></td><td>this control room · read-only snapshot HTML · open the vault</td></tr>
@@ -1147,7 +1153,7 @@ cosmos obsidian --vault ~/Obsidian/Team  # link several repos' ledgers into one 
   ledger/               Obsidian vault, one note per fact — committed
   observations/        sanitized JSONL, day-partitioned — committed (so CI can dream)
   state/               per-machine offsets, dream runs, hook.log, slack-posted.json — gitignored</pre>
-  <p><b>Privacy:</b> hooks always exit 0 and never block a session; transcripts are never stored; API keys, tokens (incl. Slack xox*/xapp-), passwords, private keys and credentials in URLs are redacted before persistence; nothing is sent anywhere unless you run <code>audit slack --send</code> or enable an LLM provider.</p>`],
+  <p><b>Privacy:</b> hooks always exit 0 and never block a session; transcripts are never stored; API keys, tokens (incl. Slack xox*/xapp-), passwords, private keys and credentials in URLs are redacted before persistence, and so is every word in <code>~/.config/cosmos/private_terms.txt</code> (one per line; outside every repository, so the list itself is never committed); nothing is sent anywhere unless you run <code>audit slack --send</code> or enable an LLM provider.</p>`],
  ['byitself','14 · What happens by itself',`
   <p>After <code>cosmos init</code> there are no steps. These run on their own:</p>
   <table><tr><th>what</th><th>when</th><th>where it lands</th></tr>

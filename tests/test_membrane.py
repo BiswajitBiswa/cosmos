@@ -611,15 +611,10 @@ class TestNoRetiredNames(unittest.TestCase):
 
 class TestConsoleScripts(unittest.TestCase):
     def _js(self, name):
-        """Exactly one function from the console's script, by matching its braces."""
+        """Exactly one function from the console's script (the helper the Atlas page uses to share it)."""
+        from cosmos.atlas_html import _js_function
         from cosmos.ui import HTML
-        start = HTML.index("function %s(" % name)
-        depth, i = 0, HTML.index("{", start)
-        while True:
-            depth += {"{": 1, "}": -1}.get(HTML[i], 0)
-            if depth == 0:
-                return HTML[start:i + 1]
-            i += 1
+        return _js_function(HTML, name)
 
     @unittest.skipUnless(__import__("shutil").which("node"), "node not installed")
     def test_mermaid_labels_the_model_writes_are_made_parseable(self):
@@ -852,6 +847,50 @@ class TestLaneAliasesAndRepoint(unittest.TestCase):
             text = call_tool(cfg, "cosmos_lanes", {})["content"][0]["text"]
             self.assertIn("deploy: 5 facts", text)
             self.assertNotIn("deployment:", text)
+
+
+class TestAtlasPage(unittest.TestCase):
+    def test_the_atlas_is_one_navigable_page_by_default_and_markdown_only_on_request(self):
+        from cosmos.atlas import build
+        from cosmos.atlas_html import markdown_to_html
+        from cosmos.cli import main
+        with Repo() as r:
+            (r.root / "docker-compose.yml").write_text("services:\n  api:\n    build: .\n    depends_on: [db]\n  db:\n    image: postgres:16\n")
+            build(r.cfg)
+            page = (r.cfg.paths.ledger / "atlas" / "atlas.html").read_text()
+            self.assertIn('class="dia"', page)
+            self.assertIn('href="#containers"', page, "the sidebar links every document")
+            self.assertIn("function mmdFix(", page, "the console's Mermaid fixes, one source")
+            (r.cfg.paths.ledger / "atlas" / "atlas.html").unlink()
+            cwd = os.getcwd(); os.chdir(r.root)
+            try:
+                self.assertEqual(main(["atlas", "--format", "md"]), 0)
+            finally:
+                os.chdir(cwd)
+            self.assertFalse((r.cfg.paths.ledger / "atlas" / "atlas.html").exists(), "--format md writes Markdown only")
+            self.assertTrue((r.cfg.paths.ledger / "atlas" / "containers.md").exists())
+        body, toc, n = markdown_to_html("# T\n## Flows\n<script>x()</script> and `code`\n```mermaid\nflowchart LR\n  a --> b\n```\n| a | b |\n|---|---|\n| 1 | 2 |\n", "data-flow")
+        self.assertNotIn("<script>", body)
+        self.assertEqual((n, [t for _, t in toc]), (1, ["Flows", "Diagram 1"]))
+        self.assertIn("<table>", body)
+
+
+class TestPrivateTerms(unittest.TestCase):
+    def test_words_in_the_home_list_never_reach_a_capture(self):
+        from cosmos import privacy
+        with tempfile.TemporaryDirectory() as d:
+            old = privacy.PRIVATE_TERMS_FILE
+            privacy.PRIVATE_TERMS_FILE = Path(d) / "private_terms.txt"
+            privacy._PRIVATE.update(mtime=None, pattern=None)
+            try:
+                self.assertEqual(privacy.redact("met Alice Example at Acme Corp")[0], "met Alice Example at Acme Corp", "no list: nothing changes")
+                privacy.PRIVATE_TERMS_FILE.write_text("# private\nAlice Example\nacme corp\n")
+                text, fired = privacy.redact("met Alice Example at ACME Corp about the tool")
+                self.assertEqual(text, "met [REDACTED:private] at [REDACTED:private] about the tool")
+                self.assertIn("private", fired)
+            finally:
+                privacy.PRIVATE_TERMS_FILE = old
+                privacy._PRIVATE.update(mtime=None, pattern=None)
 
 
 class TestDoctorEntrypoints(unittest.TestCase):

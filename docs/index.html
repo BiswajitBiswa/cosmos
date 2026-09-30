@@ -260,7 +260,7 @@ code{background:rgba(255,255,255,.06)}
   <div class="feat">
     <div><b>Ledger</b><p>Architecture, decisions and their reasons, conventions, constraints, bug root causes, dependency limits, workflows, domain rules — each with its evidence files, dates and observers. <code>cosmos why redis</code>.</p></div>
     <div><b>Charter</b><p>How we write, test, point and review, in one file. Injected first into every session. Add a rule from the UI, the CLI, or by typing <code>remember: …</code>.</p></div>
-    <div><b>Atlas</b><p>Inventory, containers, deployment and API diagrams from what the repo declares. Hash-checked for drift. Dreams let the model follow the Atlas prompt and add system context, data flows and a dependency index.</p></div>
+    <div><b>Atlas</b><p>Inventory, containers, deployment and API diagrams from what the repo declares, on one navigable page (<code>atlas.html</code>: pan, zoom, full screen) as well as in Markdown. Hash-checked for drift. Dreams let the model follow the Atlas prompt and add system context, data flows and a dependency index.</p></div>
     <div><b>Lanes</b><p>Every fact under the feature a product manager would name — assigned by the model, refined from paths. Who is active where, where people overlap, which lanes carry open findings.</p></div>
     <div><b>Horizon</b><p>Map a feature before coding: lanes touched, colliding decisions, flares in the way, suggested owner. Saved beside the code it will change. <code>cosmos horizon "…"</code> or <code>/horizon</code> in your agent.</p></div>
     <div><b>Gate</b><p>Tests run, <code>file:line</code> cited, findings addressed, self-review done — or the turn is not over. Held at most once, never loops, never gates docs.</p></div>
@@ -279,7 +279,7 @@ code{background:rgba(255,255,255,.06)}
     <div><b>Excel</b><p><code>cosmos export</code>: flares, facts, rules, lanes, endpoints and playbooks, one sheet each; the <b>⬇ Excel</b> button in the console does the same. Standard library only; text never runs as a formula.</p></div>
     <div><b>Lane aliases</b><p><code>lane_aliases</code> folds near-duplicate lanes (<code>deploy-config</code> → <code>deploy</code>) everywhere; <code>cosmos lanes --propose</code> suggests them. <code>cosmos review --repoint</code> follows moved evidence through git's renames.</p></div>
     <div><b>Other agents</b><p>The same block is written to <code>AGENTS.md</code>, so Codex, Cursor, Gemini CLI and Copilot read the Charter and the facts too, and get the same slash commands.</p></div>
-    <div><b>Privacy first</b><p>API keys, tokens, passwords, private keys and credentials in URLs are redacted before anything is written. Sensitive folders can be excluded.</p></div>
+    <div><b>Privacy first</b><p>API keys, tokens, passwords, private keys and credentials in URLs are redacted before anything is written. Sensitive folders can be excluded, and any word listed in <code>~/.config/cosmos/private_terms.txt</code> (names, companies, anything) is redacted from every capture in every repository; the list lives in your home, so it is never committed.</p></div>
     <div><b>Never in the way</b><p>Hooks finish in milliseconds and exit clean. The Gate is the one deliberate hold, and it explains itself.</p></div>
   </div>
 </div></section>
