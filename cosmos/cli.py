@@ -813,9 +813,15 @@ def cmd_atlas(a) -> int:
         if rc is None:
             print(col("✗", "r"), "claude CLI not found: the deep pass uses your Claude Code login"); return 1
         done = [f for f in DEEP_FILES if _by_model(cfg.paths.ledger / "atlas" / f)]
+        if a.format:
+            cfg.data.setdefault("atlas", {})["format"] = a.format
         print(col("✓" if rc == 0 and done else "✗", "g" if rc == 0 and done else "r"), f"deep atlas: {', '.join(done) or 'nothing written'}  (log: .cosmos/state/atlas-deep.log)")
         return 0 if rc == 0 and done else 1
+    if a.format:
+        cfg.data.setdefault("atlas", {})["format"] = a.format      # this run only; atlas.format in config.json keeps it
     inv = build(cfg)
+    if a.format != "md" and (cfg.get("atlas.format", "html") != "md"):
+        print(col("✓", "g"), "atlas page → .cosmos/ledger/atlas/atlas.html  (every diagram, pan and zoom; `--format md` for Markdown only)")
     print(col("✓", "g"), f"atlas → .cosmos/ledger/atlas/  ({len(inv['apps'])} apps · {len(inv['services'])} services · {len(inv['stores'])} stores · {len(inv['k8s'])} k8s objects · {len(inv['terraform'])} tf types · {sum(len(x['endpoints']) for x in inv['api'])} endpoints · {len(inv['env_keys'])} config keys)")
     print(col("  the model's deeper pass runs with the next dream (or `cosmos atlas --deep` now)", "d"))
     return 0
@@ -1180,7 +1186,7 @@ def build_parser() -> argparse.ArgumentParser:
     s = sp.add_parser("update", help="refresh the vendored copy in .cosmos/vendor from the installed cosmos"); s.set_defaults(fn=cmd_update)
 
     s = sp.add_parser("lanes", help="facts, findings and people per feature lane; flags overlap"); s.add_argument("--days", type=int, default=30); s.add_argument("--json", action="store_true"); s.add_argument("--propose", action="store_true", help="suggest a lanes mapping (LLM if configured, else from paths)"); s.add_argument("--write", action="store_true", help="with --propose: save to config and re-file"); s.add_argument("--no-llm", action="store_true"); s.set_defaults(fn=cmd_lanes)
-    s = sp.add_parser("atlas", help="build architecture inventory + diagrams from the repo (or --check for drift)"); s.add_argument("--check", action="store_true"); s.add_argument("--deep", action="store_true", help="let the model follow the Atlas prompt now (system context, containers, data flow, deployment, dependencies, lanes)"); s.set_defaults(fn=cmd_atlas)
+    s = sp.add_parser("atlas", help="build architecture inventory + diagrams from the repo (or --check for drift)"); s.add_argument("--check", action="store_true"); s.add_argument("--deep", action="store_true", help="let the model follow the Atlas prompt now (system context, containers, data flow, deployment, dependencies, lanes)"); s.add_argument("--format", choices=["html", "md"], help="html (default): also write atlas.html, every diagram on one navigable page; md: Markdown only"); s.set_defaults(fn=cmd_atlas)
     s = sp.add_parser("charter", help="the team's working agreement: show | add \"rule\" | edit | gate"); s.add_argument("action", nargs="?", default="show", choices=["show", "add", "edit", "gate"]); s.add_argument("text", nargs="*"); s.add_argument("--section", default="Architecture rules"); s.set_defaults(fn=cmd_charter)
     s = sp.add_parser("horizon", aliases=["intake"], help="map a feature before coding: lanes, collisions, flares, people"); s.add_argument("text", nargs="+"); s.add_argument("-f", "--file", action="append", help="folder or file it will touch (repeatable)"); s.add_argument("--attach", action="append", help="ad-hoc document to read as context (PRD, spec, notes)"); s.add_argument("--brief", help="text file with the brief"); s.add_argument("--json", action="store_true"); s.add_argument("--no-save", action="store_true"); s.set_defaults(fn=cmd_intake)
     s = sp.add_parser("export", help="an Excel workbook: flares, facts, rules, lanes, endpoints, playbooks"); s.add_argument("-o", "--out", help="file (default <repo>-cosmos.xlsx)"); s.add_argument("--only", help="comma-separated sheets, e.g. flares,rules"); s.set_defaults(fn=cmd_export)
