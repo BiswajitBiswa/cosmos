@@ -5,7 +5,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "python3 .cosmos/cosmosw hook",
+            "command": "d=\"${CLAUDE_PROJECT_DIR:-.}\"; [ -f \"$d/.cosmos/cosmosw\" ] || d=\"$(dirname \"$(git -C \"$d\" rev-parse --path-format=absolute --git-common-dir 2>/dev/null)\")\"; [ -f \"$d/.cosmos/cosmosw\" ] && exec python3 \"$d/.cosmos/cosmosw\" hook; exit 0",
             "timeout": 10
           }
         ]
@@ -16,7 +16,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "python3 .cosmos/cosmosw hook",
+            "command": "d=\"${CLAUDE_PROJECT_DIR:-.}\"; [ -f \"$d/.cosmos/cosmosw\" ] || d=\"$(dirname \"$(git -C \"$d\" rev-parse --path-format=absolute --git-common-dir 2>/dev/null)\")\"; [ -f \"$d/.cosmos/cosmosw\" ] && exec python3 \"$d/.cosmos/cosmosw\" hook; exit 0",
             "timeout": 10
           }
         ]
@@ -27,7 +27,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "python3 .cosmos/cosmosw hook",
+            "command": "d=\"${CLAUDE_PROJECT_DIR:-.}\"; [ -f \"$d/.cosmos/cosmosw\" ] || d=\"$(dirname \"$(git -C \"$d\" rev-parse --path-format=absolute --git-common-dir 2>/dev/null)\")\"; [ -f \"$d/.cosmos/cosmosw\" ] && exec python3 \"$d/.cosmos/cosmosw\" hook; exit 0",
             "timeout": 20
           }
         ]
@@ -38,7 +38,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "python3 .cosmos/cosmosw hook",
+            "command": "d=\"${CLAUDE_PROJECT_DIR:-.}\"; [ -f \"$d/.cosmos/cosmosw\" ] || d=\"$(dirname \"$(git -C \"$d\" rev-parse --path-format=absolute --git-common-dir 2>/dev/null)\")\"; [ -f \"$d/.cosmos/cosmosw\" ] && exec python3 \"$d/.cosmos/cosmosw\" hook; exit 0",
             "timeout": 20
           }
         ]
@@ -49,8 +49,20 @@
         "hooks": [
           {
             "type": "command",
-            "command": "python3 .cosmos/cosmosw hook",
+            "command": "d=\"${CLAUDE_PROJECT_DIR:-.}\"; [ -f \"$d/.cosmos/cosmosw\" ] || d=\"$(dirname \"$(git -C \"$d\" rev-parse --path-format=absolute --git-common-dir 2>/dev/null)\")\"; [ -f \"$d/.cosmos/cosmosw\" ] && exec python3 \"$d/.cosmos/cosmosw\" hook; exit 0",
             "timeout": 20
+          }
+        ]
+      }
+    ],
+    "PreToolUse": [
+      {
+        "matcher": "Edit|Write|MultiEdit|NotebookEdit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "d=\"${CLAUDE_PROJECT_DIR:-.}\"; [ -f \"$d/.cosmos/cosmosw\" ] || d=\"$(dirname \"$(git -C \"$d\" rev-parse --path-format=absolute --git-common-dir 2>/dev/null)\")\"; [ -f \"$d/.cosmos/cosmosw\" ] && exec python3 \"$d/.cosmos/cosmosw\" hook; exit 0",
+            "timeout": 10
           }
         ]
       }
