@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import fnmatch
 import re
+from pathlib import Path
 from typing import Iterable, List, Tuple
 
 # (name, pattern). Ordered: specific first.
@@ -24,6 +25,23 @@ SECRET_PATTERNS: List[Tuple[str, re.Pattern]] = [
 ]
 
 
+# Words a person wants kept out of every capture (names, companies, a conversation), one per line. It lives in the
+# user's home, outside every repository, so the list itself can never be committed; it applies to every repo.
+PRIVATE_TERMS_FILE = Path.home() / ".config" / "cosmos" / "private_terms.txt"
+_PRIVATE = {"mtime": None, "pattern": None}
+
+
+def _private_pattern():
+    try:
+        mtime = PRIVATE_TERMS_FILE.stat().st_mtime
+    except OSError:
+        return None
+    if _PRIVATE["mtime"] != mtime:
+        terms = [t.strip() for t in PRIVATE_TERMS_FILE.read_text(errors="ignore").splitlines() if t.strip() and not t.lstrip().startswith("#")]
+        _PRIVATE.update(mtime=mtime, pattern=re.compile("|".join(re.escape(t) for t in sorted(terms, key=len, reverse=True)), re.I) if terms else None)
+    return _PRIVATE["pattern"]
+
+
 def redact(text: str) -> Tuple[str, List[str]]:
     """Return (redacted_text, [pattern names that fired])."""
     fired: List[str] = []
@@ -39,6 +57,11 @@ def redact(text: str) -> Tuple[str, List[str]]:
         text, n = pat.subn(_sub, text)
         if n:
             fired.append(name)
+    private = _private_pattern()
+    if private:
+        text, n = private.subn("[REDACTED:private]", text)
+        if n:
+            fired.append("private")
     return text, fired
 
 
