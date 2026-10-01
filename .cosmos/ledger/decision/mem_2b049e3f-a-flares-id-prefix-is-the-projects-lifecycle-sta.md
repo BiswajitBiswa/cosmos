@@ -6,7 +6,7 @@ status: "stable"
 generated: {"by": "human:Biswajit Tripathy", "at": "2026-09-29T00:00:00Z"}
 sources: [{"resource": "cosmos/audit.py", "title": "audit.py"}]
 stale_after: "2027-03-28T00:00:00Z"
-links: ["/lanes/cosmos.md", "/decision/mem_1734bf56-bugs-found-by-hand-become-flares-through-one-pat.md", "/finding/mem_d4c37ea1-slack-cards-and-the-slack-report-told-people-to.md", "/decision/mem_5cfd6c9b-commit-note-by-biswajit-tripathy-autopilot-from.md"]
+links: ["/lanes/cosmos.md", "/decision/mem_1734bf56-bugs-found-by-hand-become-flares-through-one-pat.md", "/decision/mem_5cfd6c9b-commit-note-by-biswajit-tripathy-autopilot-from.md", "/finding/mem_d4c37ea1-slack-cards-and-the-slack-report-told-people-to.md"]
 id: "mem_2b049e3f"
 aliases: ["mem_2b049e3f"]
 category: "decision"
@@ -34,11 +34,11 @@ valid_from: "2026-09-29"
 
 ## Related
 - [[mem_1734bf56]]
-- [[mem_d4c37ea1]]
 - [[mem_5cfd6c9b]]
+- [[mem_d4c37ea1]]
 
 ## Links
 - lane: [cosmos](/lanes/cosmos.md)
 - related: [mem_1734bf56](/decision/mem_1734bf56-bugs-found-by-hand-become-flares-through-one-pat.md)
-- related: [mem_d4c37ea1](/finding/mem_d4c37ea1-slack-cards-and-the-slack-report-told-people-to.md)
 - related: [mem_5cfd6c9b](/decision/mem_5cfd6c9b-commit-note-by-biswajit-tripathy-autopilot-from.md)
+- related: [mem_d4c37ea1](/finding/mem_d4c37ea1-slack-cards-and-the-slack-report-told-people-to.md)

@@ -2,6 +2,10 @@
 
 ## 2026-10-01
 
+**Update**: 5 observations → 0 new, 1 merged, 0 contradictions, 0 superseded, 0 stale · 5 journal entries written · 2 session ranges still waiting for a model · recall@5 0.94 · 1 commits from git history · heuristics only — no LLM available (cosmos doctor)
+
+## 2026-10-01
+
 **Update**: 3 observations → 1 new, 0 merged, 0 contradictions, 0 superseded, 0 stale · 2 journal entries written · 2 session ranges still waiting for a model · recall@5 0.94 · 1 commits from git history · heuristics only — no LLM available (cosmos doctor)
 
 ## 2026-10-01

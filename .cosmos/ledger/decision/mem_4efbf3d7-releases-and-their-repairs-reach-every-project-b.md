@@ -6,9 +6,11 @@ status: "stable"
 generated: {"by": "human:Biswajit Tripathy", "at": "2026-10-01T00:00:00Z"}
 sources: [{"resource": "cosmos/upgrade.py", "title": "upgrade.py"}]
 stale_after: "2027-03-30T00:00:00Z"
+links: ["/lanes/cosmos.md", "/finding/mem_6fa48630-a-repository-whose-committed-hook-command-is-old.md", "/finding/mem_9aa3899c-python-orgs-macos-python-has-no-ca-bundle-until.md"]
 id: "mem_4efbf3d7"
 aliases: ["mem_4efbf3d7"]
 category: "decision"
+lane: "cosmos"
 cosmos_status: "active"
 confidence: 0.95
 importance: 0.95
@@ -29,3 +31,12 @@ valid_from: "2026-10-01"
 ## Why we believe this
 - Observed 1× (first 2026-10-01, last 2026-10-01); source: explicit
 - Evidence file: `cosmos/upgrade.py`
+
+## Related
+- [[mem_6fa48630]]
+- [[mem_9aa3899c]]
+
+## Links
+- lane: [cosmos](/lanes/cosmos.md)
+- related: [mem_6fa48630](/finding/mem_6fa48630-a-repository-whose-committed-hook-command-is-old.md)
+- related: [mem_9aa3899c](/finding/mem_9aa3899c-python-orgs-macos-python-has-no-ca-bundle-until.md)
