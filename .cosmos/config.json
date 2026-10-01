@@ -59,5 +59,10 @@
     "**/*.pem",
     "**/*.key",
     "node_modules/**"
-  ]
+  ],
+  "playbooks": {
+    "ignore": [
+      "docs/playbooks.md"
+    ]
+  }
 }

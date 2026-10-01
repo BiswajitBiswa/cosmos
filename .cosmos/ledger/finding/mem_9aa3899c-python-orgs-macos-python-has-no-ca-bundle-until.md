@@ -6,7 +6,7 @@ status: "stable"
 generated: {"by": "human:Biswajit Tripathy", "at": "2026-10-01T00:00:00Z"}
 sources: [{"resource": "cosmos/upgrade.py", "title": "upgrade.py"}]
 stale_after: "2027-03-30T00:00:00Z"
-links: ["/lanes/cosmos.md", "/decision/mem_4efbf3d7-releases-and-their-repairs-reach-every-project-b.md", "/finding/mem_1db8264f-a-claude-desktop-mcp-entry-named-cosmos-pinned-t.md", "/finding/mem_498078e0-atlas-page-4-of-8-deep-pass-diagrams-failed-unde.md", "/finding/mem_5790a327-cosmos-connect-with-no-agent-argument-failed-arg.md", "/finding/mem_5b583e8d-cosmosw-always-prefers-an-installed-cosmos-over.md"]
+links: ["/lanes/cosmos.md", "/decision/mem_4efbf3d7-releases-and-their-repairs-reach-every-project-b.md", "/finding/mem_0448e271-the-watcher-started-a-dream-every-30-seconds-whi.md", "/finding/mem_1db8264f-a-claude-desktop-mcp-entry-named-cosmos-pinned-t.md", "/finding/mem_498078e0-atlas-page-4-of-8-deep-pass-diagrams-failed-unde.md", "/finding/mem_5790a327-cosmos-connect-with-no-agent-argument-failed-arg.md"]
 id: "mem_9aa3899c"
 aliases: ["mem_9aa3899c"]
 category: "finding"
@@ -50,17 +50,17 @@ meta_status_note: "cosmos/upgrade.py _contexts/_get (local commit 47747f8, not p
 
 ## Related
 - [[mem_4efbf3d7]]
+- [[mem_0448e271]]
 - [[mem_1db8264f]]
 - [[mem_498078e0]]
 - [[mem_5790a327]]
-- [[mem_5b583e8d]]
 
 ## Links
 - lane: [cosmos](/lanes/cosmos.md)
 - related: [mem_4efbf3d7](/decision/mem_4efbf3d7-releases-and-their-repairs-reach-every-project-b.md)
+- related: [mem_0448e271](/finding/mem_0448e271-the-watcher-started-a-dream-every-30-seconds-whi.md)
 - related: [mem_1db8264f](/finding/mem_1db8264f-a-claude-desktop-mcp-entry-named-cosmos-pinned-t.md)
 - related: [mem_498078e0](/finding/mem_498078e0-atlas-page-4-of-8-deep-pass-diagrams-failed-unde.md)
 - related: [mem_5790a327](/finding/mem_5790a327-cosmos-connect-with-no-agent-argument-failed-arg.md)
-- related: [mem_5b583e8d](/finding/mem_5b583e8d-cosmosw-always-prefers-an-installed-cosmos-over.md)
 
 #finding #medium

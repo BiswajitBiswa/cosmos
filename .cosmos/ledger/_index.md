@@ -7,7 +7,7 @@ tags: ["cosmos", "moc"]
 
 # Ledger index
 
-40 memories · 38 active · 0 contradicted · 1 stale candidates · 4 lanes
+43 memories · 41 active · 0 contradicted · 1 stale candidates · 4 lanes
 
 Charter: [[charter]] · Atlas: [[inventory]] · [[containers]] · [[deployment]] · [[api]]
 
@@ -18,6 +18,7 @@ Charter: [[charter]] · Atlas: [[inventory]] · [[containers]] · [[deployment]]
 - [[mem_c2833030-excel-export-is-a-stdlib-xlsx-writer-cosmos-xlsx|Excel export is a stdlib xlsx writer (cosmos/xlsx.py: zip of SpreadsheetML parts, inline strings only so no cell is ever a formula); `cosmos export`, `flares export -o *.xlsx` and the console's /api/export.xlsx all use it. Reason: cosmos is stdlib-only, so no openpyxl.]]
 ### Constraint
 - [[mem_1192ca15-hooks-must-always-exit-0-the-gate-is-the-only-de|Hooks must always exit 0; the Gate is the only deliberate exit-2 and it never fires twice in one turn (stop_hook_active).]]
+- [[mem_44c1eef6-the-cosmos-mcp-server-asks-the-client-for-mcp-ro|The cosmos MCP server asks the client for MCP roots after the handshake (Claude Code 2.1.118 declares roots and answers roots/list with the session's project folder, verified 2026-10-01). When no root is the repository or a folder above it, every tool returns 'not this project' and nothing is read or recorded (cosmos/mcp.py foreign_session); clients that send no roots are served as before. Reason: a global Desktop MCP entry filed another project's critical bug into retent.]]
 - [[mem_4c8727a1-in-claude-desktop-code-tab-sessions-an-mcp-serve|In Claude Desktop Code-tab sessions an MCP server named cosmos in claude_desktop_config.json shadows the project's .mcp.json server, so cosmos_* tools write to that pinned repository. session_start warns when CLAUDE_CODE_ENTRYPOINT=claude-desktop; agents then record with python3 -m cosmos / .cosmos/cosmosw on the command line.]]
 - [[mem_a1b7e320-claude-code-caps-each-hook-text-plain-stdout-add|Claude Code caps each hook text (plain stdout, additionalContext, systemMessage) at 10,000 characters; longer text is saved to a file and the model sees only a 2,000-character preview it is not asked to read. So session_start keeps the briefing under retrieval.session_start_chars (9,000) via _fit, and each explicit rule in the Charter summary is one 220-character line with its id. Measured 2026-10-01: retent's briefing was 13,326 chars (12 rules = 8,034), now 8,157.]]
 ### Decision
@@ -28,7 +29,9 @@ Charter: [[charter]] · Atlas: [[inventory]] · [[containers]] · [[deployment]]
 - [[mem_55db62b9-recall-is-made-visible-with-the-hooks-systemmess|Recall is made visible with the hook's systemMessage: SessionStart, UserPromptSubmit and PreToolUse print JSON with a one-line cosm◎s notice for the person and the context in hookSpecificOutput.additionalContext (cosmos/hooks.py _say/notice). Codex (COSMOS_AGENT=codex) gets plain text; ui.notices false turns the line off. Claude Code's own 'Recalled a memory' chip has no documented way for a tool to contribute. Reason: the owner saw Claude's memory recalls but never cosmos's.]]
 - [[mem_5cfd6c9b-commit-note-by-biswajit-tripathy-autopilot-from|Commit note by Biswajit Tripathy: autopilot from parent folders, bugs recorded by hand, recall you can see, a briefing under the hook cap, updates that reach every project — - Sessions opened in a folder above the repository are captured and briefed; worktrees answer once. - Bugs found by hand: cosmos flares add (typed, or --from .txt/.csv/.tsv/.xlsx/.json/-) and Record bugs on the console's Flares page; an exported sheet edited and read back moves statuses without false regressions. - The journal no longer credits commits made in another folder. - Claude Desktop sessions are warned when an MCP entry named cosmos serves another repository. - Claude Code shows one line each time cosmos recall]]
 ### Finding
+- [[mem_0448e271-the-watcher-started-a-dream-every-30-seconds-whi|The watcher started a dream every 30 seconds while model ranges waited and no model was available]]
 - [[mem_07187b11-mcp-entries-cosmos-writes-start-python3-which-do|MCP entries cosmos writes start python3, which does not exist on Windows, so the cosmos tools never start there]]
+- [[mem_0b83670f-a-session-in-a-project-without-cosmos-filed-its|A session in a project without cosmos filed its bug into retent's ledger through Claude Desktop's global cosmos MCP entry (RET-WATERFALL-cabf52, Odin LogMasker)]]
 - [[mem_10ab2ec4-console-docs-said-horizon-notes-are-saved-in-cos|Console docs said Horizon notes are saved in .cosmos/ledger/intake/; they are saved in ledger/horizon/]]
 - [[mem_1db8264f-a-claude-desktop-mcp-entry-named-cosmos-pinned-t|A Claude Desktop MCP entry named cosmos pinned to one repo sends every Desktop session's cosmos_remember/cosmos_flare to that repo's ledger]]
 - [[mem_498078e0-atlas-page-4-of-8-deep-pass-diagrams-failed-unde|Atlas page: 4 of 8 deep-pass diagrams failed under mermaid 10.9.1 (unquoted ( ) { } in labels, ; in sequence text) and only the first diagram of a document was drawn]]
