@@ -6,7 +6,7 @@ status: "stable"
 generated: {"by": "human:Biswajit Tripathy", "at": "2026-09-29T00:00:00Z"}
 sources: [{"resource": "cosmos/audit.py", "title": "audit.py"}]
 stale_after: "2027-03-28T00:00:00Z"
-links: ["/lanes/cosmos.md", "/decision/mem_1734bf56-bugs-found-by-hand-become-flares-through-one-pat.md", "/decision/mem_2b049e3f-a-flares-id-prefix-is-the-projects-lifecycle-sta.md", "/finding/mem_10ab2ec4-console-docs-said-horizon-notes-are-saved-in-cos.md", "/finding/mem_5a1661f5-journal-credited-commits-made-in-another-folder.md", "/finding/mem_e522e056-console-rendered-every-fact-rule-and-flare-at-on.md"]
+links: ["/lanes/cosmos.md", "/decision/mem_1734bf56-bugs-found-by-hand-become-flares-through-one-pat.md", "/decision/mem_2b049e3f-a-flares-id-prefix-is-the-projects-lifecycle-sta.md", "/decision/mem_5cfd6c9b-commit-note-by-biswajit-tripathy-autopilot-from.md", "/finding/mem_10ab2ec4-console-docs-said-horizon-notes-are-saved-in-cos.md", "/finding/mem_5a1661f5-journal-credited-commits-made-in-another-folder.md"]
 id: "mem_d4c37ea1"
 aliases: ["mem_d4c37ea1"]
 category: "finding"
@@ -50,16 +50,16 @@ meta_source_doc: "qa-2026-09-29-commands"
 ## Related
 - [[mem_1734bf56]]
 - [[mem_2b049e3f]]
+- [[mem_5cfd6c9b]]
 - [[mem_10ab2ec4]]
 - [[mem_5a1661f5]]
-- [[mem_e522e056]]
 
 ## Links
 - lane: [cosmos](/lanes/cosmos.md)
 - related: [mem_1734bf56](/decision/mem_1734bf56-bugs-found-by-hand-become-flares-through-one-pat.md)
 - related: [mem_2b049e3f](/decision/mem_2b049e3f-a-flares-id-prefix-is-the-projects-lifecycle-sta.md)
+- related: [mem_5cfd6c9b](/decision/mem_5cfd6c9b-commit-note-by-biswajit-tripathy-autopilot-from.md)
 - related: [mem_10ab2ec4](/finding/mem_10ab2ec4-console-docs-said-horizon-notes-are-saved-in-cos.md)
 - related: [mem_5a1661f5](/finding/mem_5a1661f5-journal-credited-commits-made-in-another-folder.md)
-- related: [mem_e522e056](/finding/mem_e522e056-console-rendered-every-fact-rule-and-flare-at-on.md)
 
 #finding #low #flares

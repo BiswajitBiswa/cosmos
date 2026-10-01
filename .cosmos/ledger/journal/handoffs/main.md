@@ -3,8 +3,8 @@ type: Handoff
 kind: handoff
 branch: "main"
 by: "Biswajit Tripathy"
-at: "2026-10-01T10:58:42Z"
+at: "2026-10-01T11:21:08Z"
 how: auto
 ---
 
-The Gate's points are done: 1. **Dead-code scan:** vulture found one unused import, `iter_turns` at `cosmos/hooks.py:17`, left over from 0.1.0. Removed, and 154 tests pass. 2. **Exact locations of today's changes:** - `cosmos/upgrade.py:72` `_get` — downloads with certificate checking kept on, falling back to `certifi` or the system bundle. - `cosmos/upgrade.py:170` `run` — check PyPI, upgrade the bundled copy, repair, commit. - `cosmos/upgrade.py:210` `maybe_background` — the daily background check, started from a session start. - `cosmos/upgrade.py:282` `_step_codex_listing` — writes the Codex plugin listing. - `cosmos/upgrade.py:298` `_step_desktop_pin` — renames the pinned Desktop entry, …
+Both are done now, but not on the first pass: checking turned up a leak and some doc gaps. **No mention of [REDACTED:private], [REDACTED:private] or [REDACTED:private].** Nothing on GitHub or PyPI ever had them, but the local commits did: - **What was there:** your 09-30 messages asking for the comparison page had been captured in this repo's journal, observations and live view. They included the `[REDACTED:private]` link and the misspellings "[REDACTED:private]" and "[REDACTED:private]". - **Why it got through:** none of those spellings were on the private-terms list. - **Fix:** 1. Added `[REDACTED:private]`, `[REDACTED:private]`, `[REDACTED:private]` and `[REDACTED:private]` to `~/.config/cosmos/priva …

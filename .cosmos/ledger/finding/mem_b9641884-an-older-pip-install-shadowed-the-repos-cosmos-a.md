@@ -6,7 +6,7 @@ status: "stable"
 generated: {"by": "human:Biswajit Tripathy", "at": "2026-09-29T00:00:00Z"}
 sources: [{"resource": "cosmos/wrapper.py", "title": "wrapper.py"}]
 stale_after: "2027-03-28T00:00:00Z"
-links: ["/lanes/cosmos.md", "/finding/mem_1db8264f-a-claude-desktop-mcp-entry-named-cosmos-pinned-t.md", "/finding/mem_498078e0-atlas-page-4-of-8-deep-pass-diagrams-failed-unde.md", "/finding/mem_5790a327-cosmos-connect-with-no-agent-argument-failed-arg.md", "/finding/mem_5b583e8d-cosmosw-always-prefers-an-installed-cosmos-over.md", "/finding/mem_9391c461-atlas-reported-0-endpoints-for-apps-without-an-o.md"]
+links: ["/lanes/cosmos.md", "/finding/mem_1db8264f-a-claude-desktop-mcp-entry-named-cosmos-pinned-t.md", "/finding/mem_498078e0-atlas-page-4-of-8-deep-pass-diagrams-failed-unde.md", "/finding/mem_5790a327-cosmos-connect-with-no-agent-argument-failed-arg.md", "/finding/mem_5b583e8d-cosmosw-always-prefers-an-installed-cosmos-over.md", "/finding/mem_6fa48630-a-repository-whose-committed-hook-command-is-old.md"]
 id: "mem_b9641884"
 aliases: ["mem_b9641884"]
 category: "finding"
@@ -52,7 +52,7 @@ meta_source_doc: "qa-2026-09-29-commands"
 - [[mem_498078e0]]
 - [[mem_5790a327]]
 - [[mem_5b583e8d]]
-- [[mem_9391c461]]
+- [[mem_6fa48630]]
 
 ## Links
 - lane: [cosmos](/lanes/cosmos.md)
@@ -60,6 +60,6 @@ meta_source_doc: "qa-2026-09-29-commands"
 - related: [mem_498078e0](/finding/mem_498078e0-atlas-page-4-of-8-deep-pass-diagrams-failed-unde.md)
 - related: [mem_5790a327](/finding/mem_5790a327-cosmos-connect-with-no-agent-argument-failed-arg.md)
 - related: [mem_5b583e8d](/finding/mem_5b583e8d-cosmosw-always-prefers-an-installed-cosmos-over.md)
-- related: [mem_9391c461](/finding/mem_9391c461-atlas-reported-0-endpoints-for-apps-without-an-o.md)
+- related: [mem_6fa48630](/finding/mem_6fa48630-a-repository-whose-committed-hook-command-is-old.md)
 
 #finding #medium #install

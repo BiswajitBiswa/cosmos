@@ -6,7 +6,7 @@ status: "stable"
 generated: {"by": "cosmos/git", "at": "2026-10-01T00:00:00Z"}
 sources: [{"resource": ".claude-plugin/marketplace.json", "title": "marketplace.json"}, {"resource": "README.md", "title": "README.md"}, {"resource": "cosmos/ui.py", "title": "ui.py"}, {"resource": "docs/index.html", "title": "index.html"}, {"resource": "docs/plugin.md", "title": "plugin.md"}, {"resource": "plugin/.claude-plugin/plugin.json", "title": "plugin.json"}]
 stale_after: "2027-03-30T00:00:00Z"
-links: ["/lanes/docs.md", "/constraint/mem_2518367d-cosmos-is-on-pypi-as-cosmos-dev-0-1-0-published.md", "/constraint/mem_62468362-cosmos-dev-is-not-published-on-pypi-404-on-2026.md", "/constraint/mem_97f2aa55-installed-plugins-update-only-when-the-version-c.md", "/finding/mem_10ab2ec4-console-docs-said-horizon-notes-are-saved-in-cos.md", "/finding/mem_498078e0-atlas-page-4-of-8-deep-pass-diagrams-failed-unde.md"]
+links: ["/lanes/docs.md", "/constraint/mem_2518367d-cosmos-is-on-pypi-as-cosmos-dev-0-1-0-published.md", "/constraint/mem_62468362-cosmos-dev-is-not-published-on-pypi-404-on-2026.md", "/constraint/mem_97f2aa55-installed-plugins-update-only-when-the-version-c.md", "/decision/mem_5cfd6c9b-commit-note-by-biswajit-tripathy-autopilot-from.md", "/finding/mem_10ab2ec4-console-docs-said-horizon-notes-are-saved-in-cos.md"]
 id: "mem_1ac630fe"
 aliases: ["mem_1ac630fe"]
 category: "decision"
@@ -42,15 +42,15 @@ valid_from: "2026-10-01"
 - [[mem_2518367d]]
 - [[mem_62468362]]
 - [[mem_97f2aa55]]
+- [[mem_5cfd6c9b]]
 - [[mem_10ab2ec4]]
-- [[mem_498078e0]]
 
 ## Links
 - lane: [docs](/lanes/docs.md)
 - related: [mem_2518367d](/constraint/mem_2518367d-cosmos-is-on-pypi-as-cosmos-dev-0-1-0-published.md)
 - related: [mem_62468362](/constraint/mem_62468362-cosmos-dev-is-not-published-on-pypi-404-on-2026.md)
 - related: [mem_97f2aa55](/constraint/mem_97f2aa55-installed-plugins-update-only-when-the-version-c.md)
+- related: [mem_5cfd6c9b](/decision/mem_5cfd6c9b-commit-note-by-biswajit-tripathy-autopilot-from.md)
 - related: [mem_10ab2ec4](/finding/mem_10ab2ec4-console-docs-said-horizon-notes-are-saved-in-cos.md)
-- related: [mem_498078e0](/finding/mem_498078e0-atlas-page-4-of-8-deep-pass-diagrams-failed-unde.md)
 
 #claude-plugin #cosmos #decision #docs
