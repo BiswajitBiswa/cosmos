@@ -7,7 +7,7 @@ tags: ["cosmos", "moc"]
 
 # Ledger index
 
-45 memories · 43 active · 0 contradicted · 1 stale candidates · 4 lanes
+50 memories · 48 active · 0 contradicted · 1 stale candidates · 4 lanes
 
 Charter: [[charter]] · Atlas: [[inventory]] · [[containers]] · [[deployment]] · [[api]]
 
@@ -28,6 +28,8 @@ Charter: [[charter]] · Atlas: [[inventory]] · [[containers]] · [[deployment]]
 - [[mem_2b049e3f-a-flares-id-prefix-is-the-projects-lifecycle-sta|A flare's id prefix is the project's lifecycle stage read from git when it is filed (qa/* → QA, uat/staging → UAT, release/* or rc tag → RC, hotfix/* → HOTFIX, main with a reachable version tag → PROD, else DEV); a flare keeps its prefix for life and re-imports match by (source_doc, raw_id). flares.prefix pins one prefix (explicit outranks inferred); `import --prefix` applies to that import only and is no longer saved. Reason: the owner wanted prefixes to follow the project lifecycle without an extra command.]]
 - [[mem_4efbf3d7-releases-and-their-repairs-reach-every-project-b|Releases and their repairs reach every project by themselves (cosmos/upgrade.py): a session start checks PyPI at most once a day per machine; a newer wheel is sha256-checked against PyPI, import-tested, swapped into .cosmos/vendor and committed, and the pip install is upgraded when pip allows; each version runs repair once per machine and repository (wrapper, repo and user hooks, slash commands, .agents/plugins/marketplace.json for Codex, a Desktop MCP entry named cosmos renamed to cosmos-<repo> with a backup). New repairs go in REPAIRS and must be idempotent and touch only what cosmos wrote. update.auto false turns it off. Reason: the owner cannot push fixes into every team's project.]]
 - [[mem_55db62b9-recall-is-made-visible-with-the-hooks-systemmess|Recall is made visible with the hook's systemMessage: SessionStart, UserPromptSubmit and PreToolUse print JSON with a one-line cosm◎s notice for the person and the context in hookSpecificOutput.additionalContext (cosmos/hooks.py _say/notice). Codex (COSMOS_AGENT=codex) gets plain text; ui.notices false turns the line off. Claude Code's own 'Recalled a memory' chip has no documented way for a tool to contribute. Reason: the owner saw Claude's memory recalls but never cosmos's.]]
+- [[mem_8e60778d-cosmos-pulse-measures-a-repository-from-its-own|cosmos pulse measures a repository from its own .cosmos records (inject.log tokens, dream records' recall_at_5/edit_hit/duration_ms, journal lines, flare lifecycle) plus --bench (the real hook command in a fresh process, median of 5); the first dream of a day saves one to .cosmos/ledger/metrics/<date>.json with --bench. Numbers shown on the site and README come from these reports only.]]
+- [[mem_f044be42-the-gate-runs-security-checks-every-turn-on-ever|The Gate runs security checks every turn on every touched file (cosmos/security.py): high-precision credential patterns (placeholders, local or docker-compose URLs and 'cosmos: allow-secret' lines skipped), hidden Unicode (bidi overrides, tag characters, zero-width spaces; not emoji joiners, RTL marks or BOMs), and agent-steering text only in instruction files; a changed dependency manifest needs its audit; large changes add bandit or semgrep. Ledger notes that steer agents are withheld from briefings and recall until allowed with cosmos scan --allow. Reason: cosmos injects these files into every agent, so a poisoned one reaches every session.]]
 - [[mem_5cfd6c9b-commit-note-by-biswajit-tripathy-autopilot-from|Commit note by Biswajit Tripathy: autopilot from parent folders, bugs recorded by hand, recall you can see, a briefing under the hook cap, updates that reach every project — - Sessions opened in a folder above the repository are captured and briefed; worktrees answer once. - Bugs found by hand: cosmos flares add (typed, or --from .txt/.csv/.tsv/.xlsx/.json/-) and Record bugs on the console's Flares page; an exported sheet edited and read back moves statuses without false regressions. - The journal no longer credits commits made in another folder. - Claude Desktop sessions are warned when an MCP entry named cosmos serves another repository. - Claude Code shows one line each time cosmos recall]]
 ### Finding
 - [[mem_0448e271-the-watcher-started-a-dream-every-30-seconds-whi|The watcher started a dream every 30 seconds while model ranges waited and no model was available]]
@@ -35,14 +37,18 @@ Charter: [[charter]] · Atlas: [[inventory]] · [[containers]] · [[deployment]]
 - [[mem_0b83670f-a-session-in-a-project-without-cosmos-filed-its|A session in a project without cosmos filed its bug into retent's ledger through Claude Desktop's global cosmos MCP entry (RET-WATERFALL-cabf52, Odin LogMasker)]]
 - [[mem_10ab2ec4-console-docs-said-horizon-notes-are-saved-in-cos|Console docs said Horizon notes are saved in .cosmos/ledger/intake/; they are saved in ledger/horizon/]]
 - [[mem_1db8264f-a-claude-desktop-mcp-entry-named-cosmos-pinned-t|A Claude Desktop MCP entry named cosmos pinned to one repo sends every Desktop session's cosmos_remember/cosmos_flare to that repo's ledger]]
+- [[mem_488b620a-every-hook-took-700-790-ms-on-retent-2-925-notes|Every hook took 700-790 ms on retent (2,925 notes) because Ledger.load re-parsed every markdown note on every call]]
 - [[mem_498078e0-atlas-page-4-of-8-deep-pass-diagrams-failed-unde|Atlas page: 4 of 8 deep-pass diagrams failed under mermaid 10.9.1 (unquoted ( ) { } in labels, ; in sequence text) and only the first diagram of a document was drawn]]
 - [[mem_5790a327-cosmos-connect-with-no-agent-argument-failed-arg|`cosmos connect` with no agent argument failed: argparse checked the default ['all'] against choices]]
 - [[mem_5a1661f5-journal-credited-commits-made-in-another-folder|Journal credited commits made in another folder (cd /tmp/x && git commit) to this repository]]
 - [[mem_5b583e8d-cosmosw-always-prefers-an-installed-cosmos-over|cosmosw always prefers an installed cosmos over the repo's vendored copy, even when the install is older]]
 - [[mem_6fa48630-a-repository-whose-committed-hook-command-is-old|A repository whose committed hook command is older than the user-level one runs every hook twice (two Gates, two briefings)]]
+- [[mem_93255725-cosmosremember-and-cosmosflare-took-40-48-s-on-r|cosmos_remember and cosmos_flare took 40-48 s on retent (2,975 notes), so agents' saves timed out]]
 - [[mem_9391c461-atlas-reported-0-endpoints-for-apps-without-an-o|Atlas reported 0 endpoints for apps without an OpenAPI spec (routes in code were never read)]]
 - [[mem_9aa3899c-python-orgs-macos-python-has-no-ca-bundle-until|python.org's macOS Python has no CA bundle until 'Install Certificates' is run, so every urllib HTTPS call from cosmos failed CERTIFICATE_VERIFY_FAILED]]
+- [[mem_a199a451-the-daily-metrics-check-used-the-local-date-and|The daily metrics check used the local date and the file the UTC date, so near midnight every dream rewrote the day's report]]
 - [[mem_ac19fa4c-a-whole-ledger-save-from-a-process-that-loaded-e|A whole-ledger save from a process that loaded earlier (a dream, the console, an MCP call) wrote every note back and reverted flare lifecycle changes made meanwhile]]
+- [[mem_b058375a-a-pip-install-of-the-same-version-string-shadowe|A pip install of the same version string shadowed the repository's newer copy and silently turned off capture and briefings for every retent session for about 8 hours]]
 - [[mem_b9641884-an-older-pip-install-shadowed-the-repos-cosmos-a|An older pip install shadowed the repo's cosmos and rendered retired names (`finding:`, `cosmos intake`) into the committed CLAUDE.md / AGENTS.md]]
 - [[mem_b9901dfb-a-session-opened-in-a-subfolder-of-the-repositor|A session opened in a subfolder of the repository gets no briefing, facts or capture: load_config takes the folder it is given as the repository root]]
 - [[mem_cb4bccc1-retents-session-briefing-13-326-chars-exceeded-c|Retent's session briefing (13,326 chars) exceeded Claude Code's 10,000-char hook cap, so sessions saw a 2,000-char preview: most of the Charter and none of the facts]]
@@ -66,8 +72,6 @@ Charter: [[charter]] · Atlas: [[inventory]] · [[containers]] · [[deployment]]
 ### Constraint
 - [[mem_2518367d-cosmos-is-on-pypi-as-cosmos-dev-0-1-0-published|cosmos is on PyPI as cosmos-dev (0.1.0 published 2026-09-29; the name cosmos is taken): install with python3 -m pip install cosmos-dev. The README is also the PyPI page, so its images and doc links must be absolute GitHub URLs. /plugin is a Claude Code CLI command only; the desktop app uses its Plugins screen or claude plugin marketplace add / install.]]
 - [[mem_6381abbc-cosmos-is-stdlib-only-the-anthropic-sdk-is-an-op|cosmos is stdlib-only; the anthropic SDK is an optional extra and every feature must work without it.]]
-### Finding
-- [[mem_b058375a-a-pip-install-of-the-same-version-string-shadowe|A pip install of the same version string shadowed the repository's newer copy and silently turned off capture and briefings for every retent session for about 8 hours]]
 
 ## Lane · plugin
 ### Constraint

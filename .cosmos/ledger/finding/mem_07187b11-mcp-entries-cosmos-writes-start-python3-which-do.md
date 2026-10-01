@@ -6,7 +6,7 @@ status: "stable"
 generated: {"by": "human:Biswajit Tripathy", "at": "2026-10-01T00:00:00Z"}
 sources: [{"resource": "cosmos/connect.py", "title": "connect.py"}]
 stale_after: "2027-03-30T00:00:00Z"
-links: ["/lanes/cosmos.md", "/finding/mem_ac19fa4c-a-whole-ledger-save-from-a-process-that-loaded-e.md", "/finding/mem_cb4bccc1-retents-session-briefing-13-326-chars-exceeded-c.md", "/finding/mem_dbc7ae4e-cosmos-connect-codex-write-user-pins-codexs-user.md", "/finding/mem_f2ac4098-a-token-pasted-in-a-prompt-was-written-verbatim.md", "/finding/mem_f87f2319-claude-desktops-mcp-entry-named-cosmos-silently.md"]
+links: ["/lanes/cosmos.md", "/finding/mem_488b620a-every-hook-took-700-790-ms-on-retent-2-925-notes.md", "/finding/mem_ac19fa4c-a-whole-ledger-save-from-a-process-that-loaded-e.md", "/finding/mem_b058375a-a-pip-install-of-the-same-version-string-shadowe.md", "/finding/mem_cb4bccc1-retents-session-briefing-13-326-chars-exceeded-c.md", "/finding/mem_dbc7ae4e-cosmos-connect-codex-write-user-pins-codexs-user.md"]
 id: "mem_07187b11"
 aliases: ["mem_07187b11"]
 category: "finding"
@@ -47,18 +47,18 @@ meta_source_doc: "manual"
 - Imported from manual on 2026-10-01
 
 ## Related
+- [[mem_488b620a]]
 - [[mem_ac19fa4c]]
+- [[mem_b058375a]]
 - [[mem_cb4bccc1]]
 - [[mem_dbc7ae4e]]
-- [[mem_f2ac4098]]
-- [[mem_f87f2319]]
 
 ## Links
 - lane: [cosmos](/lanes/cosmos.md)
+- related: [mem_488b620a](/finding/mem_488b620a-every-hook-took-700-790-ms-on-retent-2-925-notes.md)
 - related: [mem_ac19fa4c](/finding/mem_ac19fa4c-a-whole-ledger-save-from-a-process-that-loaded-e.md)
+- related: [mem_b058375a](/finding/mem_b058375a-a-pip-install-of-the-same-version-string-shadowe.md)
 - related: [mem_cb4bccc1](/finding/mem_cb4bccc1-retents-session-briefing-13-326-chars-exceeded-c.md)
 - related: [mem_dbc7ae4e](/finding/mem_dbc7ae4e-cosmos-connect-codex-write-user-pins-codexs-user.md)
-- related: [mem_f2ac4098](/finding/mem_f2ac4098-a-token-pasted-in-a-prompt-was-written-verbatim.md)
-- related: [mem_f87f2319](/finding/mem_f87f2319-claude-desktops-mcp-entry-named-cosmos-silently.md)
 
 #finding #high
