@@ -1033,7 +1033,8 @@ function docs(){
   <tr><td>Plugin</td><td>the cosmos plugin (this repository is its marketplace): finds the shared folder that has <code>.cosmos/</code>, one level down included, and serves that repository's own copy of cosmos. Cowork runs no hooks and reads no local MCP config, so this is how it gets the tools — from the next message. <code>/plugin</code> is a Claude Code terminal command: in the Claude desktop app use the Plugins screen, or run <code>claude plugin marketplace add</code> and <code>claude plugin install</code> in a terminal. It shows only <code>cosmos_status</code> when no shared folder has <code>.cosmos/</code>.</td><td>Cowork · Claude Code (optional)</td></tr>
   <tr><td>Capture</td><td>Claude Code: hooks, automatic. Cowork: the watcher reads its transcripts on this machine and maps the sandbox paths back. Codex: <code>cosmos capture --agent codex</code> reads <code>~/.codex/sessions</code> rollouts (exact format). Gemini / Antigravity: best-effort JSON reader. Any agent: <code>cosmos_remember</code> over MCP.</td><td>Claude Code · Codex · Gemini · any via MCP</td></tr></table>
   <pre>cosmos init                   # writes every agent's instruction file and MCP config; nothing else to run
-cosmos connect codex --write-user   # only Codex keeps its MCP config in ~/.codex/config.toml
+# Codex (app, CLI, IDE): Plugins → add marketplace (this repository) → install cosmos: hooks brief each thread and start the watcher
+cosmos connect codex --write-user   # without the plugin: Codex keeps its MCP config in ~/.codex/config.toml
 # Cowork / Claude desktop app: Plugins → add marketplace (this repository) → install cosmos
 claude plugin marketplace add &lt;owner&gt;/cosmos   # any terminal; inside the Claude Code CLI: /plugin marketplace add …
 claude plugin install cosmos@cosmos</pre>
