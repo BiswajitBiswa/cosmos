@@ -1,0 +1,95 @@
+#!/usr/bin/env python3
+"""The cosmos plugin's hook for Codex (SessionStart, UserPromptSubmit).
+
+Codex runs it in the thread's folder and passes the event on stdin. It finds the repository that has .cosmos/ (the
+folder or one above it; a folder holding several repositories answers for each of them) and hands the event to that
+repository's own committed cosmos (.cosmos/cosmosw hook). What it prints becomes context for the model: the team's
+Charter and facts at the start, the facts for each prompt. The same call starts the watcher that captures Codex
+sessions, so nobody runs `cosmos watch`. It also records which repository the thread is in, for the plugin's MCP
+server, and on a machine with no `python3` (Windows) it points the plugin's MCP server at this Python.
+Always exits 0: a hook never blocks a Codex thread."""
+import glob
+import json
+import os
+import shutil
+import subprocess
+import sys
+import time
+
+LAST = os.path.join(os.path.expanduser("~"), ".config", "cosmos", "codex-last-repo.json")
+
+
+def repositories(cwd):
+    """(repositories, opened above them): the repository holding cwd, else those one level below it."""
+    p = os.path.abspath(cwd)
+    while True:
+        if os.path.isfile(os.path.join(p, ".cosmos", "cosmosw")):
+            return [p], False
+        parent = os.path.dirname(p)
+        if parent == p:
+            break
+        p = parent
+    kids = sorted(glob.glob(os.path.join(os.path.abspath(cwd), "*", ".cosmos", "cosmosw")))
+    return [os.path.dirname(os.path.dirname(k)) for k in kids], True
+
+
+def remember(repo):
+    try:
+        os.makedirs(os.path.dirname(LAST), exist_ok=True)
+        with open(LAST, "w") as fh:
+            json.dump({"repo": repo, "at": time.time()}, fh)
+    except OSError:
+        pass
+
+
+def point_mcp_at_this_python():
+    """No `python3` on PATH (Windows installs `python` / `py`): the manifest's MCP command would never start, so it
+    names this interpreter instead. Takes effect when Codex next loads the plugin."""
+    root = os.environ.get("PLUGIN_ROOT") or os.environ.get("CLAUDE_PLUGIN_ROOT")
+    if shutil.which("python3") or not root:
+        return
+    path = os.path.join(root, ".codex-plugin", "plugin.json")
+    try:
+        with open(path) as fh:
+            manifest = json.load(fh)
+        server = manifest["mcpServers"]["cosmos"]
+        if server.get("command") != sys.executable:
+            server["command"] = sys.executable
+            with open(path, "w") as fh:
+                json.dump(manifest, fh, indent=2)
+    except (OSError, ValueError, KeyError, TypeError):
+        pass
+
+
+def main():
+    raw = sys.stdin.read()
+    try:
+        event = json.loads(raw) if raw.strip() else {}
+    except ValueError:
+        return
+    point_mcp_at_this_python()
+    found, above = repositories(event.get("cwd") or os.getcwd())
+    remember(found[0] if found else None)            # a thread with no cosmos must not reach the last one's ledger
+    if not found:
+        return
+    env = dict(os.environ, COSMOS_AGENT="codex")
+    if above:
+        env["COSMOS_PARENT_SESSION"] = "1"            # only a pointer per repository, not each whole briefing
+    for repo in found:
+        if not above:
+            env["CLAUDE_PROJECT_DIR"] = repo           # cosmos reads its root from here; the thread may sit in a subfolder
+        try:
+            out = subprocess.run([sys.executable, os.path.join(repo, ".cosmos", "cosmosw"), "hook"], input=raw, cwd=repo, env=env,
+                                 capture_output=True, text=True, timeout=25).stdout
+        except (OSError, subprocess.SubprocessError):
+            continue
+        if out.strip():
+            sys.stdout.write(out.rstrip("\n") + "\n")
+
+
+if __name__ == "__main__":
+    try:
+        main()
+    except Exception:
+        pass
+    sys.exit(0)

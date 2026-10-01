@@ -315,6 +315,71 @@ class TestCharterRepair(unittest.TestCase):
         self.assertEqual(normalize(TEMPLATE), TEMPLATE, "a well-formed charter is untouched")
 
 
+class TestCodexPlugin(unittest.TestCase):
+    """Codex installs the plugin from the marketplace; its hook and MCP server need no command from anyone."""
+    PLUGIN = Path(__file__).resolve().parent.parent / "plugin"
+
+    def _repo_with_wrapper(self, r):
+        src = Path(__file__).resolve().parent.parent
+        (r.root / ".cosmos" / "cosmosw").write_text(f"import sys\nsys.path.insert(0, {str(src)!r})\nfrom cosmos.cli import main\nsys.exit(main())\n")
+        (r.root / ".cosmos" / "charter.md").write_text("# Charter\n## How we test\n- Run the tests that cover the files you touched.\n")
+
+    def _env(self, home):
+        return dict(os.environ, HOME=str(home), PLUGIN_ROOT=str(self.PLUGIN), COSMOS_NO_BACKGROUND="1", COSMOS_NO_PUSH="1")
+
+    def test_the_codex_manifest_matches_the_claude_one(self):
+        codex = json.loads((self.PLUGIN / ".codex-plugin" / "plugin.json").read_text())
+        claude = json.loads((self.PLUGIN / ".claude-plugin" / "plugin.json").read_text())
+        market = json.loads((self.PLUGIN.parent / ".claude-plugin" / "marketplace.json").read_text())
+        self.assertEqual(codex["version"], claude["version"], "bump both manifests together")
+        self.assertEqual(codex["version"], market["plugins"][0]["version"])
+        self.assertNotIn("${", json.dumps(codex["mcpServers"]), "Codex does not expand variables in MCP servers")
+        for event in ("SessionStart", "UserPromptSubmit"):
+            self.assertIn("${PLUGIN_ROOT}/bin/cosmos-codex-hook", codex["hooks"]["hooks"][event][0]["hooks"][0]["command"])
+        self.assertNotIn("Stop", codex["hooks"]["hooks"], "exit 2 would block a Codex thread; the Gate is Claude's")
+
+    def test_session_start_briefs_codex_and_records_the_repository(self):
+        with Repo() as r, tempfile.TemporaryDirectory() as home:
+            self._repo_with_wrapper(r)
+            (r.root / "src" / "deep").mkdir()
+            ev = json.dumps({"hook_event_name": "SessionStart", "session_id": "t1", "cwd": str(r.root / "src" / "deep"), "source": "startup"})
+            out = subprocess.run([sys.executable, str(self.PLUGIN / "bin" / "cosmos-codex-hook")], input=ev, capture_output=True, text=True,
+                                 env=self._env(home), timeout=60)
+            self.assertEqual(out.returncode, 0)
+            self.assertIn("CHARTER", out.stdout)
+            last = json.loads((Path(home) / ".config" / "cosmos" / "codex-last-repo.json").read_text())
+            self.assertEqual(Path(last["repo"]).resolve(), r.root.resolve())
+            ev = json.dumps({"hook_event_name": "SessionStart", "session_id": "t2", "cwd": home})
+            out = subprocess.run([sys.executable, str(self.PLUGIN / "bin" / "cosmos-codex-hook")], input=ev, capture_output=True, text=True,
+                                 env=self._env(home), timeout=60)
+            self.assertEqual((out.returncode, out.stdout), (0, ""))
+            self.assertIsNone(json.loads((Path(home) / ".config" / "cosmos" / "codex-last-repo.json").read_text())["repo"],
+                              "a thread with no cosmos must not reach the last repository's ledger")
+
+    def test_mcp_server_started_in_the_plugin_folder_serves_the_threads_repository(self):
+        with Repo() as r, tempfile.TemporaryDirectory() as home:
+            self._repo_with_wrapper(r)
+            last = Path(home) / ".config" / "cosmos" / "codex-last-repo.json"
+            last.parent.mkdir(parents=True)
+            last.write_text(json.dumps({"repo": str(r.root), "at": __import__("time").time()}))
+            reqs = [{"jsonrpc": "2.0", "id": 1, "method": "initialize", "params": {"protocolVersion": "2025-06-18", "capabilities": {}, "clientInfo": {"name": "codex", "version": "x"}}},
+                    {"jsonrpc": "2.0", "method": "notifications/initialized"},
+                    {"jsonrpc": "2.0", "id": 2, "method": "tools/list"},
+                    {"jsonrpc": "2.0", "id": 3, "method": "tools/call", "params": {"name": "cosmos_remember", "arguments": {"text": "Payments retry with an idempotency key, never twice", "kind": "fact"}}}]
+            out = subprocess.run([sys.executable, "bin/cosmos-codex-mcp"], cwd=self.PLUGIN, input="".join(json.dumps(q) + "\n" for q in reqs),
+                                 capture_output=True, text=True, env=self._env(home), timeout=60)
+            res = {m["id"]: m for m in map(json.loads, out.stdout.splitlines())}
+            self.assertEqual(res[1]["result"]["serverInfo"]["name"], "cosmos")
+            self.assertIn("cosmos_recall", [t["name"] for t in res[2]["result"]["tools"]])
+            self.assertNotIn("error", res[3])
+            self.assertTrue(any("idempotency key" in m.text for m in Ledger(r.cfg.paths).load().values()), "written into the thread's repository")
+            last.write_text(json.dumps({"repo": None, "at": __import__("time").time()}))
+            out = subprocess.run([sys.executable, "bin/cosmos-codex-mcp"], cwd=self.PLUGIN, input="".join(json.dumps(q) + "\n" for q in reqs[:3]),
+                                 capture_output=True, text=True, env=self._env(home), timeout=60)
+            tools = [t["name"] for t in json.loads(out.stdout.splitlines()[1])["result"]["tools"]]
+            self.assertEqual(tools, ["cosmos_status"])
+
+
 class TestCowork(unittest.TestCase):
     def _session(self, base, host_folder, vm="calm-vm", lines=()):
         org = base / "acct" / "org"

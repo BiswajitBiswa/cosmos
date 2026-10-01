@@ -1,0 +1,122 @@
+#!/usr/bin/env python3
+"""The cosmos plugin's MCP server for Codex.
+
+Codex starts a plugin's MCP server in the plugin's folder, without saying which project the thread is in, and may start
+it before the thread's first hook has run. So this server answers the handshake itself and decides per tool call: the
+repository the plugin's hook saw last (it records the thread's folder at SessionStart and on every prompt), else one
+above the working directory. Each repository's own committed cosmos (.cosmos/cosmosw mcp) serves its calls, so the
+plugin never goes stale against it and a second repository never writes into the first one's ledger."""
+import json
+import os
+import subprocess
+import sys
+import time
+
+LAST = os.path.join(os.path.expanduser("~"), ".config", "cosmos", "codex-last-repo.json")
+FRESH = 12 * 3600                                     # a record older than this is not the current thread's
+NOTE = ("No repository with cosmos (.cosmos/cosmosw) is open in this Codex thread. Open the repository's folder "
+        "(or one that holds it) as the thread's project, then ask again.")
+
+
+def has_cosmos(d):
+    return bool(d) and os.path.isfile(os.path.join(d, ".cosmos", "cosmosw"))
+
+
+def current_repo():
+    try:
+        with open(LAST) as fh:
+            rec = json.load(fh)
+        if time.time() - float(rec.get("at", 0)) < FRESH:
+            return rec["repo"] if has_cosmos(rec.get("repo")) else None
+    except (OSError, ValueError, TypeError):
+        pass
+    p = os.path.abspath(os.getcwd())
+    while True:
+        if has_cosmos(p):
+            return p
+        parent = os.path.dirname(p)
+        if parent == p:
+            return None
+        p = parent
+
+
+class Repo:
+    """One repository's own cosmos MCP server, started on first use and kept for the session."""
+
+    def __init__(self, path, init):
+        env = dict(os.environ, COSMOS_NO_BACKGROUND="1", COSMOS_AGENT="codex")
+        self.proc = subprocess.Popen([sys.executable, os.path.join(path, ".cosmos", "cosmosw"), "mcp"], cwd=path, env=env,
+                                     stdin=subprocess.PIPE, stdout=subprocess.PIPE, text=True, bufsize=1)
+        self.ask(dict(init, id="cosmos-init"))
+        self.send({"jsonrpc": "2.0", "method": "notifications/initialized"})
+
+    def send(self, msg):
+        self.proc.stdin.write(json.dumps(msg) + "\n")
+        self.proc.stdin.flush()
+
+    def ask(self, msg):
+        self.send(msg)
+        for line in self.proc.stdout:
+            try:
+                res = json.loads(line)
+            except ValueError:
+                continue
+            if res.get("id") == msg.get("id"):
+                return res
+        raise OSError("the repository's cosmos MCP server stopped")
+
+
+def reply(rid, result=None, error=None):
+    msg = {"jsonrpc": "2.0", "id": rid}
+    msg.update({"error": error} if error else {"result": result})
+    sys.stdout.write(json.dumps(msg) + "\n")
+    sys.stdout.flush()
+
+
+def main():
+    init, servers = None, {}
+
+    def server(wait=0.0):
+        path = current_repo()
+        until = time.time() + wait
+        while path is None and time.time() < until:   # the first thread: its SessionStart hook may still be running
+            time.sleep(0.25)
+            path = current_repo()
+        if not path:
+            return None
+        if path not in servers or servers[path].proc.poll() is not None:
+            servers[path] = Repo(path, init)
+        return servers[path]
+
+    for line in sys.stdin:
+        try:
+            req = json.loads(line)
+        except ValueError:
+            continue
+        rid, method = req.get("id"), req.get("method", "")
+        if method == "initialize":
+            init = {k: v for k, v in req.items() if k != "id"}
+            reply(rid, {"protocolVersion": (req.get("params") or {}).get("protocolVersion", "2025-06-18"),
+                        "capabilities": {"tools": {}}, "serverInfo": {"name": "cosmos", "version": "0.2.1"}})
+        elif rid is None:
+            continue                                   # notifications: the repository's server got its own at start
+        elif method in ("tools/list", "tools/call"):
+            try:
+                srv = server(wait=4.0 if method == "tools/list" else 0.0)
+                if srv is None:
+                    tool = {"name": "cosmos_status", "description": "Whether a cosmos repository is open in this thread.",
+                            "inputSchema": {"type": "object", "properties": {}}}
+                    reply(rid, {"tools": [tool]} if method == "tools/list" else {"content": [{"type": "text", "text": NOTE}]})
+                    continue
+                res = srv.ask(req)
+                reply(rid, res.get("result"), res.get("error"))
+            except OSError as e:
+                reply(rid, error={"code": -32603, "message": f"cosmos: {e}"})
+        elif method == "ping":
+            reply(rid, {})
+        else:
+            reply(rid, error={"code": -32601, "message": f"method not found: {method}"})
+
+
+if __name__ == "__main__":
+    main()

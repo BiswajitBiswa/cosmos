@@ -1,4 +1,4 @@
-# The cosmos plugin (Cowork, and Claude Code)
+# The cosmos plugin (Cowork, Claude Code and Codex)
 
 ## Why a plugin
 
@@ -24,6 +24,11 @@ This repository is a plugin marketplace (`.claude-plugin/marketplace.json`) with
 - **Claude Code CLI:** the same two lines, or `/plugin marketplace add <owner>/cosmos` and `/plugin install cosmos@cosmos`
   inside a session.
 
+- **Codex (app, CLI, IDE extension):** the same repository is a Codex marketplace. In the Codex app, open **Plugins**,
+  add a marketplace from GitHub (`BiswajitBiswa/cosmos`), then install **cosmos**. In a terminal: `codex plugin marketplace add BiswajitBiswa/cosmos`, then install
+  **cosmos** from `/plugins`. Nothing else to run: no `pip install`, no `cosmos connect codex`, no `cosmos watch`
+  (see [Codex](#codex) below).
+
 If the tools list shows only `cosmos_status`, the plugin found no folder with `.cosmos/` from where the session started:
 share the repository folder (Cowork), or open the session in the repository.
 
@@ -46,6 +51,26 @@ the checks and the record before stopping.
 The repository's cosmos is started with `python3`: an installed cosmos wins over the vendored copy in `.cosmos/vendor`.
 If that install is older than the repository's copy the tools are the older ones; `cosmos doctor` lists every `cosmos`
 on PATH and the Python it belongs to.
+
+## Codex
+
+Codex reads the plugin's own manifest, `plugin/.codex-plugin/plugin.json` (Claude reads `plugin/.claude-plugin/`; the
+skill and the commands are shared). Two things differ from Claude:
+
+- **Hooks do the setup.** At the start of each thread and on each prompt, `plugin/bin/cosmos-codex-hook` finds the
+  repository the thread is in (its folder or one above; a folder holding several repositories answers for each) and
+  hands the event to that repository's own cosmos. What it prints becomes the model's context: the Charter and facts at
+  the start, the facts for each prompt. The same call starts the watcher, which captures Codex sessions. There is no
+  Gate in Codex: a Stop hook that exits 2 would block the thread.
+- **One MCP server for every repository.** Codex starts a plugin's MCP server in the plugin's folder and does not say
+  which project the thread is in. `plugin/bin/cosmos-codex-mcp` answers the handshake itself and sends each tool call
+  to the repository the hook saw last (recorded in `~/.config/cosmos/codex-last-repo.json`; a thread in a folder
+  without cosmos clears it, so nothing reaches the previous repository's ledger). That repository's committed
+  `.cosmos/cosmosw mcp` serves the call.
+
+Python must be installed (cosmos is Python; nothing is installed with pip). On Windows, where Python is `python`, the
+hook falls back to it and points the plugin's MCP server at that interpreter; restart Codex once after the first
+thread for the tools to start.
 
 ## What it does not do
 
