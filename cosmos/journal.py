@@ -24,11 +24,31 @@ _PUSH = re.compile(r"\bgit\s+push\b")
 _PR = re.compile(r"\bgh\s+pr\s+create\b")
 
 
-def commits_in(commands: List[str]) -> List[str]:
-    """Commit messages (first line) from the shell commands a turn ran."""
+_CD = re.compile(r"""(?:^|[;&|(\n])\s*cd\s+(?:"([^"]+)"|'([^']+)'|([^\s;&|)]+))""")
+
+
+def _elsewhere(before: str, root: Path) -> bool:
+    """The shell moved out of the repository before this point: `cd /tmp/x && git commit`, `cd ../other && git commit`.
+    A folder held in a variable or made by mktemp counts as elsewhere: the commit is not this repository's."""
+    here = root.resolve()
+    for m in _CD.finditer(before):
+        target = next(g for g in m.groups() if g)
+        if target.startswith(("$", "`", "~")) or "mktemp" in target or target.startswith(".."):
+            return True
+        if Path(target).is_absolute():
+            there = Path(target).resolve()
+            if there != here and here not in there.parents:
+                return True
+    return False
+
+
+def commits_in(commands: List[str], root: Optional[Path] = None) -> List[str]:
+    """Commit messages (first line) from the shell commands a turn ran; with `root`, only the commits made in it."""
     out: List[str] = []
     for c in commands:
         for m in _COMMIT_MSG.finditer(c):
+            if root is not None and _elsewhere(c[:m.start()], root):
+                continue
             groups = [g for g in m.groups() if g]
             if m.group(1):                      # -F - heredoc: group 1 is the delimiter, group 2 the first line
                 groups = [m.group(2)] if m.group(2) else []
@@ -70,7 +90,7 @@ def build(turns: List[Turn], root: Path) -> Optional[Dict]:
             if f not in files:
                 files.append(f)
         commands.extend(t.commands)
-    commits = commits_in(commands)
+    commits = commits_in(commands, root)
     tests = any(_TEST_CMD.search(c) for c in commands)
     pushes = sum(1 for c in commands if _PUSH.search(c))
     prs = sum(1 for c in commands if _PR.search(c))

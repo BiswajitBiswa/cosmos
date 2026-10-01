@@ -206,7 +206,38 @@ def find_claude_sessions(root: Path) -> List[Tuple[Path, str]]:
             continue
         out += [(p, p.stem) for p in sorted(d.glob("*.jsonl"))]
         out += [(p, f"{p.parent.parent.name}/{p.stem}") for p in sorted(d.glob("*/subagents/*.jsonl"))]
-    return out + find_cowork_sessions(root)
+    return out + find_parent_sessions(root) + find_cowork_sessions(root)
+
+
+def _project_dir(base: Path) -> Path:
+    return Path.home() / ".claude" / "projects" / str(base).replace("/", "-")
+
+
+def find_parent_sessions(root: Path, levels: int = 2) -> List[Tuple[Path, str]]:
+    """Sessions opened in a folder above the repository (a workspace holding several projects): Claude Code files
+    them under that folder, so neither the repository's hooks nor its own transcript folder sees them. Read with
+    read_session(root=…), they are scoped to the exchanges that touched this repository."""
+    out: List[Tuple[Path, str]] = []
+    home = Path.home().resolve()
+    p = root.resolve().parent
+    for _ in range(levels):
+        if p == home or home not in p.parents:
+            break
+        d = _project_dir(p)
+        if d.exists():
+            out += [(t, t.stem) for t in sorted(d.glob("*.jsonl"))]
+            out += [(t, f"{t.parent.parent.name}/{t.stem}") for t in sorted(d.glob("*/subagents/*.jsonl"))]
+        p = p.parent
+    return out
+
+
+def _filed_under_parent(transcript: Path, root: Path, levels: int = 2) -> bool:
+    """True when Claude Code filed the transcript under a folder above this repository (a workspace session)."""
+    slugs, p = set(), root.resolve().parent
+    for _ in range(levels):
+        slugs.add(_project_dir(p).name)
+        p = p.parent
+    return any(part in slugs for part in transcript.parts)
 
 
 # ---------------------------------------------------------------- Cowork
@@ -283,7 +314,8 @@ def _map_paths(turns: List[Turn], pm: Dict[str, str]) -> None:
 def _scope_to_repo(turns: List[Turn], root: Path) -> List[Turn]:
     """A Cowork session shared a folder above the repo, so it may be about several projects. Keep the exchanges
     (a person's message and the agent's work after it) that touched this repo."""
-    roots = {str(root), str(root.resolve())}             # /var/… and /private/var/… are the same folder on macOS
+    from .transcript import worktrees
+    roots = {str(root), str(root.resolve())} | {str(w) for w in worktrees(root)}   # /var/… = /private/var/… on macOS; every checkout
     keep: List[Turn] = []
     block: List[Turn] = []
 
@@ -310,6 +342,8 @@ def read_session(path: Path, agent: str, offset: int = 0, until: Optional[int] =
             _map_paths(turns, pm)
             if root is not None:
                 turns = _scope_to_repo(turns, root)
+        elif root is not None and _filed_under_parent(path, root):
+            turns = _scope_to_repo(turns, root)       # opened in a parent folder: only what touched this repository
         return turns, off
     if agent == "codex":
         return iter_codex_turns(path, offset)

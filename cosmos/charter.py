@@ -126,7 +126,8 @@ def summary(cfg: Config, mems: Dict[str, Memory], max_lines: int = 28) -> str:
     rs = rules(mems)
     if rs:
         lines.append("## Explicit team rules")
-        lines += [f"- [{m.category}] {m.text}" for m in rs[:12]]
+        from .retrieve import brief
+        lines += [f"- [{m.category}] {brief(m.text, 220)} · {m.id}" for m in rs[:12]]   # the full rule: cosmos_why <id>
     return "\n".join(lines)
 
 

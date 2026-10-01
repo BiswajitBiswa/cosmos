@@ -197,6 +197,8 @@ def act(cfg: Config, req: Dict[str, Any]) -> Dict[str, Any]:
                 a.status, a.updated = "active", today()
                 a.contradicts = [c for c in a.contradicts if b is None or c != b.id]
                 a.reason = f"Reviewed {today()}: both valid" + (f" — {req['note']}" if req.get("note") else "")
+    elif t == "flares_add":
+        return _flares_add(cfg, req)
     elif t == "finding_status":
         from .audit import set_status
         m = mems.get(req.get("id", ""))
@@ -213,6 +215,39 @@ def act(cfg: Config, req: Dict[str, Any]) -> Dict[str, Any]:
     ledger.save_all(mems.values())
     render_all(cfg, mems)
     return {"ok": True}
+
+
+BUG_FILES = (".txt", ".md", ".csv", ".tsv", ".xlsx", ".json")
+
+
+def _flares_add(cfg: Config, req: Dict[str, Any]) -> Dict[str, Any]:
+    """The Flares page's Record bugs: typed or pasted lines, or a file a person kept (sheet, CSV, list)."""
+    import base64
+    import tempfile
+    import zipfile
+    from .audit import SEVERITIES, bugs_from_file, bugs_from_text, record_bugs
+    from .render import render_all
+    sev = req.get("severity") if req.get("severity") in SEVERITIES else "medium"
+    area = str(req.get("area") or "").strip()[:80]
+    if req.get("file_b64"):
+        name = Path(str(req.get("file_name") or "bugs.txt")).name
+        if not name.lower().endswith(BUG_FILES):
+            return {"ok": False, "error": f"{name}: use {' '.join(BUG_FILES)}"}
+        with tempfile.TemporaryDirectory() as d:
+            f = Path(d) / name
+            f.write_bytes(base64.b64decode(str(req["file_b64"]).split(",")[-1]))
+            try:
+                items = bugs_from_file(f, sev, area)
+            except (ValueError, KeyError, IndexError, zipfile.BadZipFile) as e:
+                return {"ok": False, "error": f"could not read {name}: {e}"}
+        src = name
+    else:
+        items, src = bugs_from_text(str(req.get("text") or ""), sev, area), "manual"
+    if not items:
+        return {"ok": False, "error": "no bugs found: one per line, each a few words (a sheet needs a title, bug or summary column)"}
+    new, upd, reg = record_bugs(cfg, items, src)
+    render_all(cfg, Ledger(cfg.paths).load())
+    return {"ok": True, "new": len(new), "updated": len(upd), "regressed": len(reg), "ids": [m.meta["audit_id"] for m in new + upd + reg][:50]}
 
 
 # ---------------------------------------------------------------- server
@@ -896,15 +931,34 @@ function flaresPage(){
  const m=sel&&byId()[sel];
  const sevOrder={critical:0,high:1,medium:2,low:3,note:4,info:5};
  const cols=FSTAT.filter(s=>fs.some(f=>fstatus(f)===s)||['open','claimed','pr_open','needs_human','fixed'].includes(s));
- $('#page').innerHTML=`${fs.length?statsRow([[openL.length,'open findings',`${fs.length} total`],[sev('critical'),'critical','',sev('critical')?'bad':''],[sev('high'),'high','',sev('high')?'warn':''],[sev('medium')+sev('low'),'medium & low',''],[fs.filter(m=>fstatus(m)==='needs_human').length,'need a human','could not reproduce / unclear',fs.filter(m=>fstatus(m)==='needs_human').length?'warn':''],[fs.filter(m=>fstatus(m)==='fixed').length,'fixed','']])+'<div style="height:18px"></div>':'<div class="empty">No findings yet. <code>cosmos flares import &lt;findings.json&gt;</code></div>'}
+ $('#page').innerHTML=`${fs.length?statsRow([[openL.length,'open findings',`${fs.length} total`],[sev('critical'),'critical','',sev('critical')?'bad':''],[sev('high'),'high','',sev('high')?'warn':''],[sev('medium')+sev('low'),'medium & low',''],[fs.filter(m=>fstatus(m)==='needs_human').length,'need a human','could not reproduce / unclear',fs.filter(m=>fstatus(m)==='needs_human').length?'warn':''],[fs.filter(m=>fstatus(m)==='fixed').length,'fixed','']])+'<div style="height:18px"></div>':'<div class="empty">No flares yet. Record bugs above, type <code>flare: …</code> in a session, or <code>cosmos flares add --from bugs.csv</code> · <code>cosmos flares import &lt;findings.json&gt;</code></div>'}
   ${fs.length?stepper([{icon:'imp',title:'Import or file',desc:'audit JSON, or flare: in a session',value:fs.length,unit:'flares',lit:true},{icon:'board',title:'Triage',desc:'kanban by lifecycle',value:openL.length,unit:'open',lit:openL.length},{icon:'human',title:'Claim / needs human',desc:'a person or the fix loop takes it',value:fs.filter(m=>['claimed','pr_open','needs_human'].includes(fstatus(m))).length,unit:'in progress',lit:fs.some(m=>['claimed','pr_open','needs_human'].includes(fstatus(m)))},{icon:'fix',title:'Fix',desc:'commit recorded',value:fs.filter(m=>fstatus(m)==='fixed').length,unit:'fixed',lit:fs.some(m=>fstatus(m)==='fixed')},{icon:'regress',title:'Regression watch',desc:'a fixed bug reported again is flagged',value:fs.filter(m=>fstatus(m)==='regressed').length,unit:'regressed',lit:fs.some(m=>fstatus(m)==='regressed')},{icon:'slack',title:'Slack',desc:'one card per finding, never twice'}],{compact:true,title:'The finding lifecycle'})+'<div style="height:14px"></div>':''}
-  ${LIVE&&fs.length?'<div class="row" style="margin:0 0 10px"><span class="spacer"></span><a class="btn sm" href="/api/export.xlsx?sheets=flares" download>⬇ Flares as Excel</a></div>':''}
+  ${LIVE?`<div class="row" style="margin:0 0 10px"><span class="spacer"></span><button class="btn sm primary" id="recbugs">＋ Record bugs</button>${fs.length?'<a class="btn sm" href="/api/export.xlsx?sheets=flares" download>⬇ Flares as Excel</a>':''}</div>`:''}
   <div><div class="board">${cols.map(s=>{const L=fs.filter(f=>fstatus(f)===s).sort((a,b)=>sevOrder[a.meta.severity]-sevOrder[b.meta.severity]);
    const P=paged('flares-'+s,L,30);
    return `<div class="col"><h4><span>${s.replace('_',' ')}</span><span>${L.length}</span></h4>${P.rows.map(f=>`<div class="fcard" data-id="${f.id}" style="--c:${cc(f.meta.severity)}"><div class="id">${esc(f.meta.audit_id)}${f.meta.area?' · '+esc(f.meta.area):''}</div><div class="t">${md(f.text)}</div>${f.files[0]?`<code>${esc(f.files[0])}</code>`:''}</div>`).join('')}${P.bar}</div>`}).join('')}</div>
   </div>${detailModal(m)}`;
  bindMem();bindDetail();bindDetailModal();bindPager();
+ const rb=$('#recbugs');if(rb)rb.onclick=recordBugs;
 }
+/* bugs a person found (by hand, with a teammate, in a sheet) → flares */
+function recordBugs(){const d=document.createElement('div');d.className='modal';
+ d.innerHTML=`<div class="box wide" role="dialog" aria-modal="true" aria-label="Record bugs"><h3>Record bugs</h3>
+  <div class="small dim">One bug per line. A leading severity and a trailing <code>@ file:line</code> are optional: <code>high: Login fails on Safari @ web/login.js:42</code>. Rows pasted from a spreadsheet work too (a header row with title, severity, location, what, impact, fix is read; without one the columns are taken in that order).</div>
+  <textarea id="rb-text" style="min-height:170px;font-family:var(--mono,monospace);font-size:12.5px" placeholder="critical: Payment charged twice on retry @ api/pay.py:88&#10;Export button does nothing on Firefox&#10;low: typo on the settings page"></textarea>
+  <div class="row" style="gap:10px;flex-wrap:wrap"><label class="small">Severity when a line names none <select id="rb-sev">${['medium','high','critical','low','note'].map(s=>`<option>${s}</option>`).join('')}</select></label>
+   <label class="small">Area <input id="rb-area" placeholder="optional, e.g. payments" style="width:150px"></label>
+   <label class="small">or a file <input id="rb-file" type="file" accept=".txt,.md,.csv,.tsv,.xlsx,.json"></label></div>
+  <div class="small dim">A row whose id matches a flare (an exported sheet, edited) updates it: write a status to move it, <code>reopen</code> to reopen a closed one.</div>
+  <div class="row"><span class="spacer"></span><button class="btn sm" data-x>Cancel</button><button class="btn sm primary" data-ok>Record</button></div></div>`;
+ document.body.appendChild(d);const ta=d.querySelector('#rb-text');ta.focus();
+ const done=()=>{d.remove();document.removeEventListener('keydown',key)};
+ const send=async()=>{const f=d.querySelector('#rb-file').files[0],body={type:'flares_add',severity:d.querySelector('#rb-sev').value,area:d.querySelector('#rb-area').value};
+  if(f){body.file_name=f.name;body.file_b64=await new Promise((ok,no)=>{const r=new FileReader();r.onload=()=>ok(r.result);r.onerror=no;r.readAsDataURL(f)})}
+  else if(ta.value.trim())body.text=ta.value;else{ta.classList.add('bad');ta.focus();return}
+  const r=await act(body);if(r&&r.ok){done();toast(`✓ ${r.new} new · ${r.updated} updated${r.regressed?` · ${r.regressed} regressed`:''}`)}};
+ const key=e=>{if(e.key==='Escape')done();else if(e.key==='Enter'&&(e.metaKey||e.ctrlKey))send()};
+ document.addEventListener('keydown',key);d.onclick=e=>{if(e.target===d)done()};d.querySelector('[data-x]').onclick=done;d.querySelector('[data-ok]').onclick=send}
 /* ---------- dreams */
 function runRow(r,compact){return `<div class="run" data-run="${r.at}"><div><div class="when">${fmt(r.at)}</div><div class="small dim">${r.memories_total} memories after${r.llm_used?' · LLM':''}</div></div>
  <div class="stats"><span><b>${r.observations_processed}</b> observations</span><span><b style="color:var(--ok)">+${r.new.length}</b> new</span><span><b>${r.merged.length}</b> merged</span><span><b style="color:${r.contradictions.length?'var(--bad)':'var(--fg)'}">${r.contradictions.length}</b> contradictions</span><span><b style="color:var(--warn)">${r.superseded.length}</b> superseded</span><span><b>${r.stale.length}</b> stale</span>${r.recurated?`<span><b style="color:var(--acc)">${r.recurated}</b> re-curated · ${r.recurated_dropped||0} retired</span>`:''}</div>${compact?'':'<span class="muted">›</span>'}</div>`}
@@ -1103,6 +1157,7 @@ fixed/wontfix reported again by a later audit → regressed ⚠️</pre>
   <table><tr><th>stage</th><th>how</th></tr>
   <tr><td>Name</td><td>A flare's id is the project's lifecycle stage, read from git when it is filed: <code>qa/*</code> <code>test/*</code> → QA, <code>uat/*</code> <code>staging</code> → UAT, <code>release/*</code> or an rc tag → RC, <code>hotfix/*</code> → HOTFIX, main once a version tag is reachable → PROD, anything else → DEV. Nothing to run: a new flare takes the current stage and keeps it for life. <code>cosmos flares stage</code> says which one applies and why. In <code>.cosmos/config.json</code>: <code>flares.stages</code> adds branch patterns, <code>flares.stage</code> pins a stage, <code>flares.project</code> adds a tag (<code>RET-QA-…</code>), <code>flares.prefix</code> pins one prefix for everything (explicit outranks inferred).</td></tr>
   <tr><td>Report</td><td>An audit session writes <code>qa-findings.json</code> → <code>cosmos flares import docs/qa-findings.json</code> (<code>--prefix PENTEST</code> names that one import). Same id = update, never a duplicate — also after the stage changed: a finding already filed under an earlier prefix keeps it. No file yet? cosmos asks before creating an empty one (<code>--yes</code> skips the question). Or type <code>flare: …</code> in a session.</td></tr>
+  <tr><td>Record by hand</td><td>Bugs a person found, alone or with a teammate: <b>＋ Record bugs</b> on the Flares page (one per line, <code>high: Login fails on Safari @ web/login.js:42</code>, rows pasted from a sheet, or a file), <code>cosmos flares add "…" [--severity --at --what --impact --fix --area]</code>, or <code>cosmos flares add --from bugs.csv|.xlsx|.txt|.json|-</code>. Columns are read by name (title/bug/summary, severity/priority, location/where, what, impact, fix, area, status, id). The same title or id updates its flare; an exported sheet edited and read back moves statuses (<code>done</code> → fixed, <code>in progress</code> → claimed, <code>reopen</code> reopens), and an old export's <code>open</code> reopens nothing.</td></tr>
   <tr><td>Triage</td><td><b>Flares</b> board, kanban by status. Click a card for What / Impact / Evidence / Fix. A status button asks in a dialog: Cancel, Escape or a click outside changes nothing; Withdraw, Won't fix and Needs a human need a reason.</td></tr>
   <tr><td>Fix</td><td><code>cosmos flares claim QA-12</code> → <code>pr-open</code> → <code>fix QA-12 "PR #<n>"</code> (records the commit; the status's own name works too: <code>claimed</code>, <code>fixed</code>, <code>pr_open</code>). Work in another worktree or branch: <code>--commit &lt;sha&gt; --branch &lt;name&gt;</code>. Filed something wrong: <code>cosmos flares edit QA-12 --title … --severity … --locations …</code> (the id stays). Or the buttons in the card. Or the QA fix loop, which writes <code>status</code>/<code>status_note</code>/<code>status_at</code> into the JSON — re-import is the sync point; an incoming <i>open</i> never downgrades a local <i>claimed</i>.</td></tr>
   <tr><td>Withdraw</td><td><code>cosmos flares withdraw QA-8 "shared reference data by design"</code>. Kept forever so nobody re-files it; hidden from retrieval.</td></tr>
@@ -1134,7 +1189,9 @@ cosmos obsidian --vault ~/Obsidian/Team  # link several repos' ledgers into one 
   <tr><td><code>cosmos verify ID [--resolve]</code> · <code>forget ID</code></td><td>mark verified (and supersede what it contradicts) · retire</td></tr>
   <tr><td><code>cosmos render</code></td><td>rewrite CLAUDE.md/AGENTS.md block and ledger index</td></tr>
   <tr><td><code>cosmos update</code> · <code>uninstall</code></td><td>refresh the vendored copy · remove hooks</td></tr>
-  <tr><td><code>cosmos flares import|list|show|claim|pr-open|needs-human|fix|wontfix|withdraw|reopen|set|edit|stage|export|report|slack|lint</code></td><td>QA findings lifecycle (section 10); <code>stage</code>: the prefix a new flare gets here and why</td></tr>
+  <tr><td><code>cosmos upgrade [--check]</code></td><td>bring the latest PyPI release into this repository (sha256-checked, import-tested, committed) and this machine's pip install, then run its repairs; runs by itself once a day from a session start</td></tr>
+  <tr><td><code>cosmos repair</code></td><td>rewrite what older versions wrote: hook commands (repository and user), slash commands, the Codex plugin listing, a Claude Desktop MCP entry pinned to one repository; each new version runs it once per machine</td></tr>
+  <tr><td><code>cosmos flares add|import|list|show|claim|pr-open|needs-human|fix|wontfix|withdraw|reopen|set|edit|stage|export|report|slack|lint</code></td><td>QA findings lifecycle (section 10); <code>stage</code>: the prefix a new flare gets here and why</td></tr>
   <tr><td><code>cosmos export [-o F.xlsx] [--only flares,facts,rules,lanes,endpoints,playbooks]</code></td><td>one Excel workbook (standard library only; header bold, frozen, filtered; text never runs as a formula) · the <b>⬇ Excel</b> button in this console downloads the same, the Flares page just the flares · <code>cosmos flares export --format xlsx</code></td></tr>
   <tr><td><code>cosmos playbooks [list|add &lt;file|qa&gt;]</code></td><td>the team's long-form prompts (a master QA protocol, runbooks) found in the repo, each a slash command for every agent; <code>/qa</code> follows the QA one · bring one in from another project, or start from the generic QA playbook</td></tr>
   <tr><td><code>cosmos eval</code></td><td>measure retrieval now: before-edit hit rate and recall@5 (dreams do it after each change)</td></tr>
@@ -1147,7 +1204,7 @@ cosmos obsidian --vault ~/Obsidian/Team  # link several repos' ledgers into one 
   <p class="small dim">Teammates without an install: prefix with <code>.cosmos/cosmosw</code>, e.g. <code>.cosmos/cosmosw status</code>. <code>ModuleNotFoundError: No module named 'cosmos'</code> means the first <code>cosmos</code> on PATH belongs to another Python: <code>python3 .cosmos/cosmosw doctor</code> names it and the fix. <code>COSMOS_NO_PUSH=1</code> stops every push cosmos could make.</p>`],
  ['config','13 · Configuration & layout',`
   <pre>${esc(JSON.stringify(S.config,null,2))}</pre>
-  <p><code>.cosmos/config.json</code> — committed. Notable keys: <code>capture.min_score</code> (extraction threshold), <code>privacy.author</code> (<i>git</i> | <i>anonymous</i>), <code>retrieval.session_start_max</code> / <code>prompt_max</code>, <code>dream.staleness_days</code> per category, <code>ignore</code> globs (facts anchored only on ignored paths are dropped), <code>lanes</code> (lane → path globs), <code>lane_aliases</code> (near-duplicate lane → canonical; <code>cosmos lanes --propose</code> suggests them), <code>flares.stages</code> / <code>flares.stage</code> / <code>flares.project</code> / <code>flares.prefix</code> (flare ids by lifecycle stage), <code>playbooks.ignore</code> / <code>playbooks.paths</code>, <code>ui.background</code> (an image or video on this machine behind the console's glass panels, instead of the drawn storm sky; served only to this console, never committed or published).</p>
+  <p><code>.cosmos/config.json</code> — committed. Notable keys: <code>capture.min_score</code> (extraction threshold), <code>privacy.author</code> (<i>git</i> | <i>anonymous</i>), <code>retrieval.session_start_max</code> / <code>prompt_max</code> / <code>session_start_chars</code> (briefing budget, 9,000: Claude Code shows the model only a 2,000-character preview of hook text over 10,000), <code>ui.notices</code> (the one line Claude Code shows when cosmos recalls something; default on), <code>update.auto</code> / <code>update.pip</code> (daily release check and upgrade; default on), <code>codex.listing</code> (the repository's Codex plugin listing; default on), <code>dream.staleness_days</code> per category, <code>ignore</code> globs (facts anchored only on ignored paths are dropped), <code>lanes</code> (lane → path globs), <code>lane_aliases</code> (near-duplicate lane → canonical; <code>cosmos lanes --propose</code> suggests them), <code>flares.stages</code> / <code>flares.stage</code> / <code>flares.project</code> / <code>flares.prefix</code> (flare ids by lifecycle stage), <code>playbooks.ignore</code> / <code>playbooks.paths</code>, <code>ui.background</code> (an image or video on this machine behind the console's glass panels, instead of the drawn storm sky; served only to this console, never committed or published).</p>
   <pre>.cosmos/
   config.json          committed
   cosmosw            wrapper (committed) · vendor/ vendored copy
@@ -1165,8 +1222,10 @@ cosmos obsidian --vault ~/Obsidian/Team  # link several repos' ledgers into one 
   <tr><td><b>Dreams</b> — the model reads the marked session ranges in context, curates, reconciles, verifies doubtful facts against today's code</td><td>25 observations waiting, hourly while a backlog exists, or 6h since the last</td><td><code>.cosmos/ledger/</code>, committed to your branch</td></tr>
   <tr><td><b>Freshness</b> — a fact naming an identifier that left the code goes to Verdicts; evidence-based doubts clear themselves when the evidence returns; never injected while doubtful</td><td>each dream</td><td>Verdicts</td></tr>
   <tr><td><b>Gate</b> — proportional: a change under 400 characters in one file is held only for a <code>file:line</code> citation and open flares; larger changes also for tests and for recording what was learned; 5+ files or 4,000+ characters also for a dead-code scan (vulture, knip)</td><td>when an editing turn ends</td><td>the turn continues once</td></tr>
+  <tr><td><b>Recall you can see</b> — one line in Claude Code each time cosmos puts something in front of the agent: <code>cosm◎s · loaded the Charter, 10 facts and rules</code> · <code>cosm◎s · recalled 3: …</code> · <code>cosm◎s · 1 open flare and 2 notes on &lt;file&gt;</code></td><td>session start, each prompt that brings facts, each edit that does</td><td>the conversation (the agent gets the facts themselves; <code>ui.notices: false</code> turns the line off)</td></tr>
   <tr><td><b>Recall before an edit</b> — open flares and explicit rules on the file (or a folder that contains it), then the facts that match the code being changed</td><td>each fact once per session</td><td>the agent's context (≈30 tokens per fact; full note via <code>cosmos_why</code>)</td></tr>
   <tr><td><b>Recall, measured</b> — before an edit: is the fact about the code being changed shown; recall@5 for questions and file lookups; a fall of 5 points is named</td><td>each dream that changed the memory · <code>cosmos eval</code></td><td>Dreams page · <code>cosmos doctor</code></td></tr>
+  <tr><td><b>Updates</b> — the latest release (sha256-checked against PyPI, import-tested) replaces <code>.cosmos/vendor</code> and is committed, so teammates without a pip install run it after <code>git pull</code>; the pip install is upgraded when pip allows; then the version's repairs run (hooks, slash commands, the Codex plugin listing, a pinned Desktop MCP entry, renamed with a backup)</td><td>a session start, at most once a day per machine; repairs once per version per machine</td><td><code>.cosmos/vendor</code>, a cosmos commit · <code>update.auto: false</code> turns it off</td></tr>
   <tr><td><b>Watcher</b> — follows Claude Code, Cowork, Codex and Gemini session files for every worktree (Cowork's sandbox paths mapped back, other projects left out); live view; restarts itself when cosmos is updated; exits after two idle hours</td><td>started by init, by session starts and by the console</td><td>Activity · Live now</td></tr>
   <tr><td><b>Open Knowledge Format</b> — every note is an OKF v0.2 concept (type, provenance, trust, freshness, links); lanes and Atlas services are concept pages that link facts, flares, horizon notes and people, so the product graph is a folder any OKF tool or graph viewer can read. A lane with nothing active loses its page; a lane that is no longer a clean name is inferred again</td><td>each dream</td><td><code>ledger/index.md</code> · <code>ledger/lanes/</code> · <code>ledger/atlas/services/</code></td></tr>
   <tr><td><b>Ledger in your branch</b> — <code>.cosmos/</code> is committed in the branch where init ran; cosmos commits it to the current branch every 10 minutes and after each dream (only <code>.cosmos/</code>, amended while unpushed, never during a merge or rebase); append-only files merge by union</td><td>watcher · dreams</td><td>goes out when you push the branch</td></tr>

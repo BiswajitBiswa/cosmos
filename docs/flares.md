@@ -35,6 +35,28 @@ The JSON a Claude audit session already produces:
   "sections": [["What", "…"], ["Impact", "…"], ["Fix", "…"]]}]
 ```
 
+## Bugs found by hand
+
+A bug you or a teammate found by hand, with no audit session behind it, is recorded the same way. There are three entry points, and every one gives each bug the current prefix:
+
+- **Console:** **＋ Record bugs** on the Flares page. Type or paste one bug per line, or choose a file.
+- **Command line:** `cosmos flares add "high: Login fails on Safari @ web/login.js:42" --fix "…"`.
+- **A list:** `cosmos flares add --from bugs.txt` (also `.csv`, `.tsv`, `.xlsx`, `.json`, or `-` for stdin).
+
+| input | how it is read |
+|---|---|
+| a line | An optional leading severity (`critical` `high` `medium` `low` `note`, or `blocker` `major` `minor` `P0`–`P3`), the title, then an optional ` @ path:line`. Lines under 8 characters and `#` comments are skipped. |
+| rows pasted from a sheet | Tab-separated. With a header row, the columns are found by name; without one, they are taken as title, severity, location, what, impact, fix, area. |
+| `.csv` / `.tsv` / `.xlsx` | The header row is read by name: title (or bug, summary, issue), severity (or priority), location (or where, file), what (or description, steps), impact, fix, area (or lane, module), status, id. An `.xlsx` is read with the standard library, first sheet only. |
+
+**Updates instead of duplicates:**
+
+- The same title recorded again updates that flare.
+- A row whose `id` matches a flare updates it, so `cosmos flares export -o flares.xlsx` can be edited and read back.
+- A status in the sheet moves the flare. Common words are understood: `done` and `resolved` mean fixed, `in progress` means claimed, `won't fix` means wontfix, `not a bug` means withdrawn.
+- An old export that still says `open` reopens nothing. Write `reopen` to reopen a closed flare.
+- A list that names no severity keeps the one the flare already has.
+
 ## Ids and the prefix
 
 A flare's id is `<PREFIX>-<raw id>`, and the prefix is where the project is in its life when the flare is filed, read
@@ -68,6 +90,8 @@ question).
 ## Commands
 ```bash
 cosmos flares import docs/qa-findings.json --source qa-flares.md
+cosmos flares add "high: Login fails on Safari @ web/login.js:42" --what "…" --fix "…"   # one bug found by hand
+cosmos flares add --from bugs.csv                                    # a list: .txt .md .csv .tsv .xlsx .json, or - for stdin
 cosmos flares list [--status open|fixed|withdrawn|wontfix|regressed] [--severity critical] [--json]
 cosmos flares show QA-11
 cosmos flares fix QA-12 "org_id__eq → org_id, PR #<n>"      # records HEAD as fixed_commit

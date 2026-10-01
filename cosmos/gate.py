@@ -53,6 +53,8 @@ def evaluate(cfg: Config, event: Dict[str, Any]) -> Dict[str, Any]:
     for t in turn:
         for f in t.files:
             rel = relativize(f, root)
+            if rel.startswith(("/", "../", "external/")):
+                continue                               # another repository edited in the same session: not this Gate's
             if _matches(rel, gc.get("skip_globs", [])) or not _matches(rel, gc.get("code_globs", ["**/*"])):
                 continue
             if rel not in edited:

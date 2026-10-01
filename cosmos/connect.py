@@ -17,6 +17,25 @@ from .config import Config
 MCP_CMD = ["python3", ".cosmos/cosmosw", "mcp"]
 
 
+DESKTOP_CONFIG = Path.home() / "Library" / "Application Support" / "Claude" / "claude_desktop_config.json"
+
+
+def desktop_pins(root: Path, config: Path = None) -> List[str]:
+    """A Claude Desktop MCP entry named `cosmos` that serves another repository: in every Desktop session it takes the
+    name of the project's own server, so cosmos_remember / cosmos_flare land in that other repository's ledger."""
+    p = config or DESKTOP_CONFIG
+    try:
+        servers = json.loads(p.read_text()).get("mcpServers", {}) if p.exists() else {}
+    except (OSError, ValueError):
+        return []
+    entry = servers.get("cosmos") or {}
+    target = next((a for a in entry.get("args", []) if a.endswith("cosmosw")), "")
+    if not target or Path(target).resolve().parent.parent == root.resolve():
+        return []
+    return [f"Claude Desktop's MCP entry `cosmos` serves {Path(target).parent.parent}: in Desktop sessions here, cosmos tools write there. "
+            f"Rename it in {p} (e.g. cosmos-{Path(target).parent.parent.name})"]
+
+
 def mcp_server_entry(root: Path, absolute: bool = False) -> Dict:
     args = [str(root / ".cosmos" / "cosmosw"), "mcp"] if absolute else [".cosmos/cosmosw", "mcp"]
     return {"command": "python3", "args": args}

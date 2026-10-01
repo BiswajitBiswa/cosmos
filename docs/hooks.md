@@ -35,6 +35,24 @@ entry is what makes every worktree and every repository covered, including sessi
   registered for the model to read at the next dream. The final message of an editing turn becomes the branch's handoff.
 - **PreCompact / SessionEnd** → capture, as for Stop.
 
+## What the person sees
+
+Hook context reaches the model, not the screen. So when SessionStart, UserPromptSubmit or PreToolUse adds something,
+cosmos also sends Claude Code one line to show (`systemMessage`), and the context goes in
+`hookSpecificOutput.additionalContext`:
+
+- `cosm◎s · loaded the Charter, 10 facts and rules, the last handoff` at the start of a session;
+- `cosm◎s · recalled 3: <first words of each> · +2 more` when a prompt brings facts;
+- `cosm◎s · 1 open flare and 2 notes on src/payments.py` before an edit.
+
+`"ui": {"notices": false}` in `.cosmos/config.json` turns the line off. Codex gets plain text, as before.
+
+**The briefing has a size budget.** Claude Code caps each piece of hook text at 10,000 characters. Above that it saves the
+text to a file and shows the model only a 2,000-character preview, without asking it to read the rest. Each explicit
+rule in the briefing is therefore one line (220 characters, then its id; `cosmos_why <id>` has the whole rule). The
+whole briefing stays under `retrieval.session_start_chars` (9,000), cut from the end if needed. Measured on
+2026-10-01: retent's briefing was 13,326 characters (its 12 rules alone 8,034) and is now 8,157; this repository's is 7,465.
+
 ## Guarantees
 
 Every hook exits 0 on any error (the Gate's deliberate 2 is the only other code); errors go to
