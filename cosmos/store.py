@@ -218,6 +218,44 @@ class Memory:
         return mem
 
 
+def _ledger_cache(ledger_dir: Path) -> Optional[Path]:
+    """Machine-local, never in the repository: ~/.cache/cosmos/<repository>-<hash>.ledger. COSMOS_LEDGER_CACHE=0 turns it off."""
+    import os
+    if os.environ.get("COSMOS_LEDGER_CACHE") == "0":
+        return None
+    base = Path(os.environ.get("COSMOS_CACHE_DIR") or Path(os.environ.get("XDG_CACHE_HOME") or Path.home() / ".cache") / "cosmos")
+    key = hashlib.sha1(str(ledger_dir.resolve()).encode()).hexdigest()[:12]
+    return base / f"{ledger_dir.parent.parent.name}-{key}.ledger"
+
+
+def _read_cache(path: Optional[Path]) -> Dict[str, tuple]:
+    import pickle
+    if path is None or not path.exists():
+        return {}
+    try:
+        with path.open("rb") as fh:
+            data = pickle.load(fh)                    # written by this machine's cosmos only (see _ledger_cache)
+        return data if isinstance(data, dict) and data.get("_v") == CACHE_VERSION and data.pop("_v") else {}
+    except Exception:
+        return {}
+
+
+def _write_cache(path: Path, entries: Dict[str, tuple]) -> None:
+    import os
+    import pickle
+    try:
+        path.parent.mkdir(parents=True, exist_ok=True)
+        tmp = path.with_suffix(f".{os.getpid()}.tmp")
+        with tmp.open("wb") as fh:
+            pickle.dump({**entries, "_v": CACHE_VERSION}, fh, protocol=pickle.HIGHEST_PROTOCOL)
+        tmp.replace(path)
+    except OSError:
+        pass                                           # a cache that cannot be written only costs time
+
+
+CACHE_VERSION = 1
+
+
 def _remember_base(mem: "Memory", text: str) -> None:
     """What the note was when this process read or wrote it: the base of a three-way save (Ledger.save)."""
     mem._base = asdict(mem)
@@ -253,19 +291,37 @@ class Ledger:
         return self.dir / mem.category / f"{mem.id}-{slugify(mem.text)}.md"
 
     def load(self) -> Dict[str, Memory]:
+        """Every note, parsed. Parsing thousands of markdown notes is most of a hook's time (702 ms of ~750 for 2,925
+        notes, measured 2026-10-01), so the parsed notes are kept per machine and only a note whose file changed
+        (modification time or size) is read again."""
         out: Dict[str, Memory] = {}
         if not self.dir.exists():
             return out
+        cache_file = _ledger_cache(self.dir)
+        cached = _read_cache(cache_file)
+        fresh: Dict[str, tuple] = {}
         for p in sorted(self.dir.rglob("mem_*.md")):
             try:
-                text = p.read_text()
-                mem = Memory.from_markdown(text)
-            except Exception:
-                mem = None
+                st = p.stat()
+            except OSError:
+                continue
+            key, hit = (st.st_mtime_ns, st.st_size), cached.get(str(p))
+            if hit and hit[0] == key:
+                mem = hit[1]
+            else:
+                try:
+                    text = p.read_text()
+                    mem = Memory.from_markdown(text)
+                except Exception:
+                    mem = None
+                if mem:
+                    _remember_base(mem, text)
             if mem:
-                _remember_base(mem, text)
+                fresh[str(p)] = (key, mem)
                 out[mem.id] = mem
-        return out
+        if cache_file and fresh.keys() != cached.keys() or any(fresh[k][0] != cached[k][0] for k in fresh if k in cached):
+            _write_cache(cache_file, fresh)
+        return out                                     # unpickled for this call: no other caller holds these objects
 
     def paths_by_id(self, mems: Optional[Iterable[Memory]] = None) -> Dict[str, str]:
         """Bundle-relative path of every note, for OKF links (e.g. /constraint/mem_ab12-slug.md)."""

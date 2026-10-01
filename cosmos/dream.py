@@ -583,6 +583,13 @@ def dream(cfg: Config, use_llm: Optional[bool] = None, verbose: bool = False, re
     except Exception:
         pass
     try:
+        from .pulse import due, run as pulse_run, save as pulse_save
+        if due(cfg):
+            pulse_save(cfg, pulse_run(cfg, with_bench=True))   # the day's measured metrics, committed with this dream
+    except Exception as e:
+        with (cfg.paths.state / "dream.log").open("a") as log:
+            log.write(f"pulse not saved: {e}\n")
+    try:
         from .commands import refresh
         refresh(cfg)                        # a playbook added, renamed or removed since: its commands follow, and go out with this commit
     except OSError as e:

@@ -96,6 +96,18 @@ Which copy runs: `.cosmos/cosmosw` takes the newer of the repository's copy and 
 string the repository's copy wins, because a pip install of that version can be older code (on 2026-10-01 one hid the
 parent-folder support from every retent session for eight hours); only an editable checkout of cosmos itself wins a tie.
 
+## Speed, and how it is measured
+
+Each hook is a fresh Python process, so its time is what a person waits for on every prompt. Reading the ledger was
+most of it: parsing 2,925 notes took 702 ms of a ~750 ms hook in retent. The parsed notes are now kept per machine
+(`~/.cache/cosmos/`, never in the repository; `COSMOS_LEDGER_CACHE=0` turns it off) and only a note whose file
+changed is read again: a warm load takes 74 ms. `cosmos pulse --bench` times the real hook command in a fresh process
+(median of five): on retent 2026-10-01, SessionStart 325 ms, UserPromptSubmit 398 ms, PreToolUse 285 ms (`.cosmos/ledger/metrics/2026-10-01.json`), from
+700-790 ms before.
+
+`cosmos pulse` also checks the failures that are otherwise silent: a briefing over the cap, the wrong copy of cosmos
+running, hooks quiet while a session is active, dreams in a loop, flares naming files the repository lacks.
+
 ## Guarantees
 
 Every hook exits 0 on any error (the Gate's deliberate 2 is the only other code); errors go to
