@@ -85,6 +85,7 @@ AGENT_DIRS: Dict[str, Tuple[str, str]] = {
     "cursor": (".cursor/commands", "{name}.md"),
     "copilot": (".github/prompts", "{name}.prompt.md"),
     "windsurf": (".windsurf/workflows", "{name}.md"),
+    "codex": (".agents/skills", "{name}/SKILL.md"),          # Codex's project skills (it reads no project commands)
 }
 ARGS = {"claude": "$ARGUMENTS", "codex": "$ARGUMENTS", "gemini": "{{args}}"}   # others pass the text after the command as context
 PLAIN_ARGS = "(the text the person typed after the command)"
@@ -118,6 +119,8 @@ def render(agent: str, name: str, desc: str, hint: str, body: str, playbook: boo
         return f'# {note}\ndescription = {_toml_str(desc)}\nprompt = """\n{_toml_body(text)}"""\n'
     if agent == "cursor":
         return f"<!-- {note} -->\n# /{name}: {desc}\n\n{text}"
+    if agent == "codex-skill":
+        return "---\n" + f"name: {name}\ndescription: {_yaml_str(desc)}\n---\n<!-- {note} -->\n{text}"
     front = [f"description: {_yaml_str(desc)}"]
     if hint and agent in ("claude", "codex"):
         front.append(f"argument-hint: {_yaml_str(hint)}")
@@ -173,7 +176,7 @@ def write_commands(root: Path, agents: List[str], cfg: Optional["Config"] = None
         folder, pattern = AGENT_DIRS[agent]
         for name, desc, hint, body in entries:
             p = root / folder / pattern.format(name=name)
-            r = _write(p, render(agent, name, desc, hint, body, playbook=name not in fixed))
+            r = _write(p, render("codex-skill" if agent == "codex" else agent, name, desc, hint, body, playbook=name not in fixed))
             if r:
                 written.append(str(p.relative_to(root)))
             elif r is None:
@@ -185,20 +188,24 @@ def write_commands(root: Path, agents: List[str], cfg: Optional["Config"] = None
 def _remove_gone(folder: Path, pattern: str, current: set, root: Path) -> List[str]:
     suffix = pattern.replace("{name}", "")
     gone = []
+    nested = suffix.startswith("/")                    # one folder per command: <name>/SKILL.md
     for p in sorted(folder.glob("*" + suffix)) if folder.exists() else []:
-        name = p.name[: -len(suffix)]
+        name = p.parent.name if nested else p.name[: -len(suffix)]
         try:
             if name not in current and MARKER in p.read_text()[:400]:      # a playbook gone, or a command renamed
                 p.unlink()
+                if nested and not any(p.parent.iterdir()):
+                    p.parent.rmdir()
                 gone.append(str(p.relative_to(root)))
         except OSError:
             continue
     return gone
 
 
-def refresh(cfg: "Config") -> List[str]:
-    """Keep playbook commands in step with the files, for the agents this repository already has commands for."""
-    agents = [a for a, (folder, pattern) in AGENT_DIRS.items() if (cfg.paths.root / folder / pattern.format(name="recall")).exists()]
+def refresh(cfg: "Config", add: Tuple[str, ...] = ()) -> List[str]:
+    """Keep playbook commands in step with the files, for the agents this repository already has commands for
+    (and `add`: agents a repair brings in)."""
+    agents = [a for a, (folder, pattern) in AGENT_DIRS.items() if a in add or (cfg.paths.root / folder / pattern.format(name="recall")).exists()]
     return write_commands(cfg.paths.root, agents, cfg)[0] if agents else []
 
 

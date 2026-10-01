@@ -75,6 +75,9 @@ Python must be installed (cosmos is Python; nothing is installed with pip). On W
 hook falls back to it and points the plugin's MCP server at that interpreter; restart Codex once after the first
 thread for the tools to start.
 
+Codex shows the cosmos mark (`plugin/assets/icon.png`, gold brand colour) on the plugin and its chip. Claude Code has no icon
+field for plugins, commands or skills, and does not draw MCP server icons yet, so there it stays a letter or globe.
+
 ## What it does not do
 
 - **No Gate and no pre-edit reminders in Cowork.** Both need hooks. The skill asks the agent to follow the same steps.

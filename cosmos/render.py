@@ -36,8 +36,24 @@ def managed_block(mems: Dict[str, Memory], k: int, cfg: Optional[Config] = None)
     if cfg is not None and (cfg.paths.root / ".claude" / "commands" / "recall.md").exists():   # only once `cosmos connect` wrote them
         lines.append("Slash commands (Claude Code, Gemini CLI, Cursor, Copilot, Windsurf; Codex: /prompts:cosmos-…): /cosmos /recall /remember /flare /flares /qa "
                      "/reconcile /lanes /horizon /handoff /atlas. Asked for one where it is not installed, do what `.claude/commands/<name>.md` says.")
+    pbs = _playbooks(cfg)
+    if pbs:
+        lines.append("Playbooks, the team's long-form prompts (asked for one by name, or for the work it covers, read the file top to bottom "
+                     "and follow it; it outranks your habits, the Charter outranks it): "
+                     + " · ".join(f"`{p['name']}` {p['title'].split(' (')[0][:60].strip()} (`{p['path']}`)" for p in pbs[:8]) + (f" · +{len(pbs) - 8} more: `cosmos playbooks`" if len(pbs) > 8 else ""))
     lines.append(END)
     return "\n".join(lines)
+
+
+def _playbooks(cfg: Optional[Config]) -> List[Dict[str, str]]:
+    """Every agent reads the instruction files, so the playbooks are named there: Codex gets no project commands."""
+    if cfg is None:
+        return []
+    try:
+        from .playbooks import detect
+        return detect(cfg)
+    except OSError:
+        return []
 
 
 def upsert_block(path: Path, block: str) -> bool:
@@ -235,6 +251,8 @@ def render_all(cfg: Config, mems: Dict[str, Memory]) -> List[str]:
     targets = {"CLAUDE.md": cfg.get("render.claude_md", True), "AGENTS.md": cfg.get("render.agents_md", True)}
     for extra in cfg.get("render.targets", ["GEMINI.md"]) or []:
         targets[extra] = True
+    if (cfg.paths.root / ".idx" / "airules.md").exists():
+        targets[".idx/airules.md"] = True              # Firebase Studio (IDX) reads it before GEMINI.md: the team's own file gets the block
     for rel, on in targets.items():
         if not on:
             continue

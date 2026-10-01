@@ -13,7 +13,8 @@ import sys
 import time
 
 LAST = os.path.join(os.path.expanduser("~"), ".config", "cosmos", "codex-last-repo.json")
-FRESH = 12 * 3600                                     # a record older than this is not the current thread's
+FRESH = 12 * 3600
+ICON = "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA2NCA2NCI+PHJlY3Qgd2lkdGg9IjY0IiBoZWlnaHQ9IjY0IiByeD0iMTIiIGZpbGw9IiMwNTA1MDYiLz48bGluZSB4MT0iMzIiIHkxPSI2IiB4Mj0iMzIiIHkyPSI1OCIgc3Ryb2tlPSIjRUNFQUU0IiBzdHJva2Utd2lkdGg9IjEuNSIvPjxjaXJjbGUgY3g9IjMyIiBjeT0iMzIiIHI9IjE1IiBmaWxsPSIjMDUwNTA2IiBzdHJva2U9IiNFQ0VBRTQiIHN0cm9rZS13aWR0aD0iMS42Ii8+PGNpcmNsZSBjeD0iMzIiIGN5PSIzMiIgcj0iOSIgZmlsbD0ibm9uZSIgc3Ryb2tlPSIjRThDRkEwIiBzdHJva2Utd2lkdGg9IjEuNiIvPjwvc3ZnPgo="                                     # a record older than this is not the current thread's
 NOTE = ("No repository with cosmos (.cosmos/cosmosw) is open in this Codex thread. Open the repository's folder "
         "(or one that holds it) as the thread's project, then ask again.")
 
@@ -97,7 +98,7 @@ def main():
         if method == "initialize":
             init = {k: v for k, v in req.items() if k != "id"}
             reply(rid, {"protocolVersion": (req.get("params") or {}).get("protocolVersion", "2025-06-18"),
-                        "capabilities": {"tools": {}}, "serverInfo": {"name": "cosmos", "version": "0.2.1"}})
+                        "capabilities": {"tools": {}}, "serverInfo": {"name": "cosmos", "title": "cosm◎s", "version": "0.2.2", "icons": [{"src": ICON, "mimeType": "image/svg+xml", "sizes": ["any"]}]}})
         elif rid is None:
             continue                                   # notifications: the repository's server got its own at start
         elif method in ("tools/list", "tools/call"):

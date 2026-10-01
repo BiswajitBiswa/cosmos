@@ -1,25 +1,55 @@
 {
   "name": "cosmos",
-  "version": "0.2.1",
+  "version": "0.2.2",
   "description": "Team memory, rules and architecture for AI coding agents, kept in the repository: the Charter, the Ledger of team facts, open flares, the Atlas and handoffs, for the repository a Codex thread is in.",
-  "author": { "name": "cosmos" },
+  "author": {
+    "name": "cosmos"
+  },
   "homepage": "https://biswajitbiswa.github.io/cosmos/",
   "repository": "https://github.com/BiswajitBiswa/cosmos",
   "license": "MIT",
-  "keywords": ["memory", "team", "rules", "architecture", "qa"],
+  "keywords": [
+    "memory",
+    "team",
+    "rules",
+    "architecture",
+    "qa"
+  ],
   "skills": "./skills/",
   "commands": "./commands/",
   "mcpServers": {
     "cosmos": {
       "command": "python3",
-      "args": ["bin/cosmos-codex-mcp"],
+      "args": [
+        "bin/cosmos-codex-mcp"
+      ],
       "cwd": "."
     }
   },
   "hooks": {
     "hooks": {
-      "SessionStart": [{ "hooks": [{ "type": "command", "command": "python3 \"${PLUGIN_ROOT}/bin/cosmos-codex-hook\" || python \"${PLUGIN_ROOT}/bin/cosmos-codex-hook\"", "timeout": 30 }] }],
-      "UserPromptSubmit": [{ "hooks": [{ "type": "command", "command": "python3 \"${PLUGIN_ROOT}/bin/cosmos-codex-hook\" || python \"${PLUGIN_ROOT}/bin/cosmos-codex-hook\"", "timeout": 30 }] }]
+      "SessionStart": [
+        {
+          "hooks": [
+            {
+              "type": "command",
+              "command": "python3 \"${PLUGIN_ROOT}/bin/cosmos-codex-hook\" || python \"${PLUGIN_ROOT}/bin/cosmos-codex-hook\"",
+              "timeout": 30
+            }
+          ]
+        }
+      ],
+      "UserPromptSubmit": [
+        {
+          "hooks": [
+            {
+              "type": "command",
+              "command": "python3 \"${PLUGIN_ROOT}/bin/cosmos-codex-hook\" || python \"${PLUGIN_ROOT}/bin/cosmos-codex-hook\"",
+              "timeout": 30
+            }
+          ]
+        }
+      ]
     }
   },
   "interface": {
@@ -28,8 +58,17 @@
     "longDescription": "Connects each Codex thread to the cosmos of its repository (.cosmos/): the Charter the team agreed, what the team already knows about the files being changed, open flares, the Atlas and the last handoff. It records decisions and bugs back, and captures sessions so the next teammate and the next agent start where this one stopped.",
     "developerName": "cosmos",
     "category": "Coding",
-    "capabilities": ["Read", "Write"],
+    "capabilities": [
+      "Read",
+      "Write"
+    ],
     "websiteURL": "https://biswajitbiswa.github.io/cosmos/",
-    "defaultPrompt": ["What does the team already know about the files I'm about to change?", "flare: "]
+    "defaultPrompt": [
+      "What does the team already know about the files I'm about to change?",
+      "flare: "
+    ],
+    "composerIcon": "./assets/icon.png",
+    "logo": "./assets/icon.png",
+    "brandColor": "#E8CFA0"
   }
 }

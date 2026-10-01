@@ -182,6 +182,8 @@ def should_auto_dream(cfg: Config, pending: int, now: Optional[float] = None) ->
         return True
     d = cfg.paths.state / "dreams"
     last = max((p.stat().st_mtime for p in d.glob("*.json")), default=0.0) if d.exists() else 0.0
+    started = cfg.paths.state / "dream.started"         # a dream that changed nothing leaves no record: count the attempt too
+    last = max(last, started.stat().st_mtime if started.exists() else 0.0)
     age = (now or time.time()) - last
     if _reader.windows_waiting(State(cfg.paths)) and age >= float(cfg.get("dream.backlog_hours", 1)) * 3600:
         return True      # the model still has session ranges to read: keep draining, one run an hour
@@ -199,6 +201,7 @@ def auto_dream(cfg: Config) -> bool:
             return False
         cfg.paths.state.mkdir(parents=True, exist_ok=True)
         lock.write_text(str(os.getpid()))
+        (cfg.paths.state / "dream.started").write_text(str(time.time()))
         wrapper = cfg.paths.cosmos / "cosmosw"
         cmd = [sys.executable, str(wrapper), "dream", "--auto"] if wrapper.exists() else [sys.executable, "-m", "cosmos", "dream", "--auto"]
         log = (cfg.paths.state / "dream.log").open("a")

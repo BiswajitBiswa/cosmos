@@ -150,6 +150,15 @@ git clone <repo> && claude
 | **you get** | Flares show up when someone touches the affected file. Slack cards post once, with reactions to claim or close. A report can be regenerated any time. |
 | **command** | `cosmos flares add\|import\|list\|fix\|withdraw\|slack\|report` |
 
+### <img src="https://raw.githubusercontent.com/BiswajitBiswa/cosmos/main/docs/assets/icon-charter.svg" width="28" alt=""> Playbooks · the team's own prompts, in every agent
+
+| | |
+|---|---|
+| **what** | A team's long-form prompt (a master QA protocol, a release runbook, an SEO playbook) becomes a slash command for every agent. The command reads the file and follows it, so editing the file changes what every agent does. |
+| **you do** | Keep the file in the repository (named *protocol* / *playbook* / *runbook* / *master prompt*, or anywhere in `.cosmos/playbooks/`), or bring one in with `cosmos playbooks add <file>`. |
+| **you get** | `/<name>` in Claude Code (also in its skill list), Gemini CLI, Cursor, Copilot and Windsurf; Codex as a project skill (`.agents/skills/`); every other agent finds it listed in `AGENTS.md`. `/qa` follows the QA one. |
+| **command** | `cosmos playbooks [add <file\|qa>]` · [guide](https://github.com/BiswajitBiswa/cosmos/blob/main/docs/playbooks.md) |
+
 ### <img src="https://raw.githubusercontent.com/BiswajitBiswa/cosmos/main/docs/assets/icon-dream.svg" width="28" alt=""> Dream & Verdicts · keeping it true
 
 | | |
@@ -190,7 +199,7 @@ git clone <repo> && claude
 </tr>
 </table>
 
-<p align="center"><sub>Claude Code · Cowork · Codex CLI · Codex Desktop · Gemini CLI · Antigravity · Cursor · GitHub Copilot · Cline · Windsurf · Obsidian</sub></p>
+<p align="center"><sub>Claude Code · Cowork · Codex CLI · Codex Desktop · Gemini CLI · Antigravity · Firebase Studio · Cursor · GitHub Copilot · Cline · Windsurf · Obsidian</sub></p>
 
 ### Cowork, and sessions that were already open
 
@@ -199,6 +208,8 @@ git clone <repo> && claude
 **You see what it recalled.** Each time cosmos puts something in front of the agent, Claude Code shows one line: `cosm◎s · loaded the Charter, 10 facts and rules` at the start, `cosm◎s · recalled 3: …` for a prompt, `cosm◎s · 1 open flare and 2 notes on <file>` before an edit. The briefing stays under Claude Code's 10,000-character hook limit, so the model reads all of it rather than a preview.
 
 **Sessions opened in a folder above the repository** (a workspace folder holding several projects) work too. The user-level hook hands each event to every repository one level down. Each one adds a single line saying where its team memory is, and the facts when a prompt names it. Its watcher captures only the turns that touched it. A repository's worktrees answer once, and the Gate ignores files that belong to a sibling repository.
+
+**Firebase Studio** (formerly Project IDX; no new workspaces since 2026-06-22, shut down 2027-03-22) reads `GEMINI.md` and `AGENTS.md`, which cosmos writes. In a workspace with `.idx/`, cosmos adds its MCP server to `.idx/mcp.json` and its block to the team's `.idx/airules.md`, which Gemini there reads first. **Icons:** Codex shows the cosmos mark on the plugin; Claude Code has no icon field for plugins, commands or skills.
 
 **A session in another project never writes here.** A global MCP entry (Claude Desktop's config) offers one repository's cosmos to every session. cosmos asks the client which folders the session works in, and in any other project its tools answer "not this project" and record nothing. Each write names the repository it went to.
 
@@ -307,6 +318,6 @@ The tools we looked at either wanted a hosted service or solved one slice. We wa
   state/              gitignored: pending observations, dream runs
 ```
 
-Guides: [plugin (Cowork, Claude Code, Codex)](https://github.com/BiswajitBiswa/cosmos/blob/main/docs/plugin.md) · [memory model](https://github.com/BiswajitBiswa/cosmos/blob/main/docs/memory-model.md) · [charter and gate](https://github.com/BiswajitBiswa/cosmos/blob/main/docs/charter-and-gate.md) · [lanes and horizon](https://github.com/BiswajitBiswa/cosmos/blob/main/docs/lanes-and-horizon.md) · [atlas](https://github.com/BiswajitBiswa/cosmos/blob/main/docs/atlas.md) · [audit and findings](https://github.com/BiswajitBiswa/cosmos/blob/main/docs/flares.md) · [hooks](https://github.com/BiswajitBiswa/cosmos/blob/main/docs/hooks.md) · [Obsidian](https://github.com/BiswajitBiswa/cosmos/blob/main/docs/obsidian.md) · [link an existing codebase](https://github.com/BiswajitBiswa/cosmos/blob/main/docs/link-existing-codebase.md)
+Guides: [playbooks](https://github.com/BiswajitBiswa/cosmos/blob/main/docs/playbooks.md) · [plugin (Cowork, Claude Code, Codex)](https://github.com/BiswajitBiswa/cosmos/blob/main/docs/plugin.md) · [memory model](https://github.com/BiswajitBiswa/cosmos/blob/main/docs/memory-model.md) · [charter and gate](https://github.com/BiswajitBiswa/cosmos/blob/main/docs/charter-and-gate.md) · [lanes and horizon](https://github.com/BiswajitBiswa/cosmos/blob/main/docs/lanes-and-horizon.md) · [atlas](https://github.com/BiswajitBiswa/cosmos/blob/main/docs/atlas.md) · [audit and findings](https://github.com/BiswajitBiswa/cosmos/blob/main/docs/flares.md) · [hooks](https://github.com/BiswajitBiswa/cosmos/blob/main/docs/hooks.md) · [Obsidian](https://github.com/BiswajitBiswa/cosmos/blob/main/docs/obsidian.md) · [link an existing codebase](https://github.com/BiswajitBiswa/cosmos/blob/main/docs/link-existing-codebase.md)
 
 <p align="center"><sub>cosmos · MIT licence · Python 3.9+, standard library only · <code>cosmos doctor</code> checks a setup · <code>cosmos ui</code> opens the control room</sub></p>
