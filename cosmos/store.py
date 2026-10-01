@@ -319,7 +319,8 @@ class Ledger:
             if mem:
                 fresh[str(p)] = (key, mem)
                 out[mem.id] = mem
-        if cache_file and fresh.keys() != cached.keys() or any(fresh[k][0] != cached[k][0] for k in fresh if k in cached):
+        changed = fresh.keys() != cached.keys() or any(fresh[k][0] != cached[k][0] for k in fresh if k in cached)
+        if cache_file and changed:
             _write_cache(cache_file, fresh)
         return out                                     # unpickled for this call: no other caller holds these objects
 
