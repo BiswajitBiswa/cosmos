@@ -6,7 +6,7 @@ status: "stable"
 generated: {"by": "human:Biswajit Tripathy", "at": "2026-09-29T00:00:00Z"}
 sources: [{"resource": "cosmos/ui.py", "title": "ui.py"}]
 stale_after: "2027-03-28T00:00:00Z"
-links: ["/lanes/cosmos.md", "/finding/mem_10ab2ec4-console-docs-said-horizon-notes-are-saved-in-cos.md", "/finding/mem_498078e0-atlas-page-4-of-8-deep-pass-diagrams-failed-unde.md", "/finding/mem_d4c37ea1-slack-cards-and-the-slack-report-told-people-to.md", "/finding/mem_fcf6d908-new-slash-commands-reintroduced-names-retired-in.md"]
+links: ["/lanes/cosmos.md", "/decision/mem_1ac630fe-commit-note-by-biswajit-tripathy-plugin-0-2-1-co.md", "/finding/mem_10ab2ec4-console-docs-said-horizon-notes-are-saved-in-cos.md", "/finding/mem_498078e0-atlas-page-4-of-8-deep-pass-diagrams-failed-unde.md", "/finding/mem_5a1661f5-journal-credited-commits-made-in-another-folder.md", "/finding/mem_d4c37ea1-slack-cards-and-the-slack-report-told-people-to.md"]
 id: "mem_e522e056"
 aliases: ["mem_e522e056"]
 category: "finding"
@@ -46,16 +46,18 @@ meta_source_doc: "session-2026-09-29"
 - Imported from session-2026-09-29 on 2026-09-29
 
 ## Related
+- [[mem_1ac630fe]]
 - [[mem_10ab2ec4]]
 - [[mem_498078e0]]
+- [[mem_5a1661f5]]
 - [[mem_d4c37ea1]]
-- [[mem_fcf6d908]]
 
 ## Links
 - lane: [cosmos](/lanes/cosmos.md)
+- related: [mem_1ac630fe](/decision/mem_1ac630fe-commit-note-by-biswajit-tripathy-plugin-0-2-1-co.md)
 - related: [mem_10ab2ec4](/finding/mem_10ab2ec4-console-docs-said-horizon-notes-are-saved-in-cos.md)
 - related: [mem_498078e0](/finding/mem_498078e0-atlas-page-4-of-8-deep-pass-diagrams-failed-unde.md)
+- related: [mem_5a1661f5](/finding/mem_5a1661f5-journal-credited-commits-made-in-another-folder.md)
 - related: [mem_d4c37ea1](/finding/mem_d4c37ea1-slack-cards-and-the-slack-report-told-people-to.md)
-- related: [mem_fcf6d908](/finding/mem_fcf6d908-new-slash-commands-reintroduced-names-retired-in.md)
 
 #finding #low #console

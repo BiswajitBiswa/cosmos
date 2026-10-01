@@ -6,7 +6,7 @@ status: "stable"
 generated: {"by": "human:Biswajit Tripathy", "at": "2026-09-29T00:00:00Z"}
 sources: [{"resource": "cosmos/store.py", "title": "store.py"}, {"resource": "cosmos/dream.py", "title": "dream.py"}]
 stale_after: "2027-03-28T00:00:00Z"
-links: ["/lanes/cosmos.md", "/finding/mem_f2ac4098-a-token-pasted-in-a-prompt-was-written-verbatim.md"]
+links: ["/lanes/cosmos.md", "/finding/mem_07187b11-mcp-entries-cosmos-writes-start-python3-which-do.md", "/finding/mem_cb4bccc1-retents-session-briefing-13-326-chars-exceeded-c.md", "/finding/mem_f2ac4098-a-token-pasted-in-a-prompt-was-written-verbatim.md"]
 id: "mem_ac19fa4c"
 aliases: ["mem_ac19fa4c"]
 category: "finding"
@@ -49,10 +49,14 @@ meta_source_doc: "qa-report-2026-09-29"
 - Imported from qa-report-2026-09-29 on 2026-09-29
 
 ## Related
+- [[mem_07187b11]]
+- [[mem_cb4bccc1]]
 - [[mem_f2ac4098]]
 
 ## Links
 - lane: [cosmos](/lanes/cosmos.md)
+- related: [mem_07187b11](/finding/mem_07187b11-mcp-entries-cosmos-writes-start-python3-which-do.md)
+- related: [mem_cb4bccc1](/finding/mem_cb4bccc1-retents-session-briefing-13-326-chars-exceeded-c.md)
 - related: [mem_f2ac4098](/finding/mem_f2ac4098-a-token-pasted-in-a-prompt-was-written-verbatim.md)
 
 #finding #high #ledger

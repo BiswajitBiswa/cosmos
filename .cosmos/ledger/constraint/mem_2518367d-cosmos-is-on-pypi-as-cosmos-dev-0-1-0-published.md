@@ -6,7 +6,7 @@ status: "stable"
 generated: {"by": "human:Biswajit Tripathy", "at": "2026-09-29T00:00:00Z"}
 sources: [{"resource": "README.md", "title": "README.md"}, {"resource": "pyproject.toml", "title": "pyproject.toml"}]
 stale_after: "2027-03-28T00:00:00Z"
-links: ["/constraint/mem_62468362-cosmos-dev-is-not-published-on-pypi-404-on-2026.md", "/constraint/mem_6381abbc-cosmos-is-stdlib-only-the-anthropic-sdk-is-an-op.md"]
+links: ["/constraint/mem_62468362-cosmos-dev-is-not-published-on-pypi-404-on-2026.md", "/constraint/mem_6381abbc-cosmos-is-stdlib-only-the-anthropic-sdk-is-an-op.md", "/decision/mem_1ac630fe-commit-note-by-biswajit-tripathy-plugin-0-2-1-co.md", "/decision/mem_5cfd6c9b-commit-note-by-biswajit-tripathy-autopilot-from.md"]
 id: "mem_2518367d"
 aliases: ["mem_2518367d"]
 category: "constraint"
@@ -36,7 +36,11 @@ valid_from: "2026-09-29"
 ## Related
 - [[mem_62468362]]
 - [[mem_6381abbc]]
+- [[mem_1ac630fe]]
+- [[mem_5cfd6c9b]]
 
 ## Links
 - related: [mem_62468362](/constraint/mem_62468362-cosmos-dev-is-not-published-on-pypi-404-on-2026.md)
 - related: [mem_6381abbc](/constraint/mem_6381abbc-cosmos-is-stdlib-only-the-anthropic-sdk-is-an-op.md)
+- related: [mem_1ac630fe](/decision/mem_1ac630fe-commit-note-by-biswajit-tripathy-plugin-0-2-1-co.md)
+- related: [mem_5cfd6c9b](/decision/mem_5cfd6c9b-commit-note-by-biswajit-tripathy-autopilot-from.md)
