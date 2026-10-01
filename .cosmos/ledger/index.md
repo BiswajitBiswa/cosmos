@@ -13,7 +13,7 @@ okf_version: "0.2"
 - [Horizon](horizon/) — features mapped before coding
 
 - [architecture/](architecture/) — 3 active architecture notes
-- [constraint/](constraint/) — 4 active constraint notes
-- [decision/](decision/) — 2 active decision notes
-- [finding/](finding/) — 12 active finding notes
+- [constraint/](constraint/) — 6 active constraint notes
+- [decision/](decision/) — 7 active decision notes
+- [finding/](finding/) — 21 active finding notes
 - [workflow/](workflow/) — 1 active workflow note

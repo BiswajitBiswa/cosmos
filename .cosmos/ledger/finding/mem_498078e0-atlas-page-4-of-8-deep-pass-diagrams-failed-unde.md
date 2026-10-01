@@ -6,7 +6,7 @@ status: "stable"
 generated: {"by": "human:Biswajit Tripathy", "at": "2026-09-29T00:00:00Z"}
 sources: [{"resource": "cosmos/ui.py", "title": "ui.py"}, {"resource": "cosmos/atlas.py", "title": "atlas.py"}]
 stale_after: "2027-03-28T00:00:00Z"
-links: ["/lanes/cosmos.md", "/architecture/mem_b6b76950-the-atlas-has-a-peoples-view-cosmos-atlashtml-py.md", "/finding/mem_10ab2ec4-console-docs-said-horizon-notes-are-saved-in-cos.md", "/finding/mem_1db8264f-a-claude-desktop-mcp-entry-named-cosmos-pinned-t.md", "/finding/mem_5790a327-cosmos-connect-with-no-agent-argument-failed-arg.md", "/finding/mem_5b583e8d-cosmosw-always-prefers-an-installed-cosmos-over.md"]
+links: ["/lanes/cosmos.md", "/architecture/mem_b6b76950-the-atlas-has-a-peoples-view-cosmos-atlashtml-py.md", "/decision/mem_1ac630fe-commit-note-by-biswajit-tripathy-plugin-0-2-1-co.md", "/finding/mem_10ab2ec4-console-docs-said-horizon-notes-are-saved-in-cos.md", "/finding/mem_1db8264f-a-claude-desktop-mcp-entry-named-cosmos-pinned-t.md", "/finding/mem_5790a327-cosmos-connect-with-no-agent-argument-failed-arg.md"]
 id: "mem_498078e0"
 aliases: ["mem_498078e0"]
 category: "finding"
@@ -48,17 +48,17 @@ meta_source_doc: "session-2026-09-29"
 
 ## Related
 - [[mem_b6b76950]]
+- [[mem_1ac630fe]]
 - [[mem_10ab2ec4]]
 - [[mem_1db8264f]]
 - [[mem_5790a327]]
-- [[mem_5b583e8d]]
 
 ## Links
 - lane: [cosmos](/lanes/cosmos.md)
 - related: [mem_b6b76950](/architecture/mem_b6b76950-the-atlas-has-a-peoples-view-cosmos-atlashtml-py.md)
+- related: [mem_1ac630fe](/decision/mem_1ac630fe-commit-note-by-biswajit-tripathy-plugin-0-2-1-co.md)
 - related: [mem_10ab2ec4](/finding/mem_10ab2ec4-console-docs-said-horizon-notes-are-saved-in-cos.md)
 - related: [mem_1db8264f](/finding/mem_1db8264f-a-claude-desktop-mcp-entry-named-cosmos-pinned-t.md)
 - related: [mem_5790a327](/finding/mem_5790a327-cosmos-connect-with-no-agent-argument-failed-arg.md)
-- related: [mem_5b583e8d](/finding/mem_5b583e8d-cosmosw-always-prefers-an-installed-cosmos-over.md)
 
 #finding #medium #console

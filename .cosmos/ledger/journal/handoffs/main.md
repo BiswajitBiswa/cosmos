@@ -3,8 +3,8 @@ type: Handoff
 kind: handoff
 branch: "main"
 by: "Biswajit Tripathy"
-at: "2026-09-30T17:44:20Z"
+at: "2026-10-01T10:58:42Z"
 how: auto
 ---
 
-Everything is pushed to both repos. None of the names you listed, the conversation, or your phone number appears in either GitHub repo's history or files, and I checked every commit. Cosmos had in fact already recorded your message into its local ledger, so I removed that before pushing. ## What I did about git - **Removed:** - **Local ledger:** this conversation's entries in today's journal, observations and live view. - **The one unpushed commit that carried them:** rewritten, and the old copies deleted from git's storage. - **Side effect:** releasing those old copies meant clearing git's undo history (reflogs) in both worktrees, including the one another session uses. No commits or branch …
+The Gate's points are done: 1. **Dead-code scan:** vulture found one unused import, `iter_turns` at `cosmos/hooks.py:17`, left over from 0.1.0. Removed, and 154 tests pass. 2. **Exact locations of today's changes:** - `cosmos/upgrade.py:72` `_get` — downloads with certificate checking kept on, falling back to `certifi` or the system bundle. - `cosmos/upgrade.py:170` `run` — check PyPI, upgrade the bundled copy, repair, commit. - `cosmos/upgrade.py:210` `maybe_background` — the daily background check, started from a session start. - `cosmos/upgrade.py:282` `_step_codex_listing` — writes the Codex plugin listing. - `cosmos/upgrade.py:298` `_step_desktop_pin` — renames the pinned Desktop entry, …

@@ -6,7 +6,7 @@ status: "stable"
 generated: {"by": "human:Biswajit Tripathy", "at": "2026-09-29T00:00:00Z"}
 sources: [{"resource": "cosmos/commands.py", "title": "commands.py"}, {"resource": "cosmos/render.py", "title": "render.py"}]
 stale_after: "2027-03-28T00:00:00Z"
-links: ["/lanes/cosmos.md", "/architecture/mem_1f13b61a-slash-commands-for-every-agent-come-from-one-cat.md", "/decision/mem_043ce3de-playbooks-a-repositorys-own-long-form-agent-prom.md", "/finding/mem_10ab2ec4-console-docs-said-horizon-notes-are-saved-in-cos.md", "/finding/mem_d4c37ea1-slack-cards-and-the-slack-report-told-people-to.md", "/finding/mem_e522e056-console-rendered-every-fact-rule-and-flare-at-on.md"]
+links: ["/lanes/cosmos.md", "/architecture/mem_1f13b61a-slash-commands-for-every-agent-come-from-one-cat.md", "/decision/mem_043ce3de-playbooks-a-repositorys-own-long-form-agent-prom.md", "/finding/mem_10ab2ec4-console-docs-said-horizon-notes-are-saved-in-cos.md", "/finding/mem_5a1661f5-journal-credited-commits-made-in-another-folder.md", "/finding/mem_d4c37ea1-slack-cards-and-the-slack-report-told-people-to.md"]
 id: "mem_fcf6d908"
 aliases: ["mem_fcf6d908"]
 category: "finding"
@@ -52,15 +52,15 @@ meta_source_doc: "qa-2026-09-29-commands"
 - [[mem_1f13b61a]]
 - [[mem_043ce3de]]
 - [[mem_10ab2ec4]]
+- [[mem_5a1661f5]]
 - [[mem_d4c37ea1]]
-- [[mem_e522e056]]
 
 ## Links
 - lane: [cosmos](/lanes/cosmos.md)
 - related: [mem_1f13b61a](/architecture/mem_1f13b61a-slash-commands-for-every-agent-come-from-one-cat.md)
 - related: [mem_043ce3de](/decision/mem_043ce3de-playbooks-a-repositorys-own-long-form-agent-prom.md)
 - related: [mem_10ab2ec4](/finding/mem_10ab2ec4-console-docs-said-horizon-notes-are-saved-in-cos.md)
+- related: [mem_5a1661f5](/finding/mem_5a1661f5-journal-credited-commits-made-in-another-folder.md)
 - related: [mem_d4c37ea1](/finding/mem_d4c37ea1-slack-cards-and-the-slack-report-told-people-to.md)
-- related: [mem_e522e056](/finding/mem_e522e056-console-rendered-every-fact-rule-and-flare-at-on.md)
 
 #finding #low #commands

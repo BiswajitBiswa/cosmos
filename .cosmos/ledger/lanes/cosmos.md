@@ -1,19 +1,25 @@
 ---
 type: "Lane"
 title: "cosmos"
-description: "7 active facts, 0 open flares, 2 people active in the last 30 days"
+description: "12 active facts, 3 open flares, 2 people active in the last 30 days"
 status: "stable"
-sources: [{"resource": "/../../cosmos", "title": "cosmos"}, {"resource": "/../../plugin", "title": "plugin"}]
-links: ["/architecture/mem_1f13b61a-slash-commands-for-every-agent-come-from-one-cat.md", "/architecture/mem_b6b76950-the-atlas-has-a-peoples-view-cosmos-atlashtml-py.md", "/architecture/mem_c2833030-excel-export-is-a-stdlib-xlsx-writer-cosmos-xlsx.md", "/constraint/mem_1192ca15-hooks-must-always-exit-0-the-gate-is-the-only-de.md", "/decision/mem_043ce3de-playbooks-a-repositorys-own-long-form-agent-prom.md", "/decision/mem_2b049e3f-a-flares-id-prefix-is-the-projects-lifecycle-sta.md", "/workflow/mem_9fe4f5ce-horizon-notes-exist-only-when-someone-asks-for-o.md"]
+sources: [{"resource": "/../../.claude-plugin", "title": ".claude-plugin"}, {"resource": "/../../cosmos", "title": "cosmos"}, {"resource": "/../../plugin", "title": "plugin"}]
+links: ["/architecture/mem_1f13b61a-slash-commands-for-every-agent-come-from-one-cat.md", "/architecture/mem_b6b76950-the-atlas-has-a-peoples-view-cosmos-atlashtml-py.md", "/architecture/mem_c2833030-excel-export-is-a-stdlib-xlsx-writer-cosmos-xlsx.md", "/constraint/mem_1192ca15-hooks-must-always-exit-0-the-gate-is-the-only-de.md", "/constraint/mem_4c8727a1-in-claude-desktop-code-tab-sessions-an-mcp-serve.md", "/constraint/mem_a1b7e320-claude-code-caps-each-hook-text-plain-stdout-add.md", "/decision/mem_043ce3de-playbooks-a-repositorys-own-long-form-agent-prom.md", "/decision/mem_1734bf56-bugs-found-by-hand-become-flares-through-one-pat.md", "/decision/mem_2b049e3f-a-flares-id-prefix-is-the-projects-lifecycle-sta.md", "/decision/mem_55db62b9-recall-is-made-visible-with-the-hooks-systemmess.md", "/decision/mem_5cfd6c9b-commit-note-by-biswajit-tripathy-autopilot-from.md", "/workflow/mem_9fe4f5ce-horizon-notes-exist-only-when-someone-asks-for-o.md"]
 tags: ["lane", "cosmos"]
 ---
 
 
 # Lane · cosmos
 
-7 active facts, 0 open flares, 2 people active in the last 30 days.
+12 active facts, 3 open flares, 2 people active in the last 30 days.
 
 **Overlap:** 2 people active here this month: BiswajitBiswa, Biswajit Tripathy.
+
+## Open flares
+
+- [PROD-048c42](/finding/mem_07187b11-mcp-entries-cosmos-writes-start-python3-which-do.md) [high] MCP entries cosmos writes start python3, which does not exist on Windows, so the cosmos tools never start there
+- [PROD-2e63ea](/finding/mem_b9901dfb-a-session-opened-in-a-subfolder-of-the-repositor.md) [medium] A session opened in a subfolder of the repository gets no briefing, facts or capture: load_config takes the folder it is
+- [PROD-459673](/finding/mem_dbc7ae4e-cosmos-connect-codex-write-user-pins-codexs-user.md) [medium] cosmos connect codex --write-user pins Codex's user-level cosmos MCP server to the first repository and never updates it
 
 ## Facts
 
@@ -24,10 +30,15 @@ tags: ["lane", "cosmos"]
 
 ### Constraint
 - [Hooks must always exit 0; the Gate is the only deliberate exit-2 and it never fires twice in one turn (stop_hook_active).](/constraint/mem_1192ca15-hooks-must-always-exit-0-the-gate-is-the-only-de.md)
+- [In Claude Desktop Code-tab sessions an MCP server named cosmos in claude_desktop_config.json shadows the project's .mcp.json server, so cosm](/constraint/mem_4c8727a1-in-claude-desktop-code-tab-sessions-an-mcp-serve.md)
+- [Claude Code caps each hook text (plain stdout, additionalContext, systemMessage) at 10,000 characters; longer text is saved to a file and th](/constraint/mem_a1b7e320-claude-code-caps-each-hook-text-plain-stdout-add.md)
 
 ### Decision
 - [Playbooks: a repository's own long-form agent prompts (master QA protocol, runbooks) are detected by cosmos/playbooks.py (name or first head](/decision/mem_043ce3de-playbooks-a-repositorys-own-long-form-agent-prom.md)
+- [Bugs found by hand become flares through one path: cosmos/audit.py import_items (also used by the JSON import and cosmos_flare). cosmos flar](/decision/mem_1734bf56-bugs-found-by-hand-become-flares-through-one-pat.md)
 - [A flare's id prefix is the project's lifecycle stage read from git when it is filed (qa/* → QA, uat/staging → UAT, release/* or rc tag → RC,](/decision/mem_2b049e3f-a-flares-id-prefix-is-the-projects-lifecycle-sta.md)
+- [Recall is made visible with the hook's systemMessage: SessionStart, UserPromptSubmit and PreToolUse print JSON with a one-line cosm◎s notice](/decision/mem_55db62b9-recall-is-made-visible-with-the-hooks-systemmess.md)
+- [Commit note by Biswajit Tripathy: autopilot from parent folders, bugs recorded by hand, recall you can see, a briefing under the hook cap, u](/decision/mem_5cfd6c9b-commit-note-by-biswajit-tripathy-autopilot-from.md)
 
 ### Workflow
 - [Horizon notes exist only when someone asks for one (/horizon, cosmos horizon, cosmos_horizon, the console's Horizon page); nothing creates t](/workflow/mem_9fe4f5ce-horizon-notes-exist-only-when-someone-asks-for-o.md)
