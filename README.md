@@ -200,6 +200,8 @@ git clone <repo> && claude
 
 **Sessions opened in a folder above the repository** (a workspace folder holding several projects) work too. The user-level hook hands each event to every repository one level down. Each one adds a single line saying where its team memory is, and the facts when a prompt names it. Its watcher captures only the turns that touched it. A repository's worktrees answer once, and the Gate ignores files that belong to a sibling repository.
 
+**A session in another project never writes here.** A global MCP entry (Claude Desktop's config) offers one repository's cosmos to every session. cosmos asks the client which folders the session works in, and in any other project its tools answer "not this project" and record nothing. Each write names the repository it went to.
+
 **Sessions older than cosmos.** The user-level hooks run in every repository and check for `.cosmos/` on each event, so a Claude Code session that was open before `cosmos init` starts capturing on its next turn, and its next prompt carries the briefing it missed at start (Charter, key facts, handoff, Atlas). Nothing to restart.
 
 ## Getting started
