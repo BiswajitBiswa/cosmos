@@ -604,6 +604,43 @@ class TestVisibleRecall(unittest.TestCase):
             self.assertLess(len(rule), 260, "a rule is one line; cosmos_why <id> has the rest")
 
 
+class TestForeignSession(unittest.TestCase):
+    """A global MCP entry (Claude Desktop's config) starts one repository's cosmos for every session: a session in
+    another project must not read or write that repository's memory."""
+
+    def _serve(self, r, root_uri):
+        msgs = [{"jsonrpc": "2.0", "id": 0, "method": "initialize", "params": {"protocolVersion": "2025-11-25", "capabilities": {"roots": {}}, "clientInfo": {"name": "claude-code"}}},
+                {"jsonrpc": "2.0", "method": "notifications/initialized"},
+                {"jsonrpc": "2.0", "id": "cosmos-roots-1", "result": {"roots": [{"uri": root_uri}]}},
+                {"jsonrpc": "2.0", "id": 1, "method": "tools/call", "params": {"name": "cosmos_flare", "arguments": {"title": "Regex in LogMasker recurses on long keys", "severity": "critical"}}}]
+        out = subprocess.run([sys.executable, "-m", "cosmos", "mcp"], cwd=r.root, input="".join(json.dumps(m) + "\n" for m in msgs),
+                             capture_output=True, text=True, timeout=60, env=dict(os.environ, PYTHONPATH=str(ROOT)))
+        res = [json.loads(l) for l in out.stdout.splitlines()]
+        self.assertEqual([m.get("method") for m in res if "method" in m], ["roots/list"], "cosmos asks the client for its folders")
+        self.assertFalse(any("error" in m for m in res), "the client's reply is not answered as a request")
+        return next(m for m in res if m.get("id") == 1)["result"]["content"][0]["text"]
+
+    def test_a_session_in_another_project_reads_and_writes_nothing(self):
+        with Repo() as r, tempfile.TemporaryDirectory() as other:
+            text = self._serve(r, Path(other).as_uri())
+            self.assertIn("not this project", text)
+            self.assertFalse([m for m in Ledger(r.cfg.paths).load().values() if m.category == "finding"])
+
+    def test_the_repository_or_a_folder_above_it_is_served(self):
+        with Repo() as r:
+            self.assertIn(f"in {r.root.name}'s ledger", self._serve(r, r.root.parent.as_uri()))
+            self.assertEqual(len([m for m in Ledger(r.cfg.paths).load().values() if m.category == "finding"]), 1)
+
+    def test_a_flare_naming_only_files_this_repository_lacks_says_so(self):
+        from cosmos.mcp import call_tool
+        with Repo() as r:
+            text = call_tool(r.cfg, "cosmos_flare", {"title": "LogMasker regex recurses on long secrets", "severity": "critical",
+                                                     "locations": "executor/src/main/kotlin/worker/core/utils/LogMasker.kt:8"})["content"][0]["text"]
+            self.assertIn("None of the files it names", text)
+            ok = call_tool(r.cfg, "cosmos_flare", {"title": "Redis lock never renews in long jobs", "locations": "src/redis-lock.ts:1"})["content"][0]["text"]
+            self.assertNotIn("None of the files", ok)
+
+
 class TestSelfUpgrade(unittest.TestCase):
     """Releases and their repairs reach every project without anyone pushing them there."""
 

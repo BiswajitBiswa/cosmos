@@ -72,6 +72,14 @@ In the desktop app's Code tab, an MCP server named `cosmos` in `claude_desktop_c
 project's own server. When it runs another repository's cosmos, the briefing starts with a warning and the commands to
 use instead, and `cosmos repair` renames that entry `cosmos-<repo>` (a backup of the file is kept).
 
+Such an entry is offered to every Desktop session, including sessions in projects with no cosmos at all. The cosmos
+MCP server therefore asks the client which folders the session works in (MCP roots; Claude Code answers with the
+project folder). When none of them is the repository or a folder above it, every cosmos tool answers "not this
+project" and nothing is read or recorded. Verified on 2026-10-01 with Claude Code 2.1.118 from a folder without cosmos:
+`cosmos_flare` was refused and the ledger kept its 172 flares. A client that does not report its folders is served as
+before; a flare whose files do not exist in the repository then gets a warning in the reply. Every write names the
+repository it went to (`filed RET-… in retent's ledger`).
+
 ## Updates
 
 At a session start, at most once a day per machine, a background `cosmos upgrade --auto` asks PyPI for the latest

@@ -9,7 +9,9 @@ from __future__ import annotations
 import json
 import re
 import sys
-from typing import Any, Dict, List
+import time
+from pathlib import Path
+from typing import Any, Dict, List, Optional
 
 from . import __version__
 from .config import Config, git_author, load_config
@@ -80,7 +82,7 @@ def call_tool(cfg: Config, name: str, args: Dict[str, Any]) -> Dict[str, Any]:
         m.status, m.updated, m.last_verified = "active", today(), today()
         mems[mid] = m
         Ledger(cfg.paths).save_all(mems.values()); render_all(cfg, mems)
-        return _txt(f"cosm◎s · remembered {mid} ({'rule' if rule else 'fact'}): {text}")
+        return _txt(f"cosm◎s · remembered {mid} ({'rule' if rule else 'fact'}) in {cfg.paths.root.name}'s ledger: {text}")
     if name in ("cosmos_flare", "cosmos_finding"):
         from .audit import import_items
         title = next((str(args[k]).strip() for k in ("title", "text", "summary", "finding") if isinstance(args.get(k), str) and args[k].strip()), "")
@@ -94,11 +96,16 @@ def call_tool(cfg: Config, name: str, args: Dict[str, Any]) -> Dict[str, Any]:
         new, upd, _ = import_items(cfg, [item], flare_prefix(cfg), "mcp")
         render_all(cfg, Ledger(cfg.paths).load())
         m = (new or upd)[0]
-        return _txt(f"cosm◎s · filed {m.meta['audit_id']} [{m.meta['severity']}] {m.text}")
+        reply = f"cosm◎s · filed {m.meta['audit_id']} [{m.meta['severity']}] in {cfg.paths.root.name}'s ledger: {m.text}"
+        named = [f for f in m.files if f]
+        if named and not any((cfg.paths.root / f).exists() for f in named):
+            reply += (f"\n⚠ None of the files it names ({', '.join(named[:3])}) exist in {cfg.paths.root}. If this bug belongs to "
+                      f"another project, tell the user and withdraw it: `cosmos flares withdraw {m.meta['audit_id']} \"another project\"`.")
+        return _txt(reply)
     if name == "cosmos_handoff":
         from .handoff import record_explicit
         p = record_explicit(cfg, str(args.get("learned", "")), str(args.get("open", "")), str(args.get("next", "")), str(args.get("branch", "")))
-        return _txt(f"cosm◎s · handoff recorded for this branch ({p.name}); the next session here opens with it.")
+        return _txt(f"cosm◎s · handoff recorded in {cfg.paths.root.name} for this branch ({p.name}); the next session here opens with it.")
     if name == "cosmos_charter":
         from .charter import body, rules
         rs = rules(mems)
@@ -136,12 +143,43 @@ def call_tool(cfg: Config, name: str, args: Dict[str, Any]) -> Dict[str, Any]:
     return {"content": [{"type": "text", "text": f"unknown tool {name}"}], "isError": True}
 
 
+def _root_paths(result: Dict[str, Any]) -> List[str]:
+    from urllib.parse import unquote, urlparse
+    out = []
+    for r in (result or {}).get("roots") or []:
+        u = urlparse(str(r.get("uri", "")))
+        if u.scheme == "file":
+            out.append(unquote(u.path))
+    return out
+
+
+def foreign_session(cfg: Config, roots: Optional[List[str]]) -> str:
+    """When the client said which folders the session works in and none is this repository (or a folder holding it),
+    the session belongs to another project: a global MCP entry (Claude Desktop's config) started this server for every
+    session. Returns the refusal; "" when the session is this repository's, or the client did not say."""
+    if not roots:
+        return ""
+    repo = cfg.paths.root.resolve()
+    for r in roots:
+        try:
+            p = Path(r).resolve()
+        except OSError:
+            continue
+        if p == repo or repo in p.parents or p in repo.parents:
+            return ""
+    return (f"cosm◎s · not this project: this session works in {', '.join(roots[:2])}, and this cosmos server serves "
+            f"{repo} (started by a global MCP entry, e.g. Claude Desktop's config). Nothing was read or recorded: "
+            f"{repo.name}'s team memory is not this project's. Tell the user; to give this project its own memory, "
+            f"run `cosmos init` in it.")
+
+
 def serve(cfg: Config) -> None:
     """Blocking stdio loop. One JSON-RPC message per line."""
     import importlib
     from . import code_stamp, fresh_modules
     out = sys.stdout
     stamp, tools = code_stamp(), call_tool
+    can_roots, roots = False, None                       # the client's own folders, when it says (MCP roots)
     for line in sys.stdin:
         line = line.strip()
         if not line:
@@ -153,9 +191,14 @@ def serve(cfg: Config) -> None:
         mid = req.get("id")
         method = req.get("method", "")
         params = req.get("params") or {}
+        if not method:                                   # a reply to our own request: the client's roots
+            if str(mid).startswith("cosmos-roots") and "result" in req:
+                roots = _root_paths(req["result"])
+            continue
         resp: Dict[str, Any]
         try:
             if method == "initialize":
+                can_roots = "roots" in (params.get("capabilities") or {})
                 resp = {"protocolVersion": params.get("protocolVersion", PROTOCOL), "capabilities": {"tools": {"listChanged": False}},
                         "serverInfo": {"name": "cosmos", "title": "cosm◎s", "version": __version__, "icons": [{"src": ICON, "mimeType": "image/svg+xml", "sizes": ["any"]}]},
                         "instructions": "cosmos is this repository's shared engineering memory, charter and architecture. Call cosmos_charter once at the start, cosmos_recall before editing files you did not write, cosmos_remember for durable decisions, cosmos_flare for bugs worth tracking."}
@@ -169,8 +212,11 @@ def serve(cfg: Config) -> None:
                     tools = importlib.import_module("cosmos.mcp").call_tool
                     cfg = importlib.import_module("cosmos.config").load_config(cfg.paths.root)
                     stamp = importlib.import_module("cosmos").code_stamp()
-                resp = tools(cfg, str(params.get("name")), params.get("arguments") or {})
+                refusal = foreign_session(cfg, roots)
+                resp = _txt(refusal) if refusal else tools(cfg, str(params.get("name")), params.get("arguments") or {})
             elif method.startswith("notifications/"):
+                if can_roots and method in ("notifications/initialized", "notifications/roots/list_changed"):
+                    out.write(json.dumps({"jsonrpc": "2.0", "id": f"cosmos-roots-{time.time():.0f}", "method": "roots/list"}) + "\n"); out.flush()
                 continue
             else:
                 out.write(json.dumps({"jsonrpc": "2.0", "id": mid, "error": {"code": -32601, "message": f"method not found: {method}"}}) + "\n"); out.flush()
