@@ -27,7 +27,10 @@ This repository is a plugin marketplace (`.claude-plugin/marketplace.json`) with
 - **Codex (app, CLI, IDE extension):** the same repository is a Codex marketplace. In the Codex app, open **Plugins**,
   add a marketplace from GitHub (`BiswajitBiswa/cosmos`), then install **cosmos**. In a terminal: `codex plugin marketplace add BiswajitBiswa/cosmos`, then install
   **cosmos** from `/plugins`. Nothing else to run: no `pip install`, no `cosmos connect codex`, no `cosmos watch`
-  (see [Codex](#codex) below).
+  (see [Codex](#codex) below). In a repository that has cosmos there is not even that: cosmos writes the repository's
+  own listing (`.agents/plugins/marketplace.json`, pointing at this repository's `plugin/`), Codex shows it in the
+  Plugins screen of any thread opened there, and a teammate clicks **Install**. The listing keeps the team's other
+  entries; `"codex": {"listing": false}` in `.cosmos/config.json` leaves the file alone.
 
 If the tools list shows only `cosmos_status`, the plugin found no folder with `.cosmos/` from where the session started:
 share the repository folder (Cowork), or open the session in the repository.

@@ -9,8 +9,13 @@ from __future__ import annotations
 import shutil
 from pathlib import Path
 
-HOOK_CMD = ('d="${CLAUDE_PROJECT_DIR:-.}"; [ -f "$d/.cosmos/cosmosw" ] || d="$(dirname "$(git -C "$d" rev-parse --path-format=absolute '
-            '--git-common-dir 2>/dev/null)")"; [ -f "$d/.cosmos/cosmosw" ] && exec python3 "$d/.cosmos/cosmosw" hook; exit 0')
+HOOK_CMD = ('d="${CLAUDE_PROJECT_DIR:-.}"; if [ ! -f "$d/.cosmos/cosmosw" ]; then g="$(git -C "$d" rev-parse --path-format=absolute '
+            '--git-common-dir 2>/dev/null)" && d="$(dirname "$g")"; fi; '   # only a real git root: "." would be whatever folder the hook ran in
+            '[ -f "$d/.cosmos/cosmosw" ] && exec python3 "$d/.cosmos/cosmosw" hook; '
+            # a session opened in a folder above the repositories (a workspace of several projects): each child repository
+            # with cosmos gets the event and keeps only what touched it; the Gate's exit 2 from any of them is kept
+            'p="${CLAUDE_PROJECT_DIR:-.}"; set -- "$p"/*/.cosmos/cosmosw; [ -f "$1" ] || exit 0; e="$(cat)"; r=0; '
+            'for w in "$@"; do printf "%s" "$e" | COSMOS_PARENT_SESSION=1 python3 "$w" hook; [ $? -eq 2 ] && r=2; done; exit $r')
 
 WRAPPER = r'''#!/usr/bin/env python3
 """cosmosw - runs cosmos without requiring an install (see .cosmos/vendor). Committed on purpose."""

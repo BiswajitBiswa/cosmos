@@ -42,7 +42,8 @@ Reply with the id it was given, in one line."""),
     ("flare", "File a bug or risk as a flare with a lifecycle", "<what is wrong>",
      f"""File a flare for: {{ARGS}}
 Find the code it is about first and cite it as `path:line`. Then call `cosmos_flare` with `title` (one line, what is wrong), `severity` (critical|high|medium|low), `locations` (`path:line · path:line`), `what`, `impact` and `fix`.
-Without the tools: write the finding as a one-item JSON list (id, severity, title, area, locations, sections [[label, text]]) to a temporary file and run `{CLI} flares import <file>`.
+Without the tools: `{CLI} flares add "<severity>: <title> @ <path:line>" --what "…" --impact "…" --fix "…"`.
+Several bugs at once (a list a person pasted, one per line, or a .csv / .xlsx / .txt path): one `cosmos_flare` per bug, or `{CLI} flares add --from <file>` (`-` reads stdin).
 Do not choose a prefix: cosmos names the flare after the project's lifecycle stage (`{CLI} flares stage` shows it). Reply with the flare id."""),
     ("flares", "Open flares: list, show one, move it through its lifecycle", "[id | status | severity]",
      f"""Work with this repository's flares. Request: {{ARGS}}

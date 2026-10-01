@@ -82,8 +82,7 @@ def call_tool(cfg: Config, name: str, args: Dict[str, Any]) -> Dict[str, Any]:
         Ledger(cfg.paths).save_all(mems.values()); render_all(cfg, mems)
         return _txt(f"cosm◎s · remembered {mid} ({'rule' if rule else 'fact'}): {text}")
     if name in ("cosmos_flare", "cosmos_finding"):
-        from .audit import import_findings
-        import tempfile, os
+        from .audit import import_items
         title = next((str(args[k]).strip() for k in ("title", "text", "summary", "finding") if isinstance(args.get(k), str) and args[k].strip()), "")
         if len(title) < 8:
             return _txt(f"cosmos_flare needs `title` (got: {', '.join(sorted(args)) or 'nothing'}). Example: {{\"title\": \"GET /transitions has no role gate\", \"severity\": \"high\", \"locations\": \"webserver/app/api/v1/endpoints/transitions.py:42\", \"what\": \"…\", \"fix\": \"…\"}}")
@@ -92,12 +91,7 @@ def call_tool(cfg: Config, name: str, args: Dict[str, Any]) -> Dict[str, Any]:
             sev = "medium"
         item = {"id": make_id(title)[-6:], "severity": sev, "title": title, "area": "",
                 "locations": str(args.get("locations", "")), "sections": [[k.title(), str(args[k])] for k in ("what", "impact", "fix") if args.get(k)]}
-        with tempfile.NamedTemporaryFile("w", suffix=".json", delete=False) as fh:
-            json.dump([item], fh); tmp = fh.name
-        try:
-            new, upd, _ = import_findings(cfg, __import__("pathlib").Path(tmp), flare_prefix(cfg), "mcp")
-        finally:
-            os.unlink(tmp)
+        new, upd, _ = import_items(cfg, [item], flare_prefix(cfg), "mcp")
         render_all(cfg, Ledger(cfg.paths).load())
         m = (new or upd)[0]
         return _txt(f"cosm◎s · filed {m.meta['audit_id']} [{m.meta['severity']}] {m.text}")

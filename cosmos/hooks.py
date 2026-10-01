@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import re
 import sys
 import traceback
 from pathlib import Path
@@ -13,7 +14,7 @@ from .extract import extract
 from .privacy import path_ignored, redact
 from .retrieve import format_for_agent, retrieve, top
 from .store import Ledger, Observations, State, now_iso
-from .transcript import iter_turns, relativize
+from .transcript import relativize
 from . import journal as _journal
 from . import reader as _reader
 
@@ -237,11 +238,29 @@ def session_start(cfg: Config) -> str:
                          "Never merge the `cosmos` branch again.")
     except Exception:
         pass
+    import os
+    if os.environ.get("CLAUDE_CODE_ENTRYPOINT") == "claude-desktop":
+        from .connect import desktop_pins
+        for msg in desktop_pins(cfg.paths.root):
+            parts.insert(0, f"cosm◎s · ⚠ {msg}. Until then, record for THIS repository with the command line, not the cosmos_* tools: "
+                            "`python3 .cosmos/cosmosw remember \"…\"` · `python3 .cosmos/cosmosw flares add \"high: … @ path:line\"` · "
+                            "`python3 .cosmos/cosmosw search …`. Tell the user once.")
     at = check(cfg)
     if at.get("exists"):
         drift = f" ⚠ {len(at['drift'])+len(at['missing'])} source file(s) changed since — run `cosmos atlas`" if (at["drift"] or at["missing"]) else ""
         parts.append(f"cosm◎s · ATLAS: architecture diagrams in .cosmos/ledger/atlas/ (generated {at['generated']} at {at['commit']}){drift}. Consult containers.md before structural changes.")
-    return "\n\n".join(parts)
+    return _fit("\n\n".join(parts), int(cfg.get("retrieval.session_start_chars", 9000)))
+
+
+HOOK_TEXT_CAP = 10000   # Claude Code replaces longer hook text with a file path and a 2,000-character preview
+
+
+def _fit(text: str, budget: int) -> str:
+    """Keep a briefing under the hook cap, cutting from the end (the Charter and the warnings come first)."""
+    budget = min(budget, HOOK_TEXT_CAP - 200)
+    if len(text) <= budget:
+        return text
+    return text[:budget].rsplit("\n", 1)[0] + "\n(cosm◎s · briefing cut to fit the hook limit: the rest is in .cosmos/charter.md and cosmos_recall)"
 
 
 def _briefed(cfg: Config, sid: str) -> bool:
@@ -353,7 +372,7 @@ def file_context(cfg: Config, event: Dict[str, Any], mems: Optional[Dict[str, Me
     if not fp:
         return ""
     rel = relativize(str(fp), cfg.paths.root)
-    if rel.startswith(("/", "external/")):
+    if rel.startswith(("/", "external/", "../")):
         return ""
     state = State(cfg.paths)
     sid = event.get("session_id", "") or "-"
@@ -388,6 +407,48 @@ def file_context(cfg: Config, event: Dict[str, Any], mems: Optional[Dict[str, Me
     return _file_lines(rel, flares, facts)
 
 
+_FACT_LINE = re.compile(r"^- \[[^\]]+\] (.+?)(?: — `[^`]*`)? · (mem_\w+)", re.M)
+
+
+def _short(text: str, n: int = 48) -> str:
+    text = " ".join(text.split())
+    return text if len(text) <= n else text[:n - 1].rstrip() + "…"
+
+
+def notice(name: str, out: str) -> str:
+    """The one line the person sees when cosmos puts something in front of the agent (the agent gets all of `out`).
+    Without it the recall is invisible: hook context reaches the model, never the screen."""
+    if name == "SessionStart":
+        facts = len({i for _, i in _FACT_LINE.findall(out)})
+        bits = (["the Charter"] if "CHARTER" in out else []) + ([f"{facts} facts and rules" if facts != 1 else "1 fact"] if facts else [])
+        bits += ["the last handoff"] if "WAS LEFT" in out else []
+        warn = " · ⚠ see the first line of the briefing" if out.startswith("cosm◎s · ⚠") else ""
+        return ("cosm◎s · loaded " + ", ".join(bits) + warn) if bits else ""
+    if name == "PreToolUse":
+        flares = out.count("\n- open flare ")
+        notes = out.count("\n- ") - flares
+        m = re.match(r"cosm◎s · before you change `([^`]+)`", out)
+        what = " and ".join(x for x in (f"{flares} open flare{'s' * (flares != 1)}" if flares else "",
+                                         f"{notes} note{'s' * (notes != 1)}" if notes else "") if x)
+        return f"cosm◎s · {what} on {m.group(1)}" if m and what else ""
+    hits = list(dict.fromkeys(t for t, _ in _FACT_LINE.findall(out)))
+    if not hits:
+        return "cosm◎s · pointed this session at the team's memory" if out.strip() else ""
+    more = f" · +{len(hits) - 3} more" if len(hits) > 3 else ""
+    return f"cosm◎s · recalled {len(hits)}: " + " · ".join(_short(t) for t in hits[:3]) + more
+
+
+def _say(cfg: Config, name: str, out: str) -> None:
+    """Hook output: the context for the model, and a one-line notice for the person (Claude Code shows a hook's
+    systemMessage). Codex reads plain text, and `ui.notices: false` turns the line off."""
+    import os
+    line = notice(name, out) if cfg.get("ui.notices", True) and os.environ.get("COSMOS_AGENT") != "codex" else ""
+    if not line:
+        print(out)
+        return
+    print(json.dumps({"systemMessage": line, "hookSpecificOutput": {"hookEventName": name, "additionalContext": out}}, ensure_ascii=False))
+
+
 def _file_lines(rel: str, flares: List[Memory], facts: List[Memory]) -> str:
     lines = [f"cosm◎s · before you change `{rel}`:"]
     lines += [f"- open flare {m.meta.get('audit_id')} [{m.meta.get('severity')}]: {m.text}" for m in flares]
@@ -395,6 +456,39 @@ def _file_lines(rel: str, flares: List[Memory], facts: List[Memory]) -> str:
     if flares:
         lines.append("Address or explicitly defer each open flare; a bug you fix here is filed fixed via cosmos_flare, without asking.")
     return "\n".join(lines)
+
+
+def _linked_worktree(root: Path) -> bool:
+    """A second checkout (git worktree add) of a repository whose main checkout is elsewhere."""
+    import subprocess
+    try:
+        out = subprocess.run(["git", "rev-parse", "--path-format=absolute", "--git-common-dir"], cwd=root, capture_output=True, text=True, timeout=3)
+    except (OSError, subprocess.SubprocessError):
+        return False
+    common = out.stdout.strip()
+    return out.returncode == 0 and bool(common) and Path(common).resolve().parent != root.resolve()
+
+
+def _parent_session(cfg: Config, event: Dict[str, Any], name: str) -> int:
+    """A session opened in a folder that holds this repository among others: one line saying where the team's memory
+    is (not every repository's whole briefing), the facts for a prompt that names this repository, and the watcher,
+    which captures the turns that touched it."""
+    repo = cfg.paths.root.name
+    sid = event.get("session_id", "")
+    out = ""
+    if name == "SessionStart" or (sid and not _briefed(cfg, sid)):
+        out = (f"cosm◎s · {repo}/ keeps its team memory in {repo}/.cosmos: before changing code there, read {repo}/.cosmos/charter.md "
+               f"and call cosmos_recall (or `python3 {repo}/.cosmos/cosmosw search …`).")
+        _mark_briefed(cfg, sid)
+    if name == "UserPromptSubmit" and re.search(r"\b%s\b" % re.escape(repo), str(event.get("prompt", "")), re.I):
+        facts = prompt_context(cfg, event)
+        out = (out + "\n\n" + facts).strip() if facts else out
+    if out:
+        _say(cfg, name, out)
+        _log_inject(cfg, name, out)
+    if ensure_watcher(cfg):
+        _log(cfg, "watcher started (session opened in a parent folder)")
+    return 0
 
 
 def handle(stdin_text: str) -> int:
@@ -407,18 +501,26 @@ def handle(stdin_text: str) -> int:
         return 0
     try:
         import os
-        cwd = Path(os.environ.get("CLAUDE_PROJECT_DIR") or event.get("cwd") or Path.cwd())
+        parent = bool(os.environ.get("COSMOS_PARENT_SESSION"))   # opened in a folder above this repository (cosmosw chdir'd here)
+        cwd = Path.cwd() if parent else Path(os.environ.get("CLAUDE_PROJECT_DIR") or event.get("cwd") or Path.cwd())
         cfg = load_config(cwd)
         if not cfg.paths.config.exists():
             return 0
         name = event.get("hook_event_name", "")
+        if parent and _linked_worktree(cfg.paths.root):
+            return 0                                   # the main checkout answers for the repository and all its worktrees
+        if parent and name in ("SessionStart", "UserPromptSubmit"):
+            return _parent_session(cfg, event, name)
         if name == "SessionStart":
             out = session_start(cfg)
             if out:
-                print(out)
+                _say(cfg, name, out)
                 _log_inject(cfg, name, out)
             _mark_briefed(cfg, event.get("session_id", ""))
             auto_refresh(cfg)
+            from .upgrade import maybe_background
+            if maybe_background(cfg):
+                _log(cfg, "release check / repairs started in the background")
             if ensure_watcher(cfg):
                 _log(cfg, "watcher started")
         elif name == "UserPromptSubmit":
@@ -432,18 +534,20 @@ def handle(stdin_text: str) -> int:
                 if ensure_watcher(cfg):
                     _log(cfg, "watcher started")
             if out:
-                print(out)
+                _say(cfg, name, out)
                 _log_inject(cfg, name, out)
         elif name == "PreToolUse":
             out = file_context(cfg, event)
             if out:
-                print(json.dumps({"hookSpecificOutput": {"hookEventName": "PreToolUse", "additionalContext": out}}))
+                line = notice(name, out) if cfg.get("ui.notices", True) and os.environ.get("COSMOS_AGENT") != "codex" else ""
+                print(json.dumps({**({"systemMessage": line} if line else {}),
+                                  "hookSpecificOutput": {"hookEventName": "PreToolUse", "additionalContext": out}}, ensure_ascii=False))
                 _log_inject(cfg, name, out)
         elif name in ("Stop", "SessionEnd", "PreCompact", "PostToolUse", "SubagentStop"):
             n = capture(cfg, event)
             if n:
                 _log(cfg, f"{name}: captured {n} observation(s)")
-            if name == "Stop" and event.get("last_assistant_message"):
+            if name == "Stop" and event.get("last_assistant_message") and (n or not parent):
                 from .handoff import record_auto
                 record_auto(cfg, str(event.get("last_assistant_message")), event)
             if name in ("Stop", "SessionEnd") and event.get("hook_event_name") != "manual":

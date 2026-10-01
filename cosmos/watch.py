@@ -54,7 +54,7 @@ def _summarise(turns, sid: str, agent: str, prev: Optional[Dict[str, Any]]) -> D
     entry.update({"sid": sid, "agent": agent, "last": last_ts[:19] + "Z" if len(last_ts) >= 19 else last_ts, "branch": branch, "cwd": cwd,
                   "ask": redact(asks[-1])[0] if asks else entry.get("ask", ""), "turns": entry.get("turns", 0) + len(turns)})
     entry["files"] = list(dict.fromkeys((entry.get("files") or []) + files))[-12:]
-    entry["commits"] = ((entry.get("commits") or []) + commits_in(cmds))[-8:]
+    entry["commits"] = ((entry.get("commits") or []) + commits_in(cmds, Path(cwd) if cwd else None))[-8:]
     return entry
 
 

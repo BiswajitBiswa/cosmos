@@ -671,23 +671,7 @@ def cmd_doctor(a) -> int:
     return 0 if ok else 1
 
 
-DESKTOP_CONFIG = Path.home() / "Library" / "Application Support" / "Claude" / "claude_desktop_config.json"
-
-
-def desktop_pins(root: Path, config: Path = None) -> List[str]:
-    """A Claude Desktop MCP entry named `cosmos` that serves another repository: in every Desktop session it takes the
-    name of the project's own server, so cosmos_remember / cosmos_flare land in that other repository's ledger."""
-    p = config or DESKTOP_CONFIG
-    try:
-        servers = json.loads(p.read_text()).get("mcpServers", {}) if p.exists() else {}
-    except (OSError, ValueError):
-        return []
-    entry = servers.get("cosmos") or {}
-    target = next((a for a in entry.get("args", []) if a.endswith("cosmosw")), "")
-    if not target or Path(target).resolve().parent.parent == root.resolve():
-        return []
-    return [f"Claude Desktop's MCP entry `cosmos` serves {Path(target).parent.parent}: in Desktop sessions here, cosmos tools write there. "
-            f"Rename it in {p} (e.g. cosmos-{Path(target).parent.parent.name})"]
+from .connect import DESKTOP_CONFIG, desktop_pins  # noqa: E402,F401  (doctor and tests use them from here)
 
 
 def _script_python(path: str) -> str:
@@ -748,6 +732,33 @@ def cmd_update(a) -> int:
     if install_hooks(cfg.paths.claude_settings):
         print(col("✓", "g"), "hooks refreshed in .claude/settings.json (restart open sessions to pick them up)")
     print(col("✓", "g"), f"vendored cosmos {__version__} → {d}")
+    return 0
+
+
+def cmd_upgrade(a) -> int:
+    """The latest release into this repository (and this machine's pip install), then its repairs. Runs by itself
+    once a day from a session start; by hand it checks now."""
+    from .upgrade import latest, run, vendored_version, vtuple
+    cfg = load_config(); _require(cfg)
+    if a.check:
+        rel = latest(0)
+        if not rel:
+            print(col("✗", "r"), "could not reach PyPI"); return 1
+        here = vendored_version(cfg) or __version__
+        newer = vtuple(rel["version"]) > vtuple(here)
+        print(col("↑" if newer else "✓", "y" if newer else "g"), f"latest release {rel['version']} · this repository runs {here}" + (" · `cosmos upgrade` brings it in" if newer else ""))
+        return 0
+    done = run(cfg, force=not a.auto)
+    if not a.auto:
+        print(col("✓", "g"), "; ".join(done) if done else f"up to date ({vendored_version(cfg) or __version__})")
+    return 0
+
+
+def cmd_repair(a) -> int:
+    from .upgrade import repair
+    cfg = load_config(); _require(cfg)
+    done = repair(cfg)
+    print(col("✓", "g"), "; ".join(done) if done else "nothing to repair")
     return 0
 
 
@@ -984,6 +995,48 @@ def cmd_audit_import(a) -> int:
     return 0
 
 
+def cmd_audit_add(a) -> int:
+    """Bugs a person found: one typed here, or a list (one per line, CSV, a spreadsheet, JSON; `-` reads stdin)."""
+    from .audit import bug_from_line, bugs_from_file, bugs_from_text, record_bugs
+    cfg = load_config(); _require(cfg)
+    sev = a.severity or "medium"
+    if a.source:
+        if a.source == "-":
+            items, src = bugs_from_text(sys.stdin.read(), sev, a.area or ""), "manual"
+        else:
+            f = Path(a.source)
+            if not f.is_file():
+                print(col("✗", "r"), f"no such file: {a.source}"); return 1
+            try:
+                items, src = bugs_from_file(f, sev, a.area or ""), f.name
+            except (ValueError, KeyError, IndexError, OSError) as e:
+                print(col("✗", "r"), f"could not read {a.source}: {e}"); return 1
+    else:
+        line = " ".join(a.title).strip()
+        if not line:
+            print(col("✗", "r"), 'give the bug in one line, or a list: cosmos flares add "high: Login fails on Safari @ web/login.js:42" · --from bugs.txt|.csv|.xlsx|-'); return 1
+        bug = bug_from_line(line, sev, a.area or "")
+        if bug is None:
+            print(col("✗", "r"), "too short to be a bug: say what is wrong in a few words"); return 1
+        if a.severity:
+            bug["severity"], bug["_sev_default"] = a.severity, False   # the flag outranks a severity word typed in the line
+        bug["locations"] = a.at or bug["locations"]
+        bug["sections"] = [[k.title(), getattr(a, k)] for k in ("what", "impact", "fix") if getattr(a, k)]
+        items, src = [bug], "manual"
+    if not items:
+        print(col("✗", "r"), "no bugs found in that input (each needs a title of 8+ characters; a sheet needs a title/bug/summary column)"); return 1
+    new, upd, reg = record_bugs(cfg, items, src)
+    _finish(cfg, Ledger(cfg.paths).load())
+    print(col("✓", "g"), f"recorded {len(new)} new, {len(upd)} updated, {len(reg)} regressed flare(s)")
+    for m in new[:20]:
+        print(col("  +", "g"), f"{m.meta['audit_id']} [{m.meta['severity']}] {m.text}")
+    for m in upd[:20]:
+        print(col("  ~", "d"), f"{m.meta['audit_id']} [{m.meta.get('finding_status', 'open')}] {m.text}")
+    for m in reg:
+        print(col("  ⚠ REGRESSION", "r"), f"{m.meta['audit_id']} {m.text}")
+    return 0
+
+
 def cmd_audit_list(a) -> int:
     from .audit import SEV_ICON
     cfg = load_config(); _require(cfg)
@@ -1184,6 +1237,8 @@ def build_parser() -> argparse.ArgumentParser:
     s = sp.add_parser("doctor", help="check the installation"); s.set_defaults(fn=cmd_doctor)
     s = sp.add_parser("uninstall", help="remove hooks from .claude/settings.json"); s.set_defaults(fn=cmd_uninstall)
     s = sp.add_parser("update", help="refresh the vendored copy in .cosmos/vendor from the installed cosmos"); s.set_defaults(fn=cmd_update)
+    s = sp.add_parser("upgrade", help="bring the latest release into this repository (checksum-verified) and run its repairs; runs by itself daily"); s.add_argument("--check", action="store_true", help="only say whether a newer release exists"); s.add_argument("--auto", action="store_true", help=argparse.SUPPRESS); s.set_defaults(fn=cmd_upgrade)
+    s = sp.add_parser("repair", help="rewrite what older versions wrote wrongly: hooks, slash commands, the Codex plugin listing, a pinned Desktop MCP entry"); s.set_defaults(fn=cmd_repair)
 
     s = sp.add_parser("lanes", help="facts, findings and people per feature lane; flags overlap"); s.add_argument("--days", type=int, default=30); s.add_argument("--json", action="store_true"); s.add_argument("--propose", action="store_true", help="suggest a lanes mapping (LLM if configured, else from paths)"); s.add_argument("--write", action="store_true", help="with --propose: save to config and re-file"); s.add_argument("--no-llm", action="store_true"); s.set_defaults(fn=cmd_lanes)
     s = sp.add_parser("atlas", help="build architecture inventory + diagrams from the repo (or --check for drift)"); s.add_argument("--check", action="store_true"); s.add_argument("--deep", action="store_true", help="let the model follow the Atlas prompt now (system context, containers, data flow, deployment, dependencies, lanes)"); s.add_argument("--format", choices=["html", "md"], help="html (default): also write atlas.html, every diagram on one navigable page; md: Markdown only"); s.set_defaults(fn=cmd_atlas)
@@ -1196,6 +1251,9 @@ def build_parser() -> argparse.ArgumentParser:
     au = sp.add_parser("flares", aliases=["audit"], help="QA / security findings (flares) as memory: import, track lifecycle, report, publish").add_subparsers(dest="audit_cmd", required=True)
     from .audit import FINDING_STATUSES as FST, SEVERITIES as SEVS
     x = au.add_parser("import", help="import findings JSON (id, severity, title, area, locations, sections)"); x.add_argument("file"); x.add_argument("--prefix", help="id prefix for this import only, e.g. PENTEST (default: the project's lifecycle stage, see `cosmos flares stage`)"); x.add_argument("--source", help="source document name"); x.add_argument("-y", "--yes", action="store_true", help="create the file (empty) if it does not exist"); x.set_defaults(fn=cmd_audit_import)
+    x = au.add_parser("add", aliases=["record"], help="record bugs found by hand: one typed here, or a list (--from bugs.txt|.csv|.xlsx|.json|-)"); x.add_argument("title", nargs="*", help='"high: Login fails on Safari @ web/login.js:42" (severity and @ location optional)')
+    x.add_argument("--severity", choices=SEVS); x.add_argument("--at", help="where: path:line (· separated for several)"); x.add_argument("--what"); x.add_argument("--impact"); x.add_argument("--fix"); x.add_argument("--area")
+    x.add_argument("--from", dest="source", help="a list: .txt/.md one bug per line, .csv/.tsv/.xlsx with a header row (title, severity, location, what, impact, fix, area, status, id), .json, or - for stdin"); x.set_defaults(fn=cmd_audit_add)
     x = au.add_parser("list", help="list findings"); x.add_argument("--status", choices=FST); x.add_argument("--severity", choices=SEVS); x.add_argument("--json", action="store_true"); x.set_defaults(fn=cmd_audit_list)
     x = au.add_parser("show", help="show one finding"); x.add_argument("id"); x.set_defaults(fn=cmd_audit_show)
     def status_args(x):

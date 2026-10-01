@@ -129,20 +129,26 @@ def _from_json_item(item: Dict, prefix: str, source_doc: str, author: str, commi
 
 def import_findings(cfg: Config, path: Path, prefix: str = "QA", source_doc: str = "") -> Tuple[List[Memory], List[Memory], List[Memory]]:
     """Returns (new, updated, regressed). Idempotent: same audit id → same memory."""
-    from .lanes import _tree_index, resolve_path
-    index = _tree_index(cfg.paths.root)
     data = json.loads(Path(path).read_text())
     items = data if isinstance(data, list) else next((v for v in data.values() if isinstance(v, list)), [])
+    return import_items(cfg, items, prefix, source_doc or Path(path).name)
+
+
+def import_items(cfg: Config, items: List[Dict], prefix: str, source_doc: str) -> Tuple[List[Memory], List[Memory], List[Memory]]:
+    """The findings themselves, from any source: a JSON report, bugs typed or pasted, a CSV or a spreadsheet."""
+    from .lanes import _tree_index, resolve_path
+    index = _tree_index(cfg.paths.root)
     ledger = Ledger(cfg.paths)
     mems = ledger.load()
     author, commit, t = git_author(cfg.paths.root), git_head(cfg.paths.root), today()
     new, updated, regressed = [], [], []
     # a finding already filed under an earlier stage's prefix is the same finding: it keeps its id and is updated
     by_origin = {(m.meta.get("source_doc"), m.meta.get("raw_id")): m for m in mems.values() if m.category == "finding" and m.meta.get("raw_id")}
+    by_audit_id = {m.meta.get("audit_id"): m for m in mems.values() if m.category == "finding" and m.meta.get("audit_id")}
     for item in items:
-        inc = _from_json_item(item, prefix, source_doc or Path(path).name, author, commit)
+        inc = _from_json_item(item, prefix, source_doc, author, commit)
         inc.files = [resolve_path(f, index) for f in inc.files]
-        cur = mems.get(inc.id) or by_origin.get((inc.meta["source_doc"], inc.meta["raw_id"]))
+        cur = mems.get(inc.id) or by_origin.get((inc.meta["source_doc"], inc.meta["raw_id"])) or by_audit_id.get(str(item.get("audit_id") or item.get("id") or ""))
         if cur is None:
             inc.reason = f"Imported from {inc.meta['source_doc']} on {t}"
             mems[inc.id] = inc
@@ -151,6 +157,8 @@ def import_findings(cfg: Config, path: Path, prefix: str = "QA", source_doc: str
         was, now = cur.meta.get("finding_status", "open"), inc.meta["finding_status"]
         if now == NOTE or was == NOTE:
             cur.meta["finding_status"] = NOTE
+        elif was in CLOSED and now == "open" and item.get("_stale_open"):
+            pass                                       # a sheet exported before the fix still says open: it reopens nothing
         elif was in ("fixed", "wontfix") and now == "open":
             cur.meta["finding_status"] = "regressed"
             cur.status = "active"
@@ -165,13 +173,136 @@ def import_findings(cfg: Config, path: Path, prefix: str = "QA", source_doc: str
             cur.status = "forgotten" if now == "withdrawn" else "active"
         # else: incoming "open" never downgrades a local claimed/pr_open/needs_human/withdrawn
         cur.text, cur.details, cur.files = inc.text or cur.text, inc.details or cur.details, inc.files or cur.files
-        cur.meta.update({k: v for k, v in inc.meta.items() if k not in ("finding_status", "audit_id", "raw_id") and v})
+        keep = ("finding_status", "audit_id", "raw_id") + tuple(k for k in ("source_doc", "found_commit") if cur.meta.get(k))
+        keep += ("severity",) if item.get("_sev_default") else ()     # a list that names no severity keeps the known one
+        cur.meta.update({k: v for k, v in inc.meta.items() if k not in keep and v})
         cur.evidence_count += 1
         cur.updated = cur.last_verified = t
         if cur not in regressed:
             updated.append(cur)
     ledger.save_all(mems.values())
     return new, updated, regressed
+
+
+# ---------------------------------------------------------------- bugs recorded by hand
+_SEV_WORDS = {"critical": "critical", "blocker": "critical", "p0": "critical", "high": "high", "major": "high", "p1": "high",
+              "medium": "medium", "med": "medium", "p2": "medium", "low": "low", "minor": "low", "p3": "low", "note": "note"}
+_COLS = {"title": ("title", "bug", "summary", "issue", "name"), "severity": ("severity", "priority", "sev"),
+         "locations": ("locations", "location", "where", "file", "files", "at"), "what": ("what", "description", "details", "steps", "repro"),
+         "impact": ("impact", "why"), "fix": ("fix", "suggestion", "solution"), "area": ("area", "lane", "module", "feature"),
+         "status": ("status", "state"), "id": ("id", "audit id", "audit_id")}
+_STATUS_WORDS = {"todo": "open", "new": "open", "in_progress": "claimed", "doing": "claimed", "assigned": "claimed", "in_review": "pr_open",
+                 "done": "fixed", "resolved": "fixed", "closed": "fixed", "wont_fix": "wontfix", "not_a_bug": "withdrawn", "invalid": "withdrawn",
+                 "duplicate": "withdrawn", "blocked": "needs_human"}       # what a team's own sheet tends to say
+
+
+def _bug_id(title: str) -> str:
+    return hashlib.sha1(re.sub(r"\s+", " ", title.strip().lower()).encode()).hexdigest()[:6]
+
+
+def bug_from_line(line: str, severity: str = "medium", area: str = "") -> Optional[Dict]:
+    """`high: Login fails on Safari @ web/login.js:42` → a finding. The leading severity and the trailing @ location
+    are optional; a line too short to be a bug is skipped."""
+    text = line.strip().lstrip("-*•").strip()
+    m = re.match(r"^\[?(critical|blocker|p0|high|major|p1|medium|med|p2|low|minor|p3|note)\]?\s*[:\-–]\s*(.+)$", text, re.I)
+    sev = severity
+    if m:
+        sev, text = _SEV_WORDS[m.group(1).lower()], m.group(2).strip()
+    loc = ""
+    at = re.search(r"\s@\s*(\S.*)$", text)
+    if at:
+        loc, text = at.group(1).strip(), text[:at.start()].strip()
+    if len(text) < 8:
+        return None
+    return {"id": _bug_id(text), "severity": sev, "title": text, "area": area, "locations": loc, "sections": [], "_sev_default": not m}
+
+
+def _row_to_bug(row: Dict[str, str], severity: str, area: str) -> Optional[Dict]:
+    low = {str(k or "").strip().lower(): str(v or "").strip() for k, v in row.items()}
+    get = lambda key: next((low[c] for c in _COLS[key] if low.get(c)), "")
+    title = get("title")
+    if len(title) < 8:
+        return None
+    sev = _SEV_WORDS.get(get("severity").lower())
+    item = {"id": get("id") or _bug_id(title), "severity": sev or severity, "_sev_default": not sev, "title": title, "area": get("area") or area, "locations": get("locations"),
+            "sections": [[k.title(), get(k)] for k in ("what", "impact", "fix") if get(k)]}
+    status = re.sub(r"[^a-z_]", "", get("status").lower().replace(" ", "_").replace("-", "_"))
+    status = _STATUS_WORDS.get(status, status)
+    if status in ("reopen", "reopened"):
+        status = "open"                                # the person asks for it back: a closed flare regresses
+    elif get("id") and status in ("", "open"):
+        item["_stale_open"] = True                     # a row of an exported sheet: its "open" may predate the fix
+    if status in FINDING_STATUSES:
+        item["status"] = status
+    return item
+
+
+def bugs_from_text(text: str, severity: str = "medium", area: str = "") -> List[Dict]:
+    """Bugs typed or pasted: one per line, or rows copied from a spreadsheet (tab-separated, a header row optional)."""
+    lines = [l for l in text.splitlines() if l.strip() and not l.lstrip().startswith("#")]
+    if lines and "\t" in lines[0]:
+        head = [c.strip().lower() for c in lines[0].split("\t")]
+        named = any(h in sum(_COLS.values(), ()) for h in head)
+        cols = head if named else ["title", "severity", "locations", "what", "impact", "fix", "area"]
+        rows = lines[1:] if named else lines
+        return [b for b in (_row_to_bug(dict(zip(cols, r.split("\t"))), severity, area) for r in rows) if b]
+    return [b for b in (bug_from_line(l, severity, area) for l in lines) if b]
+
+
+def _xlsx_rows(path: Path) -> List[Dict[str, str]]:
+    """The first sheet of an .xlsx as dicts keyed by its header row (standard library: the file is zipped XML)."""
+    import zipfile
+    from xml.etree import ElementTree as ET
+    ns = {"m": "http://schemas.openxmlformats.org/spreadsheetml/2006/main"}
+    with zipfile.ZipFile(path) as z:
+        shared = []
+        if "xl/sharedStrings.xml" in z.namelist():
+            shared = ["".join(t.itertext()) for t in ET.fromstring(z.read("xl/sharedStrings.xml")).findall("m:si", ns)]
+        sheet = sorted(n for n in z.namelist() if n.startswith("xl/worksheets/sheet"))[0]
+        root = ET.fromstring(z.read(sheet))
+    def col(ref: str) -> int:
+        n = 0
+        for ch in re.match(r"[A-Z]+", ref).group(0):
+            n = n * 26 + ord(ch) - 64
+        return n - 1
+    grid = []
+    for row in root.iter("{%s}row" % ns["m"]):
+        cells = {}
+        for c in row.findall("m:c", ns):
+            t, v = c.get("t"), c.find("m:v", ns)
+            if t == "inlineStr":
+                val = "".join(c.find("m:is", ns).itertext()) if c.find("m:is", ns) is not None else ""
+            elif t == "s" and v is not None:
+                val = shared[int(v.text)]
+            else:
+                val = v.text if v is not None else ""
+            cells[col(c.get("r"))] = val or ""
+        grid.append([cells.get(i, "") for i in range(max(cells) + 1)] if cells else [])
+    if not grid:
+        return []
+    head = grid[0]
+    return [dict(zip(head, r)) for r in grid[1:] if any(r)]
+
+
+def bugs_from_file(path: Path, severity: str = "medium", area: str = "") -> List[Dict]:
+    """A list a person made: .txt/.md one per line, .csv/.tsv or .xlsx with a header row (cosmos's own Excel export
+    reads back, statuses included), or the findings JSON."""
+    import csv
+    suffix = path.suffix.lower()
+    if suffix == ".json":
+        data = json.loads(path.read_text())
+        return data if isinstance(data, list) else next((v for v in data.values() if isinstance(v, list)), [])
+    if suffix == ".xlsx":
+        return [b for b in (_row_to_bug(r, severity, area) for r in _xlsx_rows(path)) if b]
+    if suffix in (".csv", ".tsv"):
+        with path.open(newline="", encoding="utf-8-sig") as fh:
+            return [b for b in (_row_to_bug(r, severity, area) for r in csv.DictReader(fh, delimiter="\t" if suffix == ".tsv" else ",")) if b]
+    return bugs_from_text(path.read_text(errors="ignore"), severity, area)
+
+
+def record_bugs(cfg: Config, items: List[Dict], source: str = "manual") -> Tuple[List[Memory], List[Memory], List[Memory]]:
+    """Bugs a person found (by hand, with a teammate, in a sheet) become flares with the lifecycle stage's prefix."""
+    return import_items(cfg, items, flare_prefix(cfg), source)
 
 
 def findings(mems: Dict[str, Memory], status: Optional[str] = None, severity: Optional[str] = None) -> List[Memory]:

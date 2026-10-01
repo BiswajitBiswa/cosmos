@@ -233,7 +233,7 @@ class TestZeroInstall(unittest.TestCase):
             self.assertTrue((r.root / ".cosmos" / "vendor" / "cosmos" / "cli.py").exists())
             settings = json.loads((r.root / ".claude" / "settings.json").read_text())
             cmd = settings["hooks"]["SessionStart"][0]["hooks"][0]["command"]
-            self.assertIn('CLAUDE_PROJECT_DIR', cmd); self.assertIn('exec python3', cmd); self.assertTrue(cmd.endswith('exit 0'))
+            self.assertIn('CLAUDE_PROJECT_DIR', cmd); self.assertIn('exec python3', cmd); self.assertIn('|| exit 0', cmd)
             # the command is harmless in a repo without .cosmos and preserves exit codes where it exists
             other = Path(tempfile.mkdtemp())
             self.assertEqual(subprocess.run(["sh", "-c", cmd], cwd=other, env={**os.environ, "CLAUDE_PROJECT_DIR": str(other)}, input="{}", capture_output=True, text=True).returncode, 0)
@@ -550,6 +550,221 @@ class TestFlareCommands(unittest.TestCase):
             self.assertEqual((m.meta["severity"], m.text, m.meta["audit_id"]), ("high", "Wallet charge adds balance on a negative amount", aid))
             self.assertIn("high", m.tags)
             self.assertNotIn("medium", m.tags)
+
+
+class TestVisibleRecall(unittest.TestCase):
+    """Hook context reaches the model, never the screen: cosmos says in one line what it recalled."""
+
+    def _run(self, r, event, **env):
+        import contextlib, io
+        saved = {k: os.environ.get(k) for k in env}
+        os.environ.update(env)
+        buf = io.StringIO()
+        try:
+            with contextlib.redirect_stdout(buf):
+                handle(json.dumps(dict(event, cwd=str(r.root))))
+        finally:
+            for k, v in saved.items():
+                os.environ.pop(k, None) if v is None else os.environ.__setitem__(k, v)
+        return buf.getvalue()
+
+    def test_the_person_sees_one_line_and_the_model_gets_the_context(self):
+        from cosmos.hooks import notice
+        with Repo() as r:
+            (r.root / ".cosmos" / "charter.md").write_text("# Charter\n- Run the tests.\n")
+            led = Ledger(r.cfg.paths)
+            led.save_all([Memory(id=make_id("redis lock"), text="Redis locks expire after 30 seconds; renew them in long jobs",
+                                 category="constraint", source="explicit", files=["src/redis-lock.ts"], confidence=0.9, importance=0.9)])
+            env = {"COSMOS_NO_BACKGROUND": "1", "COSMOS_AGENT": "claude", "CLAUDE_PROJECT_DIR": str(r.root), "CLAUDE_CODE_ENTRYPOINT": "cli"}
+            out = json.loads(self._run(r, {"hook_event_name": "SessionStart", "session_id": "v1"}, **env))
+            self.assertEqual(out["systemMessage"], "cosm◎s · loaded the Charter, 1 fact")
+            self.assertIn("Run the tests.", out["hookSpecificOutput"]["additionalContext"])
+            out = json.loads(self._run(r, {"hook_event_name": "UserPromptSubmit", "session_id": "v1", "prompt": "make the redis lock renew in long jobs"}, **env))
+            self.assertTrue(out["systemMessage"].startswith("cosm◎s · recalled 1: Redis locks expire after 30 seconds"), out["systemMessage"])
+            out = json.loads(self._run(r, {"hook_event_name": "PreToolUse", "session_id": "v2", "tool_name": "Edit",
+                                            "tool_input": {"file_path": str(r.root / "src" / "redis-lock.ts"), "old_string": "x", "new_string": "y"}}, **env))
+            self.assertEqual(out["systemMessage"], "cosm◎s · 1 note on src/redis-lock.ts")
+            plain = self._run(r, {"hook_event_name": "SessionStart", "session_id": "v3"}, **dict(env, COSMOS_AGENT="codex"))
+            self.assertTrue(plain.startswith("cosm◎s · CHARTER"), "Codex reads plain text")
+        self.assertEqual(notice("UserPromptSubmit", ""), "")
+
+    def test_a_long_briefing_stays_under_the_hook_cap(self):
+        from cosmos.hooks import HOOK_TEXT_CAP, session_start
+        with Repo() as r:
+            (r.root / ".cosmos" / "charter.md").write_text("# Charter\n" + "".join(f"- rule {i} " + "x" * 400 + "\n" for i in range(28)))
+            Ledger(r.cfg.paths).save_all([Memory(id=make_id(f"rule {i}"), text=f"Owner rule {i}: " + "y " * 600, category="constraint",
+                                                 source="explicit", confidence=0.9, importance=0.9) for i in range(12)])
+            out = session_start(r.cfg)
+            self.assertLess(len(out), HOOK_TEXT_CAP, "longer text is replaced by a 2,000-character preview the model is not told to read")
+            self.assertIn("briefing cut to fit", out)
+            (r.root / ".cosmos" / "charter.md").write_text("# Charter\n- Run the tests.\n")
+            out = session_start(r.cfg)
+            self.assertNotIn("briefing cut to fit", out)
+            rule = next(l for l in out.splitlines() if l.startswith("- [constraint] Owner rule 0"))
+            self.assertLess(len(rule), 260, "a rule is one line; cosmos_why <id> has the rest")
+
+
+class TestSelfUpgrade(unittest.TestCase):
+    """Releases and their repairs reach every project without anyone pushing them there."""
+
+    def _release(self, d, version, good=True):
+        import hashlib, zipfile
+        whl = Path(d) / f"cosmos_dev-{version}-py3-none-any.whl"
+        with zipfile.ZipFile(whl, "w") as z:
+            z.writestr("cosmos/__init__.py", f'__version__ = "{version}"\n')
+            z.writestr("cosmos/cli.py", "def main(argv=None):\n    return 0\n")
+            z.writestr("cosmos/hooks.py", "")
+            z.writestr("cosmos_dev-x.dist-info/METADATA", "Name: cosmos-dev\n")
+        sha = hashlib.sha256(whl.read_bytes()).hexdigest() if good else "0" * 64
+        meta = Path(d) / "pypi.json"
+        meta.write_text(json.dumps({"info": {"version": version}, "urls": [{"packagetype": "bdist_wheel", "url": whl.as_uri(), "digests": {"sha256": sha}}]}))
+        return meta.as_uri()
+
+    def _env(self, d, url):
+        saved = {k: os.environ.get(k) for k in ("COSMOS_PYPI_JSON", "COSMOS_HOME")}
+        os.environ.update(COSMOS_PYPI_JSON=url, COSMOS_HOME=str(Path(d) / "home"))
+        return saved
+
+    def _restore(self, saved):
+        for k, v in saved.items():
+            os.environ.pop(k, None) if v is None else os.environ.__setitem__(k, v)
+
+    def test_a_newer_release_replaces_the_vendored_copy_only_when_its_checksum_matches(self):
+        from cosmos.upgrade import latest, upgrade_vendor, vendored_version
+        with Repo() as r, tempfile.TemporaryDirectory() as d:
+            vend = r.root / ".cosmos" / "vendor" / "cosmos"
+            vend.mkdir(parents=True)
+            (vend / "__init__.py").write_text('__version__ = "0.1.0"\n')
+            saved = self._env(d, self._release(d, "9.9.9", good=False))
+            try:
+                with self.assertRaises(ValueError):
+                    upgrade_vendor(r.cfg, latest(0))
+                self.assertEqual(vendored_version(r.cfg), "0.1.0", "a release that does not match PyPI's checksum is refused")
+                os.environ["COSMOS_PYPI_JSON"] = self._release(d, "9.9.9")
+                self.assertEqual(upgrade_vendor(r.cfg, latest(0)), "9.9.9")
+                self.assertEqual(vendored_version(r.cfg), "9.9.9")
+                self.assertEqual(upgrade_vendor(r.cfg, latest(0)), "", "nothing newer: nothing changes")
+                self.assertFalse((r.root / ".cosmos" / "vendor" / "cosmos.old").exists())
+            finally:
+                self._restore(saved)
+
+    def test_repairs_fix_what_older_versions_wrote_once_per_version(self):
+        from cosmos import __version__
+        from cosmos.hooks import HOOK_COMMAND
+        from cosmos.upgrade import _repair_due, repair
+        with Repo() as r, tempfile.TemporaryDirectory() as d:
+            listing = r.root / ".agents" / "plugins" / "marketplace.json"
+            listing.parent.mkdir(parents=True)
+            listing.write_text(json.dumps({"name": "team", "plugins": [{"name": "our-linter", "source": {"source": "local", "path": "./tools/lint"}}]}))
+            user = Path(d) / "settings.json"
+            user.write_text(json.dumps({"hooks": {"SessionStart": [{"hooks": [{"type": "command", "command": "python3 .cosmos/cosmosw hook"}]}]}}))
+            desk = Path(d) / "claude_desktop_config.json"
+            desk.write_text(json.dumps({"mcpServers": {"cosmos": {"command": "python3", "args": ["/x/retent/.cosmos/cosmosw", "mcp"]}, "other": {"command": "node"}}}))
+            saved = {k: os.environ.get(k) for k in ("COSMOS_USER_SETTINGS", "COSMOS_DESKTOP_CONFIG")}
+            os.environ.update(COSMOS_USER_SETTINGS=str(user), COSMOS_DESKTOP_CONFIG=str(desk))
+            try:
+                self.assertTrue(_repair_due(r.cfg))
+                done = repair(r.cfg)
+                self.assertFalse(_repair_due(r.cfg), f"{__version__} repaired this repository on this machine")
+                self.assertEqual(repair(r.cfg), [], "a second run changes nothing")
+            finally:
+                for k, v in saved.items():
+                    os.environ.pop(k, None) if v is None else os.environ.__setitem__(k, v)
+            plugins = json.loads(listing.read_text())["plugins"]
+            self.assertEqual([p["name"] for p in plugins], ["our-linter", "cosmos"], "the team's own entries are kept")
+            self.assertEqual(plugins[1]["source"]["source"], "git-subdir")
+            self.assertEqual(json.loads(user.read_text())["hooks"]["SessionStart"][0]["hooks"][0]["command"], HOOK_COMMAND, "an old hook command is rewritten")
+            servers = json.loads(desk.read_text())["mcpServers"]
+            self.assertEqual(sorted(servers), ["cosmos-retent", "other"])
+            self.assertEqual(len(list(Path(d).glob("claude_desktop_config.json.bak-cosmos-*"))), 1)
+            self.assertTrue(any("Codex plugin listing" in m for m in done))
+
+
+class TestRecordBugs(unittest.TestCase):
+    """Bugs a person found by hand (alone, with a teammate, in a sheet) become flares."""
+
+    def test_a_line_carries_severity_and_location(self):
+        from cosmos.audit import bug_from_line, bugs_from_text
+        b = bug_from_line("- high: Login fails on Safari @ web/login.js:42")
+        self.assertEqual((b["severity"], b["title"], b["locations"], b["_sev_default"]), ("high", "Login fails on Safari", "web/login.js:42", False))
+        self.assertEqual(bug_from_line("[P0] - Payment charged twice")["severity"], "critical")
+        self.assertTrue(bug_from_line("Export does nothing on Firefox")["_sev_default"])
+        self.assertIsNone(bug_from_line("ok"), "too short to be a bug")
+        self.assertEqual(bug_from_line("Login fails on Safari")["id"], bug_from_line("high: login  fails on safari")["id"], "the same bug typed twice is one flare")
+        pasted = bugs_from_text("Summary\tPriority\tWhere\nCheckout spinner never stops\tmajor\tweb/checkout.js:12\n")
+        self.assertEqual((pasted[0]["severity"], pasted[0]["locations"]), ("high", "web/checkout.js:12"))
+        bare = bugs_from_text("Avatar upload ignores PNG\tlow\tweb/avatar.js\n# a comment\n")
+        self.assertEqual((len(bare), bare[0]["severity"], bare[0]["locations"]), (1, "low", "web/avatar.js"))
+
+    def test_cli_records_typed_csv_and_spreadsheet_bugs(self):
+        from cosmos.cli import main
+        from cosmos.xlsx import workbook
+        with Repo() as r:
+            (r.root / "bugs.csv").write_text("Bug,Priority,Where,Description\nExport button does nothing,P1,web/export.js:5,click twice\nshort,,,\n")
+            (r.root / "team.xlsx").write_bytes(workbook([("Bugs", ["Summary", "Severity"], [["Checkout spinner never stops", "critical"]])]))
+            cwd = os.getcwd()
+            os.chdir(r.root)
+            try:
+                self.assertEqual(main(["flares", "add", "high: Login fails on Safari @ web/login.js:42", "--fix", "use keepalive"]), 0)
+                self.assertEqual(main(["flares", "add", "--from", "bugs.csv"]), 0)
+                self.assertEqual(main(["flares", "record", "--from", "team.xlsx"]), 0)
+                self.assertEqual(main(["flares", "add", "ok"]), 1, "too short")
+                self.assertEqual(main(["flares", "add", "--from", "missing.csv"]), 1)
+            finally:
+                os.chdir(cwd)
+            fs = {m.text: m for m in Ledger(r.cfg.paths).load().values() if m.category == "finding"}
+            self.assertEqual(set(fs), {"Login fails on Safari", "Export button does nothing", "Checkout spinner never stops"})
+            self.assertEqual(fs["Login fails on Safari"].details, [["Fix", "use keepalive"]])
+            self.assertEqual((fs["Export button does nothing"].meta["severity"], fs["Export button does nothing"].details), ("high", [["What", "click twice"]]))
+            self.assertEqual(fs["Checkout spinner never stops"].meta["severity"], "critical")
+
+    def test_a_sheet_saved_by_excel_reads_its_shared_strings(self):
+        import zipfile
+        from cosmos.audit import bugs_from_file
+        ns = 'xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"'
+        with tempfile.TemporaryDirectory() as d:
+            f = Path(d) / "team.xlsx"
+            with zipfile.ZipFile(f, "w") as z:                 # how Excel and Google Sheets store text: an index into sharedStrings
+                z.writestr("xl/sharedStrings.xml", f'<sst {ns}><si><t>Bug</t></si><si><t>Priority</t></si><si><r><t>Checkout spinner </t></r><r><t>never stops</t></r></si><si><t>P0</t></si></sst>')
+                z.writestr("xl/worksheets/sheet1.xml", f'<worksheet {ns}><sheetData><row r="1"><c r="A1" t="s"><v>0</v></c><c r="B1" t="s"><v>1</v></c></row>'
+                                                       f'<row r="2"><c r="A2" t="s"><v>2</v></c><c r="C2"><v>7</v></c><c r="B2" t="s"><v>3</v></c></row></sheetData></worksheet>')
+            b = bugs_from_file(f)
+            self.assertEqual([(x["title"], x["severity"]) for x in b], [("Checkout spinner never stops", "critical")])
+
+    def test_an_exported_sheet_edited_and_read_back_moves_flares_without_false_regressions(self):
+        from cosmos.audit import bugs_from_file, record_bugs, set_status
+        from cosmos.xlsx import flares_sheet, workbook
+        with Repo() as r:
+            new, _, _ = record_bugs(r.cfg, [{"id": "a1", "severity": "critical", "title": "Payment charged twice on retry"},
+                                            {"id": "a2", "severity": "low", "title": "Typo on the settings page"}])
+            pay, typo = (m.meta["audit_id"] for m in new)
+            sheet = r.root / "flares.xlsx"
+            sheet.write_bytes(workbook([flares_sheet(Ledger(r.cfg.paths).load())]))     # exported while both were open
+            set_status(r.cfg, Ledger(r.cfg.paths).load()[new[0].id], "fixed")
+            new2, upd, reg = record_bugs(r.cfg, bugs_from_file(sheet), "flares.xlsx")
+            self.assertEqual((len(new2), len(upd), reg), (0, 2, []), "a stale 'open' in an old export reopens nothing")
+            (r.root / "edit.csv").write_text(f"id,title,status\n{pay},Payment charged twice on retry,reopen\n{typo},Typo on the settings page,Won't fix\n")
+            _, _, reg = record_bugs(r.cfg, bugs_from_file(r.root / "edit.csv"), "edit.csv")
+            ms = {m.meta["audit_id"]: m for m in Ledger(r.cfg.paths).load().values() if m.category == "finding"}
+            self.assertEqual([m.meta["audit_id"] for m in reg], [pay])
+            self.assertEqual((ms[pay].meta["finding_status"], ms[typo].meta["finding_status"]), ("regressed", "wontfix"))
+            self.assertEqual(ms[pay].meta["severity"], "critical", "a list that names no severity keeps the known one")
+
+    def test_console_records_pasted_lines_and_an_uploaded_sheet(self):
+        import base64
+        from cosmos.ui import act
+        from cosmos.xlsx import workbook
+        with Repo() as r:
+            res = act(r.cfg, {"type": "flares_add", "text": "critical: Payment charged twice @ api/pay.py:88\nok\nExport does nothing on Firefox", "area": "web"})
+            self.assertEqual((res["ok"], res["new"]), (True, 2))
+            xlsx = base64.b64encode(workbook([("Bugs", ["Bug", "Priority"], [["Avatar upload ignores PNG", "minor"]])])).decode()
+            res = act(r.cfg, {"type": "flares_add", "file_name": "team.xlsx", "file_b64": "data:application/octet-stream;base64," + xlsx})
+            self.assertEqual((res["ok"], res["new"]), (True, 1))
+            self.assertFalse(act(r.cfg, {"type": "flares_add", "text": "ok"})["ok"])
+            self.assertFalse(act(r.cfg, {"type": "flares_add", "file_name": "x.exe", "file_b64": "AA=="})["ok"])
+            fs = {m.text: m for m in Ledger(r.cfg.paths).load().values() if m.category == "finding"}
+            self.assertEqual(fs["Avatar upload ignores PNG"].meta["severity"], "low")
+            self.assertEqual(fs["Export does nothing on Firefox"].meta["area"], "web")
 
 
 class TestSlashCommands(unittest.TestCase):
@@ -958,6 +1173,59 @@ class TestPrivateTerms(unittest.TestCase):
                 privacy._PRIVATE.update(mtime=None, pattern=None)
 
 
+class TestParentFolderSessions(unittest.TestCase):
+    """Sessions opened in a folder above the repository (a workspace of several projects) were never captured: Claude
+    Code files them under the parent folder, and the hook found no .cosmos there. Autopilot ran on nothing."""
+    def _exchange(self, ask, path, sid="p"):
+        return [_user(ask, sid), _asst("done", files=[str(path)], sid=sid)]
+
+    def test_a_parent_folder_transcript_is_read_for_the_repository_and_scoped_to_it(self):
+        from cosmos.adapters import find_claude_sessions, read_session
+        with tempfile.TemporaryDirectory() as h:
+            home = Path(h).resolve()
+            old = os.environ.get("HOME"); os.environ["HOME"] = str(home)
+            try:
+                work = home / "work"; repo = work / "retent"; other = work / "other"
+                for d in (repo, other):
+                    d.mkdir(parents=True); subprocess.run(["git", "init", "-q"], cwd=d, check=True)
+                tdir = home / ".claude" / "projects" / str(work).replace("/", "-"); tdir.mkdir(parents=True)
+                t = tdir / "s1.jsonl"
+                rows = self._exchange("fix the import in retent", repo / "imports.py") + self._exchange("tidy the other app", other / "y.py")
+                t.write_text("\n".join(json.dumps(r) for r in rows) + "\n")
+                self.assertIn(t, [p for p, _ in find_claude_sessions(repo)], "the watcher reads the parent folder's sessions")
+                turns, _ = read_session(t, "claude", root=repo)
+                text = " ".join(x.text for x in turns)
+                self.assertIn("fix the import in retent", text)
+                self.assertNotIn("tidy the other app", text, "an exchange about another repository stays out")
+            finally:
+                os.environ["HOME"] = old
+
+    def test_the_hook_command_reaches_every_child_repository_and_keeps_a_gate_hold(self):
+        from cosmos.wrapper import HOOK_CMD
+        with tempfile.TemporaryDirectory() as d:
+            ws = Path(d)
+            for name, code in (("a", 0), ("b", 2)):
+                c = ws / name / ".cosmos"; c.mkdir(parents=True)
+                (c / "cosmosw").write_text(f"import os,sys\nopen(os.path.join(os.path.dirname(__file__),'got'),'w').write(sys.stdin.read()+os.environ.get('COSMOS_PARENT_SESSION',''))\nsys.exit({code})\n")
+            r = subprocess.run(["sh", "-c", HOOK_CMD], input='{"hook_event_name":"Stop"}', text=True, capture_output=True, env={**os.environ, "CLAUDE_PROJECT_DIR": str(ws)})
+            self.assertEqual(r.returncode, 2, "the Gate's hold from any child is kept")
+            for name in ("a", "b"):
+                self.assertEqual((ws / name / ".cosmos" / "got").read_text(), '{"hook_event_name":"Stop"}1')
+            r = subprocess.run(["sh", "-c", HOOK_CMD], input="{}", text=True, capture_output=True, env={**os.environ, "CLAUDE_PROJECT_DIR": str(ws / "a" / ".cosmos")})
+            self.assertEqual(r.returncode, 0, "a folder with no cosmos below it exits 0")
+
+    def test_the_gate_ignores_another_repositorys_files(self):
+        from cosmos.gate import evaluate
+        with Repo() as r:
+            sib = r.root.parent / (r.root.name + "-sibling"); sib.mkdir()
+            try:
+                t = r.transcript("t.jsonl", [_user("edit the sibling"), _asst("done", files=[str(sib / "app.py")])])
+                res = evaluate(r.cfg, {"transcript_path": str(t), "session_id": "s"})
+                self.assertEqual((res["block"], res["edited"]), (False, []))
+            finally:
+                sib.rmdir()
+
+
 class TestDoctorEntrypoints(unittest.TestCase):
     def test_a_desktop_entry_named_cosmos_for_another_repo_is_named(self):
         from cosmos.cli import desktop_pins
@@ -969,6 +1237,28 @@ class TestDoctorEntrypoints(unittest.TestCase):
             self.assertEqual(desktop_pins(r.root, conf), [])
             conf.write_text(json.dumps({"mcpServers": {"cosmos": {"command": "python3", "args": [str(r.root / ".cosmos" / "cosmosw"), "mcp"]}}}))
             self.assertEqual(desktop_pins(r.root, conf), [], "pointing at this repository is fine")
+
+    def test_a_desktop_session_is_told_its_cosmos_tools_write_elsewhere(self):
+        import cosmos.connect
+        from cosmos.hooks import session_start
+        with Repo() as r, tempfile.TemporaryDirectory() as d:
+            conf = Path(d) / "claude_desktop_config.json"
+            conf.write_text(json.dumps({"mcpServers": {"cosmos": {"command": "python3", "args": ["/elsewhere/retent/.cosmos/cosmosw", "mcp"]}}}))
+            saved, env = cosmos.connect.DESKTOP_CONFIG, os.environ.get("CLAUDE_CODE_ENTRYPOINT")
+            cosmos.connect.DESKTOP_CONFIG = conf
+            try:
+                os.environ["CLAUDE_CODE_ENTRYPOINT"] = "claude-desktop"
+                brief = session_start(r.cfg)
+                self.assertTrue(brief.startswith("cosm◎s · ⚠ Claude Desktop's MCP entry `cosmos` serves /elsewhere/retent"), brief[:200])
+                self.assertIn("cosmosw flares add", brief)
+                os.environ["CLAUDE_CODE_ENTRYPOINT"] = "cli"
+                self.assertNotIn("Claude Desktop's MCP entry", session_start(r.cfg), "the terminal does not load Desktop's servers")
+            finally:
+                cosmos.connect.DESKTOP_CONFIG = saved
+                if env is None:
+                    os.environ.pop("CLAUDE_CODE_ENTRYPOINT", None)
+                else:
+                    os.environ["CLAUDE_CODE_ENTRYPOINT"] = env
 
     def test_a_launcher_left_by_another_python_is_named_with_its_fix(self):
         from cosmos.cli import entrypoints
@@ -1902,6 +2192,16 @@ class TestJournal(unittest.TestCase):
                 "pytest -q tests"]
         self.assertEqual(commits_in(cmds), ["fix(aura): cap Tavily hits at n", "chore: trim comments", "feat(chat): restrict attachments to PDF"])
 
+    def test_a_commit_made_in_another_folder_is_not_this_repositorys(self):
+        from cosmos.journal import commits_in
+        with tempfile.TemporaryDirectory() as d:
+            root = Path(d)
+            cmds = ['D=$(mktemp -d) && cd $D && git init -q && git commit -q --allow-empty -m init',
+                    f'cd {root}/sub && git commit -m "here"', 'git commit -m "plain" && cd /tmp',
+                    'cd ../other && git commit -m "sibling"', 'git -C ../x add . && git commit -m "after -C"', 'cd /tmp/x && git commit -m "tmp"']
+            self.assertEqual(commits_in(cmds, root), ["here", "plain", "after -C"], "git -C moves only that one git command")
+            self.assertEqual(len(commits_in(cmds)), 6, "without a root every commit counts")
+
     def test_capture_writes_a_journal_line_even_without_facts(self):
         with Repo() as r:
             p = r.transcript("s.jsonl", [_user("please make the chat attachment upload reject docx"),
@@ -2179,7 +2479,7 @@ class TestWorktreesAndWatch(unittest.TestCase):
     def test_hook_command_falls_back_to_the_main_worktree(self):
         from cosmos.wrapper import HOOK_CMD
         self.assertIn("--git-common-dir", HOOK_CMD)
-        self.assertTrue(HOOK_CMD.endswith("exit 0"), "never breaks a session where cosmos is absent")
+        self.assertIn('[ -f "$1" ] || exit 0', HOOK_CMD, "never breaks a session where cosmos is absent (run for real in TestParentFolderSessions)")
 
     def test_watch_once_builds_the_live_picture(self):
         from cosmos.watch import load_live, tick
