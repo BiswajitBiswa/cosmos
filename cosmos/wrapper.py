@@ -34,8 +34,10 @@ def _ver(init):
     return tuple(int(x) for x in re.findall(r"\d+", m.group(1))[:4]) if m else ()
 vendor = os.path.join(here, "vendor")
 spec = importlib.util.find_spec("cosmos")
-if _ver(os.path.join(vendor, "cosmos", "__init__.py")) > _ver(spec.origin if spec else None):
-    sys.path.insert(0, vendor)  # the repository's copy is newer than the installed one (or there is none): it wins
+_mine, _theirs = _ver(os.path.join(vendor, "cosmos", "__init__.py")), _ver(spec.origin if spec else None)
+_release = spec is not None and "-packages" in (spec.origin or "")   # a pip install, not an editable checkout
+if _mine > _theirs or (_mine == _theirs and _release):
+    sys.path.insert(0, vendor)  # newer, or a tie with a released copy (same version string, maybe older code): the repository's copy wins
 try:
     import cosmos  # otherwise the installed version
 except ImportError:
