@@ -1,7 +1,7 @@
 ---
 type: "Lane"
 title: "cosmos"
-description: "14 active facts, 6 open flares, 2 people active in the last 30 days"
+description: "14 active facts, 5 open flares, 2 people active in the last 30 days"
 status: "stable"
 sources: [{"resource": "/../../.claude", "title": ".claude"}, {"resource": "/../../.claude-plugin", "title": ".claude-plugin"}, {"resource": "/../../cosmos", "title": "cosmos"}, {"resource": "/../../plugin", "title": "plugin"}]
 links: ["/architecture/mem_1f13b61a-slash-commands-for-every-agent-come-from-one-cat.md", "/architecture/mem_b6b76950-the-atlas-has-a-peoples-view-cosmos-atlashtml-py.md", "/architecture/mem_c2833030-excel-export-is-a-stdlib-xlsx-writer-cosmos-xlsx.md", "/constraint/mem_1192ca15-hooks-must-always-exit-0-the-gate-is-the-only-de.md", "/constraint/mem_44c1eef6-the-cosmos-mcp-server-asks-the-client-for-mcp-ro.md", "/constraint/mem_4c8727a1-in-claude-desktop-code-tab-sessions-an-mcp-serve.md", "/constraint/mem_a1b7e320-claude-code-caps-each-hook-text-plain-stdout-add.md", "/decision/mem_043ce3de-playbooks-a-repositorys-own-long-form-agent-prom.md", "/decision/mem_1734bf56-bugs-found-by-hand-become-flares-through-one-pat.md", "/decision/mem_2b049e3f-a-flares-id-prefix-is-the-projects-lifecycle-sta.md", "/decision/mem_4efbf3d7-releases-and-their-repairs-reach-every-project-b.md", "/decision/mem_55db62b9-recall-is-made-visible-with-the-hooks-systemmess.md", "/decision/mem_5cfd6c9b-commit-note-by-biswajit-tripathy-autopilot-from.md", "/workflow/mem_9fe4f5ce-horizon-notes-exist-only-when-someone-asks-for-o.md"]
@@ -11,13 +11,12 @@ tags: ["lane", "cosmos"]
 
 # Lane · cosmos
 
-14 active facts, 6 open flares, 2 people active in the last 30 days.
+14 active facts, 5 open flares, 2 people active in the last 30 days.
 
 **Overlap:** 2 people active here this month: BiswajitBiswa, Biswajit Tripathy.
 
 ## Open flares
 
-- [PROD-07ab58](/finding/mem_0448e271-the-watcher-started-a-dream-every-30-seconds-whi.md) [medium] The watcher started a dream every 30 seconds while model ranges waited and no model was available
 - [PROD-048c42](/finding/mem_07187b11-mcp-entries-cosmos-writes-start-python3-which-do.md) [high] MCP entries cosmos writes start python3, which does not exist on Windows, so the cosmos tools never start there
 - [PROD-0180e8](/finding/mem_6fa48630-a-repository-whose-committed-hook-command-is-old.md) [medium] A repository whose committed hook command is older than the user-level one runs every hook twice (two Gates, two briefin
 - [PROD-2e63ea](/finding/mem_b9901dfb-a-session-opened-in-a-subfolder-of-the-repositor.md) [medium] A session opened in a subfolder of the repository gets no briefing, facts or capture: load_config takes the folder it is

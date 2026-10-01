@@ -24,12 +24,16 @@ tags: ["finding", "medium"]
 authors: ["Biswajit Tripathy"]
 valid_from: "2026-10-01"
 meta_audit_id: "PROD-07ab58"
-meta_finding_status: "open"
+meta_finding_status: "fixed"
+meta_fixed_commit: "673d071"
+meta_fixed_on: "2026-10-01"
 meta_found_commit: "20aa94f"
 meta_locations: "cosmos/hooks.py"
 meta_raw_id: "07ab58"
 meta_severity: "medium"
 meta_source_doc: "manual"
+meta_status_at: "2026-10-01"
+meta_status_note: "local commit"
 ---
 
 # The watcher started a dream every 30 seconds while model ranges waited and no model was available
@@ -44,7 +48,7 @@ meta_source_doc: "manual"
 ## Why we believe this
 - Observed 1× (first 2026-10-01, last 2026-10-01); source: explicit
 - Evidence file: `cosmos/hooks.py`
-- Imported from manual on 2026-10-01
+- Marked fixed on 2026-10-01: local commit
 
 ## Related
 - [[mem_1192ca15]]
