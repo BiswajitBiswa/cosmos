@@ -667,6 +667,27 @@ class TestFirebaseStudio(unittest.TestCase):
             self.assertIn("Cosmos — how this team works with AI", rules)
 
 
+class TestWrapperChoice(unittest.TestCase):
+    def test_the_repositorys_copy_wins_a_tie_and_a_newer_install_wins(self):
+        """A pip install of the same version string can be older code: on 2026-10-01 it hid the parent-folder support
+        from every retent session for eight hours."""
+        from cosmos.wrapper import write_wrapper
+        with tempfile.TemporaryDirectory() as d:
+            root = Path(d)
+            (root / ".cosmos").mkdir()
+            write_wrapper(root / ".cosmos")
+            site = root / "lib" / "site-packages"
+            for where, who in ((root / ".cosmos" / "vendor" / "cosmos", "vendored"), (site / "cosmos", "installed")):
+                where.mkdir(parents=True)
+                (where / "__init__.py").write_text('__version__ = "0.1.6"\n')
+                (where / "cli.py").write_text(f"def main(argv=None):\n    print({who!r})\n    return 0\n")
+            run = lambda: subprocess.run([sys.executable, str(root / ".cosmos" / "cosmosw")], cwd=root, capture_output=True, text=True,
+                                         env=dict(os.environ, PYTHONPATH=str(site))).stdout.strip()
+            self.assertEqual(run(), "vendored", "same version as a pip install: the repository's own copy")
+            (site / "cosmos" / "__init__.py").write_text('__version__ = "0.1.7"\n')
+            self.assertEqual(run(), "installed", "a newer install wins")
+
+
 class TestDreamPacing(unittest.TestCase):
     def test_a_dream_that_changed_nothing_still_waits_its_turn(self):
         """Dreams that change nothing write no record; with model ranges waiting the watcher dreamt every 30 seconds."""

@@ -92,6 +92,10 @@ and a pinned Desktop entry. A repair step only rewrites what cosmos wrote, or ad
 `"update": {"auto": false}` turns it off; `update.pip: false` leaves the pip install alone; `cosmos upgrade --check`
 says where a repository stands.
 
+Which copy runs: `.cosmos/cosmosw` takes the newer of the repository's copy and a pip install. On the same version
+string the repository's copy wins, because a pip install of that version can be older code (on 2026-10-01 one hid the
+parent-folder support from every retent session for eight hours); only an editable checkout of cosmos itself wins a tie.
+
 ## Guarantees
 
 Every hook exits 0 on any error (the Gate's deliberate 2 is the only other code); errors go to
