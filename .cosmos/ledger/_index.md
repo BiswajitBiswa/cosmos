@@ -7,13 +7,14 @@ tags: ["cosmos", "moc"]
 
 # Ledger index
 
-44 memories · 42 active · 0 contradicted · 1 stale candidates · 4 lanes
+45 memories · 43 active · 0 contradicted · 1 stale candidates · 4 lanes
 
 Charter: [[charter]] · Atlas: [[inventory]] · [[containers]] · [[deployment]] · [[api]]
 
 ## Lane · cosmos
 ### Architecture
 - [[mem_1f13b61a-slash-commands-for-every-agent-come-from-one-cat|Slash commands for every agent come from one catalogue in cosmos/commands.py (Claude .claude/commands, Gemini .gemini/commands TOML, Cursor .cursor/commands, Copilot .github/prompts, Windsurf .windsurf/workflows, Codex only ~/.codex/prompts via --write-user, plugin/commands for the plugin). Files carrying 'written by cosmos' are rewritten; unmarked files are the team's own and never overwritten. plugin/commands must be regenerated when the catalogue changes (a test fails otherwise).]]
+- [[mem_79036575-codex-reads-project-skills-from-agents-skills-na|Codex reads project skills from .agents/skills/<name>/SKILL.md (codex-rs/core/tests/suite/skills.rs:73), not project commands: AGENT_DIRS['codex'] writes the command catalogue and every playbook there (frontmatter name + description, no arguments). Claude Code has no icon field for plugins, commands or skills and draws no MCP icons; only the Codex manifest's interface.composerIcon/logo show the cosmos mark. Firebase Studio (IDX) is sunset 2027-03-22; an .idx/ workspace gets .idx/mcp.json and the block in its own .idx/airules.md.]]
 - [[mem_b6b76950-the-atlas-has-a-peoples-view-cosmos-atlashtml-py|The Atlas has a people's view: cosmos/atlas_html.py renders every ledger/atlas/*.md into ledger/atlas/atlas.html (sidebar, pan/zoom/fit/full-screen diagrams, cosmos theme) after each build and deep pass; --format md or atlas.format md skips it. The Markdown stays the source agents and dreams read. The page reuses the console's mmdFix by extracting it from ui.HTML, so the Mermaid fixes have one copy.]]
 - [[mem_c2833030-excel-export-is-a-stdlib-xlsx-writer-cosmos-xlsx|Excel export is a stdlib xlsx writer (cosmos/xlsx.py: zip of SpreadsheetML parts, inline strings only so no cell is ever a formula); `cosmos export`, `flares export -o *.xlsx` and the console's /api/export.xlsx all use it. Reason: cosmos is stdlib-only, so no openpyxl.]]
 ### Constraint
@@ -62,11 +63,11 @@ Charter: [[charter]] · Atlas: [[inventory]] · [[containers]] · [[deployment]]
 - [[mem_1ac630fe-commit-note-by-biswajit-tripathy-plugin-0-2-1-co|Commit note by Biswajit Tripathy: plugin 0.2.1: Codex installs cosmos from its Plugins screen, nothing else to run — The repository is already a marketplace Codex reads (.claude-plugin/marketplace.json). The plugin gains its own Codex manifest (plugin/.codex-plugin/plugin.json); Claude keeps reading plugin/.claude-plugin/. - Hooks (SessionStart, UserPromptSubmit) find the thread's repository and hand the event to its committed cosmos: the Charter and facts become the model's context, and the watcher that captures Codex sessions starts. No Stop hook: exit 2 would block a Codex thread. - One MCP server for every repository: Codex starts it in the plugin's folder, so it answers the handshake it]]
 
 ## Lane · general
-### Architecture
-- [[mem_79036575-codex-reads-project-skills-from-agents-skills-na|Codex reads project skills from .agents/skills/<name>/SKILL.md (codex-rs/core/tests/suite/skills.rs:73), not project commands: AGENT_DIRS['codex'] writes the command catalogue and every playbook there (frontmatter name + description, no arguments). Claude Code has no icon field for plugins, commands or skills and draws no MCP icons; only the Codex manifest's interface.composerIcon/logo show the cosmos mark. Firebase Studio (IDX) is sunset 2027-03-22; an .idx/ workspace gets .idx/mcp.json and the block in its own .idx/airules.md.]]
 ### Constraint
 - [[mem_2518367d-cosmos-is-on-pypi-as-cosmos-dev-0-1-0-published|cosmos is on PyPI as cosmos-dev (0.1.0 published 2026-09-29; the name cosmos is taken): install with python3 -m pip install cosmos-dev. The README is also the PyPI page, so its images and doc links must be absolute GitHub URLs. /plugin is a Claude Code CLI command only; the desktop app uses its Plugins screen or claude plugin marketplace add / install.]]
 - [[mem_6381abbc-cosmos-is-stdlib-only-the-anthropic-sdk-is-an-op|cosmos is stdlib-only; the anthropic SDK is an optional extra and every feature must work without it.]]
+### Finding
+- [[mem_b058375a-a-pip-install-of-the-same-version-string-shadowe|A pip install of the same version string shadowed the repository's newer copy and silently turned off capture and briefings for every retent session for about 8 hours]]
 
 ## Lane · plugin
 ### Constraint
