@@ -53,6 +53,37 @@ rule in the briefing is therefore one line (220 characters, then its id; `cosmos
 whole briefing stays under `retrieval.session_start_chars` (9,000), cut from the end if needed. Measured on
 2026-10-01: retent's briefing was 13,326 characters (its 12 rules alone 8,034) and is now 8,157; this repository's is 7,465.
 
+## Sessions opened above the repository
+
+A session opened in a folder that holds several repositories (`~/work/` with `api/` and `web/` in it) has no
+`.cosmos/` of its own. The user-level hook command then hands the event to each `*/.cosmos/cosmosw` one level down,
+with `COSMOS_PARENT_SESSION=1`:
+
+- each repository adds one line saying where its team memory is (not its whole briefing), and its facts when a
+  prompt names it;
+- its watcher captures only the turns that touched it (Claude Code files these sessions under the parent folder's
+  project);
+- a linked worktree stays quiet, because the main checkout answers for the repository and all its worktrees;
+- the Gate ignores files of a sibling repository; an exit 2 from any child holds the turn.
+
+## Claude Desktop
+
+In the desktop app's Code tab, an MCP server named `cosmos` in `claude_desktop_config.json` takes the name of each
+project's own server. When it runs another repository's cosmos, the briefing starts with a warning and the commands to
+use instead, and `cosmos repair` renames that entry `cosmos-<repo>` (a backup of the file is kept).
+
+## Updates
+
+At a session start, at most once a day per machine, a background `cosmos upgrade --auto` asks PyPI for the latest
+release. A newer one is downloaded, checked against PyPI's sha256, import-tested, swapped into `.cosmos/vendor` and
+committed, so teammates run it after `git pull` without installing anything; a pip install on the machine is upgraded
+when pip allows. HTTPS stays verified; on a Python with no certificate bundle (python.org's macOS build) cosmos uses
+certifi or the system bundle. Each version then runs `cosmos repair` once per machine and repository: the wrapper, the
+repository and user hook commands, the slash commands, the Codex plugin listing (`.agents/plugins/marketplace.json`)
+and a pinned Desktop entry. A repair step only rewrites what cosmos wrote, or adds cosmos's entry beside the team's.
+`"update": {"auto": false}` turns it off; `update.pip: false` leaves the pip install alone; `cosmos upgrade --check`
+says where a repository stands.
+
 ## Guarantees
 
 Every hook exits 0 on any error (the Gate's deliberate 2 is the only other code); errors go to
