@@ -6,7 +6,7 @@ status: "stable"
 generated: {"by": "human:Biswajit Tripathy", "at": "2026-09-29T00:00:00Z"}
 sources: [{"resource": "cosmos/store.py", "title": "store.py"}, {"resource": "cosmos/dream.py", "title": "dream.py"}]
 stale_after: "2027-03-28T00:00:00Z"
-links: ["/lanes/cosmos.md", "/finding/mem_07187b11-mcp-entries-cosmos-writes-start-python3-which-do.md", "/finding/mem_cb4bccc1-retents-session-briefing-13-326-chars-exceeded-c.md", "/finding/mem_f2ac4098-a-token-pasted-in-a-prompt-was-written-verbatim.md", "/finding/mem_fcae919e-a-dream-that-started-before-cosmos-was-updated-r.md"]
+links: ["/lanes/cosmos.md", "/finding/mem_07187b11-mcp-entries-cosmos-writes-start-python3-which-do.md", "/finding/mem_488b620a-every-hook-took-700-790-ms-on-retent-2-925-notes.md", "/finding/mem_93255725-cosmosremember-and-cosmosflare-took-40-48-s-on-r.md", "/finding/mem_b058375a-a-pip-install-of-the-same-version-string-shadowe.md", "/finding/mem_cb4bccc1-retents-session-briefing-13-326-chars-exceeded-c.md"]
 id: "mem_ac19fa4c"
 aliases: ["mem_ac19fa4c"]
 category: "finding"
@@ -50,15 +50,17 @@ meta_source_doc: "qa-report-2026-09-29"
 
 ## Related
 - [[mem_07187b11]]
+- [[mem_488b620a]]
+- [[mem_93255725]]
+- [[mem_b058375a]]
 - [[mem_cb4bccc1]]
-- [[mem_f2ac4098]]
-- [[mem_fcae919e]]
 
 ## Links
 - lane: [cosmos](/lanes/cosmos.md)
 - related: [mem_07187b11](/finding/mem_07187b11-mcp-entries-cosmos-writes-start-python3-which-do.md)
+- related: [mem_488b620a](/finding/mem_488b620a-every-hook-took-700-790-ms-on-retent-2-925-notes.md)
+- related: [mem_93255725](/finding/mem_93255725-cosmosremember-and-cosmosflare-took-40-48-s-on-r.md)
+- related: [mem_b058375a](/finding/mem_b058375a-a-pip-install-of-the-same-version-string-shadowe.md)
 - related: [mem_cb4bccc1](/finding/mem_cb4bccc1-retents-session-briefing-13-326-chars-exceeded-c.md)
-- related: [mem_f2ac4098](/finding/mem_f2ac4098-a-token-pasted-in-a-prompt-was-written-verbatim.md)
-- related: [mem_fcae919e](/finding/mem_fcae919e-a-dream-that-started-before-cosmos-was-updated-r.md)
 
 #finding #high #ledger
