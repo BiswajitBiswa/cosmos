@@ -7,7 +7,7 @@ tags: ["cosmos", "moc"]
 
 # Ledger index
 
-43 memories · 41 active · 0 contradicted · 1 stale candidates · 4 lanes
+44 memories · 42 active · 0 contradicted · 1 stale candidates · 4 lanes
 
 Charter: [[charter]] · Atlas: [[inventory]] · [[containers]] · [[deployment]] · [[api]]
 
@@ -62,6 +62,8 @@ Charter: [[charter]] · Atlas: [[inventory]] · [[containers]] · [[deployment]]
 - [[mem_1ac630fe-commit-note-by-biswajit-tripathy-plugin-0-2-1-co|Commit note by Biswajit Tripathy: plugin 0.2.1: Codex installs cosmos from its Plugins screen, nothing else to run — The repository is already a marketplace Codex reads (.claude-plugin/marketplace.json). The plugin gains its own Codex manifest (plugin/.codex-plugin/plugin.json); Claude keeps reading plugin/.claude-plugin/. - Hooks (SessionStart, UserPromptSubmit) find the thread's repository and hand the event to its committed cosmos: the Charter and facts become the model's context, and the watcher that captures Codex sessions starts. No Stop hook: exit 2 would block a Codex thread. - One MCP server for every repository: Codex starts it in the plugin's folder, so it answers the handshake it]]
 
 ## Lane · general
+### Architecture
+- [[mem_79036575-codex-reads-project-skills-from-agents-skills-na|Codex reads project skills from .agents/skills/<name>/SKILL.md (codex-rs/core/tests/suite/skills.rs:73), not project commands: AGENT_DIRS['codex'] writes the command catalogue and every playbook there (frontmatter name + description, no arguments). Claude Code has no icon field for plugins, commands or skills and draws no MCP icons; only the Codex manifest's interface.composerIcon/logo show the cosmos mark. Firebase Studio (IDX) is sunset 2027-03-22; an .idx/ workspace gets .idx/mcp.json and the block in its own .idx/airules.md.]]
 ### Constraint
 - [[mem_2518367d-cosmos-is-on-pypi-as-cosmos-dev-0-1-0-published|cosmos is on PyPI as cosmos-dev (0.1.0 published 2026-09-29; the name cosmos is taken): install with python3 -m pip install cosmos-dev. The README is also the PyPI page, so its images and doc links must be absolute GitHub URLs. /plugin is a Claude Code CLI command only; the desktop app uses its Plugins screen or claude plugin marketplace add / install.]]
 - [[mem_6381abbc-cosmos-is-stdlib-only-the-anthropic-sdk-is-an-op|cosmos is stdlib-only; the anthropic SDK is an optional extra and every feature must work without it.]]

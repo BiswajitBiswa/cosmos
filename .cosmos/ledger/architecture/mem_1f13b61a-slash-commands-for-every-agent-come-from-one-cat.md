@@ -6,7 +6,7 @@ status: "stable"
 generated: {"by": "human:Biswajit Tripathy", "at": "2026-09-29T00:00:00Z"}
 sources: [{"resource": "cosmos/commands.py", "title": "commands.py"}, {"resource": "plugin/commands/", "title": ""}]
 stale_after: "2027-03-28T00:00:00Z"
-links: ["/lanes/cosmos.md", "/decision/mem_043ce3de-playbooks-a-repositorys-own-long-form-agent-prom.md", "/finding/mem_fcf6d908-new-slash-commands-reintroduced-names-retired-in.md"]
+links: ["/lanes/cosmos.md", "/architecture/mem_79036575-codex-reads-project-skills-from-agents-skills-na.md", "/decision/mem_043ce3de-playbooks-a-repositorys-own-long-form-agent-prom.md", "/finding/mem_fcf6d908-new-slash-commands-reintroduced-names-retired-in.md"]
 id: "mem_1f13b61a"
 aliases: ["mem_1f13b61a"]
 category: "architecture"
@@ -34,10 +34,12 @@ valid_from: "2026-09-29"
 - Evidence file: `plugin/commands/`
 
 ## Related
+- [[mem_79036575]]
 - [[mem_043ce3de]]
 - [[mem_fcf6d908]]
 
 ## Links
 - lane: [cosmos](/lanes/cosmos.md)
+- related: [mem_79036575](/architecture/mem_79036575-codex-reads-project-skills-from-agents-skills-na.md)
 - related: [mem_043ce3de](/decision/mem_043ce3de-playbooks-a-repositorys-own-long-form-agent-prom.md)
 - related: [mem_fcf6d908](/finding/mem_fcf6d908-new-slash-commands-reintroduced-names-retired-in.md)
