@@ -641,6 +641,45 @@ class TestForeignSession(unittest.TestCase):
             self.assertNotIn("None of the files", ok)
 
 
+class TestPlaybooksForEveryAgent(unittest.TestCase):
+    def test_the_instruction_files_name_the_playbooks(self):
+        """Codex reads no project commands: AGENTS.md (the same block as CLAUDE.md) is where it learns a playbook exists."""
+        from cosmos.render import managed_block
+        with Repo() as r:
+            (r.root / ".cosmos" / "playbooks").mkdir(parents=True)
+            (r.root / ".cosmos" / "playbooks" / "seo-geo-master.md").write_text("# SEO + GEO master playbook (search and AI visibility)\nYou are the agent.\n")
+            line = next(l for l in managed_block({}, 0, r.cfg).splitlines() if l.startswith("Playbooks"))
+            self.assertIn("`seo-geo-master` SEO + GEO master playbook (`.cosmos/playbooks/seo-geo-master.md`)", line)
+
+
+class TestFirebaseStudio(unittest.TestCase):
+    def test_an_idx_workspace_gets_the_mcp_server_and_its_rules_file_the_block(self):
+        from cosmos.connect import connect_idx
+        with Repo() as r:
+            self.assertEqual(connect_idx(r.cfg), [], "no .idx/: nothing written")
+            (r.root / ".idx").mkdir()
+            (r.root / ".idx" / "airules.md").write_text("# Our rules\n- Use Tailwind.\n")
+            self.assertEqual(connect_idx(r.cfg), [".idx/mcp.json (Firebase Studio)"])
+            self.assertEqual(json.loads((r.root / ".idx" / "mcp.json").read_text())["mcpServers"]["cosmos"]["args"], [".cosmos/cosmosw", "mcp"])
+            render_all(r.cfg, {})
+            rules = (r.root / ".idx" / "airules.md").read_text()
+            self.assertTrue(rules.startswith("# Our rules\n- Use Tailwind."), "the team's rules stay first")
+            self.assertIn("Cosmos — how this team works with AI", rules)
+
+
+class TestDreamPacing(unittest.TestCase):
+    def test_a_dream_that_changed_nothing_still_waits_its_turn(self):
+        """Dreams that change nothing write no record; with model ranges waiting the watcher dreamt every 30 seconds."""
+        import time
+        from unittest import mock
+        from cosmos.hooks import should_auto_dream
+        with Repo() as r:
+            with mock.patch("cosmos.hooks._reader.windows_waiting", return_value=2):
+                self.assertTrue(should_auto_dream(r.cfg, 3), "nothing ran yet: a backlog is drained")
+                (r.cfg.paths.state / "dream.started").write_text(str(time.time()))
+                self.assertFalse(should_auto_dream(r.cfg, 3), "one just started: the next waits an hour")
+
+
 class TestSelfUpgrade(unittest.TestCase):
     """Releases and their repairs reach every project without anyone pushing them there."""
 
@@ -815,7 +854,10 @@ class TestSlashCommands(unittest.TestCase):
             written, kept = write_commands(r.root, ["claude", "gemini", "cursor", "copilot", "windsurf", "codex", "cline"])
             self.assertEqual(kept, [".claude/commands/qa.md"])
             self.assertEqual(own.read_text(), "our own QA protocol\n")
-            self.assertEqual(len(written), 5 * len(names) - 1)
+            self.assertEqual(len(written), 6 * len(names) - 1, "five command folders and Codex's project skills")
+            skill = (r.root / ".agents" / "skills" / "recall" / "SKILL.md").read_text()
+            self.assertTrue(skill.startswith("---\nname: recall\ndescription: "), skill[:80])
+            self.assertNotIn("$ARGUMENTS", skill, "a skill takes no arguments")
             flare = (r.root / ".gemini" / "commands" / "flare.toml").read_text()
             self.assertIn("{{args}}", flare)
             self.assertTrue(flare.splitlines()[1].startswith('description = "'))

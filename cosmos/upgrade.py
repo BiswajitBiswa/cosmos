@@ -237,7 +237,7 @@ def _repair_due(cfg: Config) -> bool:
 
 def _committed_extras(cfg: Config) -> List[str]:
     root = cfg.paths.root
-    extras = [".agents/plugins/marketplace.json", ".claude/settings.json", ".claude/commands", ".gemini/commands", ".cursor/commands",
+    extras = [".agents/plugins/marketplace.json", ".agents/skills", ".idx/mcp.json", ".idx/airules.md", ".claude/settings.json", ".claude/commands", ".gemini/commands", ".cursor/commands",
               ".github/prompts", ".windsurf/workflows"]
     return [e for e in extras if (root / e).exists()]
 
@@ -265,7 +265,8 @@ def _step_user_hooks(cfg: Config) -> str:
 
 def _step_commands(cfg: Config) -> str:
     from .commands import refresh
-    n = len(refresh(cfg))
+    codex = ("codex",) if (cfg.paths.root / "AGENTS.md").exists() else ()   # Codex reads the playbooks as project skills
+    n = len(refresh(cfg, add=codex))
     return f"{n} slash command file(s) rewritten" if n else ""
 
 
@@ -318,8 +319,13 @@ def _step_desktop_pin(cfg: Config) -> str:
     return f"Claude Desktop MCP entry `cosmos` renamed to `{name}` (restart Claude Desktop)"
 
 
+def _step_idx(cfg: Config) -> str:
+    from .connect import connect_idx
+    return "; ".join(connect_idx(cfg))
+
+
 REPAIRS: List[Callable[[Config], str]] = [_step_wrapper, _step_repo_hooks, _step_user_hooks, _step_commands, _step_codex_listing,
-                                          _step_desktop_pin]
+                                          _step_desktop_pin, _step_idx]
 
 
 def repair(cfg: Config) -> List[str]:

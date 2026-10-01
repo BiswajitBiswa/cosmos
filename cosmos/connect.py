@@ -73,9 +73,20 @@ def connect(cfg: Config, agents: List[str]) -> List[str]:
     if "copilot" in agents:
         if _merge_json(root / ".vscode" / "mcp.json", "servers", "cosmos", {**entry, "type": "stdio"}):
             done.append(".vscode/mcp.json (Copilot)")
+    done += connect_idx(cfg)
     from .commands import write_commands
     write_commands(root, agents, cfg)                 # the catalogue and the repository's playbooks; reported by commands.status()
     return done
+
+
+def connect_idx(cfg: Config) -> List[str]:
+    """Firebase Studio (formerly Project IDX; no new workspaces since 2026-06-22, shut down 2027-03-22): a workspace
+    with .idx/ gets the cosmos MCP server in .idx/mcp.json. Its Gemini reads GEMINI.md and AGENTS.md, which cosmos
+    already writes, and .idx/airules.md first, which gets the same block when the team has one (render_all)."""
+    root = cfg.paths.root
+    if not (root / ".idx").is_dir():
+        return []
+    return [".idx/mcp.json (Firebase Studio)"] if _merge_json(root / ".idx" / "mcp.json", "mcpServers", "cosmos", mcp_server_entry(root)) else []
 
 
 def codex_snippet(root: Path) -> str:
