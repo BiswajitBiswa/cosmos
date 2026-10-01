@@ -30,6 +30,9 @@ def _log(cfg: Config, msg: str) -> None:
 
 def _log_inject(cfg: Config, event: str, text: str) -> None:
     """Context handed to an agent, measured: what cosmos costs a session in tokens is a number, not a feeling."""
+    import os
+    if os.environ.get("COSMOS_BENCH"):
+        return                                         # `cosmos pulse --bench` times the hooks; its calls are not sessions
     try:
         cfg.paths.state.mkdir(parents=True, exist_ok=True)
         with (cfg.paths.state / "inject.log").open("a") as fh:

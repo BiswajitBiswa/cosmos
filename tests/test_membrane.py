@@ -11,7 +11,8 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 os.environ["COSMOS_LLM_PROVIDER"] = "none"
-os.environ["COSMOS_NO_BACKGROUND"] = "1"   # tests never spawn watchers/dreams or touch ~/.claude   # tests never call a real model; LLM paths use fakes
+os.environ["COSMOS_NO_BACKGROUND"] = "1"
+os.environ["COSMOS_CACHE_DIR"] = tempfile.mkdtemp(prefix="cosmos-cache-")   # the parsed-ledger cache, per test run   # tests never spawn watchers/dreams or touch ~/.claude   # tests never call a real model; LLM paths use fakes
 
 from cosmos import extract, privacy, retrieve  # noqa: E402
 from cosmos.config import load_config  # noqa: E402
@@ -686,6 +687,46 @@ class TestWrapperChoice(unittest.TestCase):
             self.assertEqual(run(), "vendored", "same version as a pip install: the repository's own copy")
             (site / "cosmos" / "__init__.py").write_text('__version__ = "0.1.7"\n')
             self.assertEqual(run(), "installed", "a newer install wins")
+
+
+class TestPulse(unittest.TestCase):
+    def test_pulse_measures_from_the_records_and_names_silent_failures(self):
+        from cosmos.pulse import run, save, text
+        with Repo() as r:
+            (r.root / ".cosmos" / "charter.md").write_text("# Charter\n- Run the tests.\n")
+            Ledger(r.cfg.paths).save_all([Memory(id=make_id("x"), text="Payments retry with an idempotency key", category="decision")])
+            from cosmos.mcp import call_tool
+            call_tool(r.cfg, "cosmos_flare", {"title": "LogMasker regex recurses on long secrets", "locations": "executor/LogMasker.kt:8"})
+            from datetime import datetime as _dt, timedelta as _td, timezone as _tz
+            stamp = lambda d: (_dt.now(_tz.utc) - _td(days=d)).strftime("%Y-%m-%dT%H:%M:%SZ")
+            (r.cfg.paths.state / "inject.log").write_text(f"{stamp(10)} UserPromptSubmit 300 3\n{stamp(0)} UserPromptSubmit 200 2\n{stamp(0)} UserPromptSubmit 40 0\n")
+            rep = run(r.cfg)
+            checks = {h["check"]: h["ok"] for h in rep["health"]}
+            self.assertEqual(checks["briefing under the hook cap"], "yes")
+            self.assertEqual(checks["open flares point at this repository"], "no", "a flare naming only files this repository lacks")
+            self.assertEqual((rep["memory"]["active_facts"], rep["flares"]["total"]), (1, 1))
+            self.assertEqual((rep["context"]["prompts"], rep["context"]["prompts_with_facts"]), (2, 1), "ten days ago is outside the window")
+            self.assertIn("health", text(rep))
+            self.assertTrue(save(r.cfg, rep).name.endswith(".json"))
+
+
+class TestLedgerCache(unittest.TestCase):
+    def test_a_changed_added_or_removed_note_is_always_seen(self):
+        with Repo() as r:
+            led = Ledger(r.cfg.paths)
+            led.save_all([Memory(id=make_id("a"), text="Payments retry with an idempotency key", category="decision"),
+                          Memory(id=make_id("b"), text="Exports never include raw phone numbers", category="constraint")])
+            first = led.load()
+            self.assertEqual(len(first), 2)
+            first[make_id("a")].text = "edited in memory only"
+            self.assertEqual(led.load()[make_id("a")].text, "Payments retry with an idempotency key", "a caller's edit never leaks")
+            m = first[make_id("b")]; m.text = "Exports never include raw phone numbers or emails"; led.save(m)
+            led.save(Memory(id=make_id("c"), text="Seed data never runs in production", category="constraint"))
+            again = led.load()
+            self.assertEqual(again[make_id("b")].text, "Exports never include raw phone numbers or emails")
+            self.assertIn(make_id("c"), again)
+            next(p for p in led.dir.rglob(f"{make_id('c')}*.md")).unlink()
+            self.assertNotIn(make_id("c"), led.load())
 
 
 class TestDreamPacing(unittest.TestCase):

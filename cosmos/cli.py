@@ -762,6 +762,17 @@ def cmd_repair(a) -> int:
     return 0
 
 
+def cmd_pulse(a) -> int:
+    """How cosmos is doing here: health checks, then what it did and what it cost, measured from .cosmos/."""
+    from .pulse import run, save, text
+    cfg = load_config(); _require(cfg)
+    rep = run(cfg, with_bench=a.bench)
+    if a.save:
+        rep["saved_to"] = str(save(cfg, rep).relative_to(cfg.paths.root))
+    print(json.dumps(rep, indent=1, ensure_ascii=False) if a.json else text(rep))
+    return 0 if all(h["ok"] == "yes" for h in rep["health"]) else 1
+
+
 # ---------------------------------------------------------------- lanes · atlas · charter · horizon · gate
 def cmd_lanes(a) -> int:
     from .lanes import assign_lanes, lane_report, propose
@@ -1238,6 +1249,7 @@ def build_parser() -> argparse.ArgumentParser:
     s = sp.add_parser("uninstall", help="remove hooks from .claude/settings.json"); s.set_defaults(fn=cmd_uninstall)
     s = sp.add_parser("update", help="refresh the vendored copy in .cosmos/vendor from the installed cosmos"); s.set_defaults(fn=cmd_update)
     s = sp.add_parser("upgrade", help="bring the latest release into this repository (checksum-verified) and run its repairs; runs by itself daily"); s.add_argument("--check", action="store_true", help="only say whether a newer release exists"); s.add_argument("--auto", action="store_true", help=argparse.SUPPRESS); s.set_defaults(fn=cmd_upgrade)
+    s = sp.add_parser("pulse", help="how cosmos is doing here: health checks and measured metrics (usage, memory, flares, recall, context, dreams)"); s.add_argument("--bench", action="store_true", help="also time each hook (fresh process, median of 5)"); s.add_argument("--save", action="store_true", help="write .cosmos/ledger/metrics/<date>.json"); s.add_argument("--json", action="store_true"); s.set_defaults(fn=cmd_pulse)
     s = sp.add_parser("repair", help="rewrite what older versions wrote wrongly: hooks, slash commands, the Codex plugin listing, a pinned Desktop MCP entry"); s.set_defaults(fn=cmd_repair)
 
     s = sp.add_parser("lanes", help="facts, findings and people per feature lane; flags overlap"); s.add_argument("--days", type=int, default=30); s.add_argument("--json", action="store_true"); s.add_argument("--propose", action="store_true", help="suggest a lanes mapping (LLM if configured, else from paths)"); s.add_argument("--write", action="store_true", help="with --propose: save to config and re-file"); s.add_argument("--no-llm", action="store_true"); s.set_defaults(fn=cmd_lanes)

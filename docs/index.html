@@ -95,6 +95,7 @@ section.tint,section.sage,section.dusty{background:var(--bg)}
 @media (max-width:600px){.callout{grid-template-columns:1fr}}
 .explained{display:grid;gap:64px}
 .ex{display:grid;grid-template-columns:220px 1fr;gap:26px}
+.tiles{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin:26px 0 14px}@media (max-width:760px){.tiles{grid-template-columns:1fr 1fr}}.tile{border:1px solid rgba(236,234,228,.12);border-radius:10px;padding:18px 18px 16px;display:grid;gap:4px}.tile b{font-size:30px;font-weight:400;color:var(--warm)}.tile span{font-size:13px}.tile i{font-style:normal;font-size:12px;opacity:.6}
 @media (max-width:760px){.ex{grid-template-columns:1fr}}
 .ex h3{font-size:30px;font-weight:400}.ex .k{font-size:10.5px;letter-spacing:.28em;text-transform:uppercase;color:var(--warm);margin-top:10px}
 .ex dl{margin:0;display:grid;grid-template-columns:110px 1fr;gap:10px 16px;font-size:15px}.ex dt{color:var(--dim);font-size:10.5px;letter-spacing:.24em;text-transform:uppercase;padding-top:4px}.ex dd{margin:0;color:var(--fg2)}
@@ -293,6 +294,22 @@ code{background:rgba(255,255,255,.06)}
   </div>
   <div class="agents" style="margin-top:18px"><div class="ag" style="grid-column:1/-1"><h3>They share the same slash commands</h3><p>One catalogue, written by <code>cosmos init</code> / <code>cosmos connect</code> into every agent that reads project commands, so <code>/qa</code> means the same thing in Claude Code and in Cursor. Each command uses the cosmos tools and falls back to the committed wrapper.</p><ul><li><code>/cosmos</code> <code>/recall</code> <code>/remember</code> <code>/flare</code> <code>/flares</code> <code>/qa</code> <code>/reconcile</code> <code>/lanes</code> <code>/horizon</code> <code>/handoff</code> <code>/atlas</code></li><li>Claude Code <code>.claude/commands/</code> · Gemini CLI <code>.gemini/commands/</code> · Cursor <code>.cursor/commands/</code> · Copilot <code>.github/prompts/</code> · Windsurf <code>.windsurf/workflows/</code> · Codex <code>~/.codex/prompts</code> (<code>cosmos connect codex --write-user</code>, as <code>/prompts:cosmos-qa</code>) · the plugin as <code>/cosmos:qa</code></li><li>Your own playbooks become commands too: a master QA protocol or a runbook in the repo is found by itself (<code>/master-qa-protocol</code>), and <code>/qa</code> follows the QA one</li></ul></div></div>
   <div class="logos"><span class="logo">Claude Code</span><span class="logo">Cowork</span><span class="logo">Codex CLI · Desktop</span><span class="logo">Gemini CLI</span><span class="logo">Antigravity</span><span class="logo">Firebase Studio</span><span class="logo">Cursor</span><span class="logo">GitHub Copilot</span><span class="logo">Cline</span><span class="logo">Windsurf</span><span class="logo">Obsidian</span></div>
+</div></section>
+
+<section id="measured"><div class="wrap">
+  <div class="head"><div class="eyebrow">measured, not estimated · cosmos pulse</div><h2>One live product repository, seven days.</h2><p>Two people working with Claude Code, Codex and Cowork. Every number below is read from that repository's own <code>.cosmos/</code> records or from running its hooks, by <code>cosmos pulse --bench</code> on 2026-10-01.</p></div>
+  <div class="tiles">
+    <div class="tile"><b>723</b><span>agent turns recorded</span><i>by 2 people; tests ran in 146 of them</i></div>
+    <div class="tile"><b>2,085</b><span>active team facts</span><i>82 of them rules a person stated</i></div>
+    <div class="tile"><b>0.81</b><span>recall@5</span><i>the right fact in the top five, over 45 evals</i></div>
+    <div class="tile"><b>0.65</b><span>before an edit</span><i>the fact about the code being changed is shown</i></div>
+    <div class="tile"><b>329</b><span>tokens per prompt</span><i>median; facts reached 35 of 43 prompts</i></div>
+    <div class="tile"><b>8,452</b><span>characters at session start</span><i>under Claude Code's 10,000 hook limit</i></div>
+    <div class="tile"><b>285–398 ms</b><span>per hook</span><i>median, fresh process; 700–790 ms before the ledger cache</i></div>
+    <div class="tile"><b>175</b><span>flares</span><i>50 fixed, 114 open, each with its file and line</i></div>
+    <div class="tile"><b>37</b><span>dreams</span><i>31 curated by the model, 8,158 session turns read</i></div>
+  </div>
+  <p class="small dim">Run it on yours: <code>cosmos pulse --bench</code>. A dream saves one report a day to <code>.cosmos/ledger/metrics/</code>.</p>
 </div></section>
 
 <section id="start"><div class="wrap">

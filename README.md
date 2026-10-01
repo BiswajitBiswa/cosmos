@@ -215,6 +215,21 @@ git clone <repo> && claude
 
 **Sessions older than cosmos.** The user-level hooks run in every repository and check for `.cosmos/` on each event, so a Claude Code session that was open before `cosmos init` starts capturing on its next turn, and its next prompt carries the briefing it missed at start (Charter, key facts, handoff, Atlas). Nothing to restart.
 
+## Measured on a live repository
+
+`cosmos pulse --bench` on one live product repository, 2026-10-01: two people, seven days, Claude Code, Codex and Cowork. Every number is read from that repository's `.cosmos/` records or from running its hooks.
+
+| | |
+|---|---|
+| agent turns recorded | 723 (tests ran in 146) |
+| active team facts | 2,085 (82 rules a person stated) |
+| recall@5 · before an edit | 0.81 · 0.65 (45 evals) |
+| context per prompt | 329 tokens median; facts reached 35 of 43 prompts |
+| session-start briefing | 8,452 characters, under Claude Code's 10,000 hook limit |
+| time per hook | 285–398 ms median in a fresh process (700–790 ms before the parsed-ledger cache) |
+| flares | 175: 50 fixed, 114 open |
+| dreams | 37, 31 curated by the model, 8,158 session turns read |
+
 ## Getting started
 
 **One person runs one command once. Everyone else clones.** Nothing else is a step: capture, reading, dreams, the watcher and the hook refresh happen by themselves.
