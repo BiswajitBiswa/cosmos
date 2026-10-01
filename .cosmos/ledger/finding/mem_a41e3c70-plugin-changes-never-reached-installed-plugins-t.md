@@ -5,7 +5,7 @@ description: "Plugin changes never reached installed plugins: the plugin version
 status: "draft"
 generated: {"by": "human:Biswajit Tripathy", "at": "2026-09-29T00:00:00Z"}
 sources: [{"resource": "plugin/.claude-plugin/plugin.js", "title": "plugin.js"}, {"resource": ".claude-plugin/marketplace.js", "title": "marketplace.js"}]
-links: ["/lanes/plugin.md", "/finding/mem_1db8264f-a-claude-desktop-mcp-entry-named-cosmos-pinned-t.md", "/finding/mem_498078e0-atlas-page-4-of-8-deep-pass-diagrams-failed-unde.md", "/finding/mem_5790a327-cosmos-connect-with-no-agent-argument-failed-arg.md", "/finding/mem_5b583e8d-cosmosw-always-prefers-an-installed-cosmos-over.md", "/finding/mem_6fa48630-a-repository-whose-committed-hook-command-is-old.md"]
+links: ["/lanes/plugin.md", "/finding/mem_0448e271-the-watcher-started-a-dream-every-30-seconds-whi.md", "/finding/mem_1db8264f-a-claude-desktop-mcp-entry-named-cosmos-pinned-t.md", "/finding/mem_498078e0-atlas-page-4-of-8-deep-pass-diagrams-failed-unde.md", "/finding/mem_5790a327-cosmos-connect-with-no-agent-argument-failed-arg.md", "/finding/mem_5b583e8d-cosmosw-always-prefers-an-installed-cosmos-over.md"]
 id: "mem_a41e3c70"
 aliases: ["mem_a41e3c70"]
 category: "finding"
@@ -46,18 +46,18 @@ meta_source_doc: "session-2026-09-29"
 - Stale candidate since 2026-09-29: none of the evidence files exist anymore, in any worktree
 
 ## Related
+- [[mem_0448e271]]
 - [[mem_1db8264f]]
 - [[mem_498078e0]]
 - [[mem_5790a327]]
 - [[mem_5b583e8d]]
-- [[mem_6fa48630]]
 
 ## Links
 - lane: [plugin](/lanes/plugin.md)
+- related: [mem_0448e271](/finding/mem_0448e271-the-watcher-started-a-dream-every-30-seconds-whi.md)
 - related: [mem_1db8264f](/finding/mem_1db8264f-a-claude-desktop-mcp-entry-named-cosmos-pinned-t.md)
 - related: [mem_498078e0](/finding/mem_498078e0-atlas-page-4-of-8-deep-pass-diagrams-failed-unde.md)
 - related: [mem_5790a327](/finding/mem_5790a327-cosmos-connect-with-no-agent-argument-failed-arg.md)
 - related: [mem_5b583e8d](/finding/mem_5b583e8d-cosmosw-always-prefers-an-installed-cosmos-over.md)
-- related: [mem_6fa48630](/finding/mem_6fa48630-a-repository-whose-committed-hook-command-is-old.md)
 
 #finding #medium #plugin

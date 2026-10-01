@@ -6,7 +6,7 @@ status: "stable"
 generated: {"by": "human:Biswajit Tripathy", "at": "2026-10-01T00:00:00Z"}
 sources: [{"resource": "cosmos/hooks.py", "title": "hooks.py"}]
 stale_after: "2027-03-30T00:00:00Z"
-links: ["/lanes/cosmos.md", "/constraint/mem_1192ca15-hooks-must-always-exit-0-the-gate-is-the-only-de.md", "/constraint/mem_4c8727a1-in-claude-desktop-code-tab-sessions-an-mcp-serve.md", "/decision/mem_55db62b9-recall-is-made-visible-with-the-hooks-systemmess.md", "/finding/mem_b9901dfb-a-session-opened-in-a-subfolder-of-the-repositor.md", "/finding/mem_cb4bccc1-retents-session-briefing-13-326-chars-exceeded-c.md"]
+links: ["/lanes/cosmos.md", "/constraint/mem_1192ca15-hooks-must-always-exit-0-the-gate-is-the-only-de.md", "/constraint/mem_4c8727a1-in-claude-desktop-code-tab-sessions-an-mcp-serve.md", "/decision/mem_55db62b9-recall-is-made-visible-with-the-hooks-systemmess.md", "/finding/mem_0448e271-the-watcher-started-a-dream-every-30-seconds-whi.md", "/finding/mem_b9901dfb-a-session-opened-in-a-subfolder-of-the-repositor.md"]
 id: "mem_a1b7e320"
 aliases: ["mem_a1b7e320"]
 category: "constraint"
@@ -36,13 +36,13 @@ valid_from: "2026-10-01"
 - [[mem_1192ca15]]
 - [[mem_4c8727a1]]
 - [[mem_55db62b9]]
+- [[mem_0448e271]]
 - [[mem_b9901dfb]]
-- [[mem_cb4bccc1]]
 
 ## Links
 - lane: [cosmos](/lanes/cosmos.md)
 - related: [mem_1192ca15](/constraint/mem_1192ca15-hooks-must-always-exit-0-the-gate-is-the-only-de.md)
 - related: [mem_4c8727a1](/constraint/mem_4c8727a1-in-claude-desktop-code-tab-sessions-an-mcp-serve.md)
 - related: [mem_55db62b9](/decision/mem_55db62b9-recall-is-made-visible-with-the-hooks-systemmess.md)
+- related: [mem_0448e271](/finding/mem_0448e271-the-watcher-started-a-dream-every-30-seconds-whi.md)
 - related: [mem_b9901dfb](/finding/mem_b9901dfb-a-session-opened-in-a-subfolder-of-the-repositor.md)
-- related: [mem_cb4bccc1](/finding/mem_cb4bccc1-retents-session-briefing-13-326-chars-exceeded-c.md)

@@ -3,8 +3,8 @@ type: Handoff
 kind: handoff
 branch: "main"
 by: "Biswajit Tripathy"
-at: "2026-10-01T11:21:08Z"
+at: "2026-10-01T12:39:39Z"
 how: auto
 ---
 
-Both are done now, but not on the first pass: checking turned up a leak and some doc gaps. **No mention of [REDACTED:private], [REDACTED:private] or [REDACTED:private].** Nothing on GitHub or PyPI ever had them, but the local commits did: - **What was there:** your 09-30 messages asking for the comparison page had been captured in this repo's journal, observations and live view. They included the `[REDACTED:private]` link and the misspellings "[REDACTED:private]" and "[REDACTED:private]". - **Why it got through:** none of those spellings were on the private-terms list. - **Fix:** 1. Added `[REDACTED:private]`, `[REDACTED:private]`, `[REDACTED:private]` and `[REDACTED:private]` to `~/.config/cosmos/priva …
+You're right. That was cosmos leaking across projects, and it's now fixed: a session in another project can't read or write retent's memory any more. **What happened:** your Claude Desktop config has a server named `cosmos` hard-wired to retent, and Desktop offers it to every session. The Odin session's project has no `.cosmos`, so no cosmos briefing ran there to warn it. The tool's reply also didn't say which repo it wrote to, so the agent believed it had recorded the bug "in cosmos". **The fix (`cosmos/mcp.py:156`, `foreign_session`):** - **The server asks which project the session is in.** Claude Code reports a session's project folder when the server asks (MCP "roots"). I confirmed that  …
