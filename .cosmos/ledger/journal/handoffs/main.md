@@ -3,8 +3,8 @@ type: Handoff
 kind: handoff
 branch: "main"
 by: "Biswajit Tripathy"
-at: "2026-10-01T12:39:39Z"
+at: "2026-10-01T17:12:54Z"
 how: auto
 ---
 
-You're right. That was cosmos leaking across projects, and it's now fixed: a session in another project can't read or write retent's memory any more. **What happened:** your Claude Desktop config has a server named `cosmos` hard-wired to retent, and Desktop offers it to every session. The Odin session's project has no `.cosmos`, so no cosmos briefing ran there to warn it. The tool's reply also didn't say which repo it wrote to, so the agent believed it had recorded the bug "in cosmos". **The fix (`cosmos/mcp.py:156`, `foreign_session`):** - **The server asks which project the session is in.** Claude Code reports a session's project folder when the server asks (MCP "roots"). I confirmed that  …
+Retent is fixed, and `ec60430a` is committed locally in retent. Here's this round. **Retent (your feedback-loop ask)** - **The regression:** since about 14:40 today, cosmos had done nothing in the RETEN and QA sessions: no capture, no briefing. - **Why:** those sessions run from the parent folder `ideator/`, and the parent-folder support is only in today's unreleased work. The PyPI 0.1.5 you installed has the same version number, and on a tie the wrapper preferred the pip install. So the older released code ran instead. - **Fixes:** retent now runs 0.1.6 (your choice). The wrapper rule is changed for everyone: on a version tie the repo's own copy wins, unless the install is an editable check …
