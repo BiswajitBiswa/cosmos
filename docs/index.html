@@ -95,7 +95,7 @@ section.tint,section.sage,section.dusty{background:var(--bg)}
 @media (max-width:600px){.callout{grid-template-columns:1fr}}
 .explained{display:grid;gap:64px}
 .ex{display:grid;grid-template-columns:220px 1fr;gap:26px}
-.tiles{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin:26px 0 14px}@media (max-width:760px){.tiles{grid-template-columns:1fr 1fr}}.tile{border:1px solid rgba(236,234,228,.12);border-radius:10px;padding:18px 18px 16px;display:grid;gap:4px}.tile b{font-size:30px;font-weight:400;color:var(--warm)}.tile span{font-size:13px}.tile i{font-style:normal;font-size:12px;opacity:.6}
+.flowgrid{display:grid;grid-template-columns:minmax(0,1fr) 340px;gap:22px;margin-top:22px;align-items:start}@media (max-width:900px){.flowgrid{grid-template-columns:1fr}}.flowsvg svg{width:100%;height:auto;display:block;border-radius:18px}.flowsvg .hot{fill:#E8CFA0;fill-opacity:0;stroke:#E8CFA0;stroke-opacity:0;stroke-width:1.6;cursor:pointer;transition:fill-opacity .15s,stroke-opacity .15s}.flowsvg .hot:hover,.flowsvg .hot:focus{fill-opacity:.06;stroke-opacity:.7;outline:none}.flowsvg .hot.on{fill-opacity:.09;stroke-opacity:1}.flowpanel{position:sticky;top:90px;border:1px solid rgba(236,234,228,.14);border-radius:16px;padding:20px 22px;background:rgba(14,14,18,.72);-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px)}.flowpanel h3{margin:6px 0 4px;font-size:22px;font-weight:400}.flowpanel .dim{opacity:.7;margin:0 0 12px;font-size:13.5px}.fsteps{margin:0;padding-left:20px;display:grid;gap:9px;font-size:13.5px;line-height:1.5}.fsteps li::marker{color:#E8CFA0}.fnums{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:16px 0 4px}.fnums div{border:1px solid rgba(236,234,228,.12);border-radius:10px;padding:10px 12px;display:grid;gap:2px}.fnums b{color:#E8CFA0;font-weight:400;font-size:18px}.fnums span{font-size:11.5px;opacity:.65}.ffiles{margin:14px 0 0;display:flex;flex-wrap:wrap;gap:6px}.ffiles code{font-size:11.5px}.tiles{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin:26px 0 14px}@media (max-width:760px){.tiles{grid-template-columns:1fr 1fr}}.tile{border:1px solid rgba(236,234,228,.12);border-radius:10px;padding:18px 18px 16px;display:grid;gap:4px}.tile b{font-size:30px;font-weight:400;color:var(--warm)}.tile span{font-size:13px}.tile i{font-style:normal;font-size:12px;opacity:.6}
 @media (max-width:760px){.ex{grid-template-columns:1fr}}
 .ex h3{font-size:30px;font-weight:400}.ex .k{font-size:10.5px;letter-spacing:.28em;text-transform:uppercase;color:var(--warm);margin-top:10px}
 .ex dl{margin:0;display:grid;grid-template-columns:110px 1fr;gap:10px 16px;font-size:15px}.ex dt{color:var(--dim);font-size:10.5px;letter-spacing:.24em;text-transform:uppercase;padding-top:4px}.ex dd{margin:0;color:var(--fg2)}
@@ -298,9 +298,151 @@ code{background:rgba(255,255,255,.06)}
 </div></section>
 
 <section id="inside"><div class="wrap">
-  <div class="head"><div class="eyebrow">how it works, inside</div><h2>One loop, every agent.</h2><p>Hooks, the watcher and the MCP tools bring every session in; capture writes the journal; one dream at a time curates it into the ledger, committed with the branch; the briefing, recall and the Gate bring it back to every agent. Releases keep it current by themselves.</p></div>
-  <img src="assets/flow.svg" alt="How cosmos works: agents feed hooks, the watcher and MCP tools; capture and the dream write the ledger in git; the briefing, recall and the Gate bring it back; releases keep it current" style="width:100%;height:auto;border-radius:18px;margin-top:22px">
+  <div class="head"><div class="eyebrow">how it works, inside</div><h2>One loop, every agent.</h2><p>Click any part to see what happens inside it: the steps, the numbers measured on a live repository, and the files that do it.</p></div>
+  <div class="flowgrid">
+    <div class="flowsvg"><svg id="flowsvg" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1240 860" font-family="'DM Sans','Helvetica Neue',Arial,sans-serif" role="img" aria-labelledby="ft fd">
+  <title id="ft">How cosmos works</title>
+  <desc id="fd">Agents feed cosmos through hooks, the watcher and MCP tools; capture writes the journal and observations; one dream at a time curates them into the ledger committed in git; the ledger comes back to every agent as the briefing, recall, the before-edit note and the Gate; releases and Claude Routines keep it running.</desc>
+  <defs>
+    <linearGradient id="fbg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#0d0d11"/><stop offset="1" stop-color="#07070a"/></linearGradient>
+    <radialGradient id="fglow" cx="0.5" cy="0.45" r="0.5"><stop offset="0" stop-color="#E8CFA0" stop-opacity=".16"/><stop offset="1" stop-color="#E8CFA0" stop-opacity="0"/></radialGradient>
+    <marker id="fa" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 z" fill="#E8CFA0"/></marker>
+    <marker id="fs" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 z" fill="#8FA9C9"/></marker>
+    <style>
+      .h{font-family:'Cormorant Garamond',Georgia,serif;fill:#ECEAE4}
+      .eb{font-size:11px;letter-spacing:.24em;fill:#9a978f;text-transform:uppercase}
+      .t{font-size:15px;fill:#ECEAE4;font-weight:600}
+      .s{font-size:12px;fill:#a9a59c}
+      .g{fill:#E8CFA0}
+      .box{fill:#14141a;stroke:rgba(236,234,228,.14);stroke-width:1}
+      .agent{fill:#121620;stroke:rgba(143,169,201,.35)}
+      .core{fill:#17140f;stroke:rgba(232,207,160,.45)}
+      .ln{fill:none;stroke:#E8CFA0;stroke-width:1.6;opacity:.85}
+      .lns{fill:none;stroke:#8FA9C9;stroke-width:1.6;opacity:.85}
+      .dash{stroke-dasharray:4 5}
+    </style>
+  </defs>
+  <rect width="1240" height="860" rx="22" fill="url(#fbg)"/>
+  <ellipse cx="760" cy="380" rx="330" ry="300" fill="url(#fglow)"/>
+
+  <text x="44" y="56" class="eb">how it works</text>
+  <text x="44" y="96" class="h" font-size="36">Every session feeds one memory; every session reads it back.</text>
+
+  <!-- column 1: agents -->
+  <text x="44" y="150" class="eb">agents</text>
+  <g>
+    <rect x="44" y="166" width="214" height="58" rx="12" class="box agent"/><text x="62" y="191" class="t">Claude Code · Cowork</text><text x="62" y="211" class="s">hooks + MCP + plugin</text>
+    <rect x="44" y="236" width="214" height="58" rx="12" class="box agent"/><text x="62" y="261" class="t">Codex</text><text x="62" y="281" class="s">plugin hooks · skills · MCP</text>
+    <rect x="44" y="306" width="214" height="58" rx="12" class="box agent"/><text x="62" y="331" class="t">Cursor · Gemini · Copilot</text><text x="62" y="351" class="s">AGENTS.md · commands · MCP</text>
+    <rect x="44" y="376" width="214" height="58" rx="12" class="box agent"/><text x="62" y="401" class="t">Claude Routines</text><text x="62" y="421" class="s">cloud: pr-review · dream · pulse</text>
+  </g>
+
+  <!-- column 2: into cosmos -->
+  <text x="292" y="150" class="eb">into cosmos</text>
+  <g>
+    <rect x="292" y="166" width="214" height="82" rx="12" class="box"/>
+    <text x="310" y="191" class="t">Hooks</text>
+    <text x="310" y="211" class="s">session start · each prompt</text>
+    <text x="310" y="229" class="s">before an edit · end of turn</text>
+    <rect x="292" y="260" width="214" height="70" rx="12" class="box"/>
+    <text x="310" y="285" class="t">Watcher</text>
+    <text x="310" y="305" class="s">every agent's session files,</text>
+    <text x="310" y="321" class="s">parent folders, worktrees</text>
+    <rect x="292" y="342" width="214" height="92" rx="12" class="box"/>
+    <text x="310" y="367" class="t">MCP tools</text>
+    <text x="310" y="387" class="s">remember · flare · recall · why</text>
+    <text x="310" y="405" class="s">asks the client its folders:</text>
+    <text x="310" y="421" class="s g">another project → refused</text>
+  </g>
+  <path class="lns" marker-end="url(#fs)" d="M258 300 H 286"/>
+
+  <!-- center loop -->
+  <text x="560" y="150" class="eb">the loop</text>
+  <rect x="560" y="166" width="226" height="96" rx="14" class="box core"/>
+  <text x="580" y="193" class="t">Capture</text>
+  <text x="580" y="213" class="s">journal: one line per turn</text>
+  <text x="580" y="231" class="s">observations · secrets redacted</text>
+  <text x="580" y="249" class="s">ranges for the model to read</text>
+
+  <rect x="836" y="166" width="226" height="148" rx="14" class="box core"/>
+  <text x="856" y="193" class="t">Dream <tspan class="s" font-weight="400">· one at a time</tspan></text>
+  <text x="856" y="215" class="s">the model curates what sessions said</text>
+  <text x="856" y="233" class="s">duplicates merged · contradictions</text>
+  <text x="856" y="251" class="s">to Verdicts · stale facts flagged</text>
+  <text x="856" y="269" class="s">recall@5 measured · metrics saved</text>
+  <text x="856" y="291" class="s g">commits .cosmos to the branch</text>
+
+  <rect x="660" y="372" width="300" height="130" rx="16" class="box core" stroke-width="1.4"/>
+  <text x="684" y="402" class="h" font-size="24">Ledger, in git</text>
+  <text x="684" y="426" class="s">facts · rules · flares · lanes · Atlas</text>
+  <text x="684" y="444" class="s">playbooks · handoffs · metrics</text>
+  <text x="684" y="466" class="s">one markdown note each, with evidence</text>
+  <text x="684" y="486" class="s g">git pull = the team has it</text>
+
+  <path class="ln" marker-end="url(#fa)" d="M506 207 C 530 207 540 214 554 214"/>
+  <path class="ln" marker-end="url(#fa)" d="M506 295 C 535 295 540 240 554 236"/>
+  <path class="ln" marker-end="url(#fa)" d="M506 388 C 600 388 620 450 654 450"/>
+  <path class="ln" marker-end="url(#fa)" d="M786 214 H 830"/>
+  <path class="ln" marker-end="url(#fa)" d="M949 314 C 949 345 925 352 905 366"/>
+
+  <!-- column 4: back to agents -->
+  <text x="1000" y="150" class="eb">back to agents</text>
+  <rect x="1000" y="372" width="212" height="64" rx="12" class="box"/>
+  <text x="1018" y="397" class="t">Briefing</text>
+  <text x="1018" y="417" class="s">Charter + top facts, ≤ 9,000 chars</text>
+  <rect x="1000" y="446" width="212" height="64" rx="12" class="box"/>
+  <text x="1018" y="471" class="t">Recall</text>
+  <text x="1018" y="491" class="s">each prompt · before each edit</text>
+  <rect x="1000" y="520" width="212" height="80" rx="12" class="box"/>
+  <text x="1018" y="545" class="t">Gate <tspan class="s" font-weight="400">· end of turn</tspan></text>
+  <text x="1018" y="565" class="s">tests · file:line · open flares</text>
+  <text x="1018" y="583" class="s">security · large-change scans</text>
+  <path class="ln" marker-end="url(#fa)" d="M960 420 H 994"/>
+  <path class="ln" marker-end="url(#fa)" d="M960 460 C 985 460 990 478 994 478"/>
+  <path class="ln" marker-end="url(#fa)" d="M960 490 C 985 500 990 550 994 556"/>
+
+  <!-- the return to agents -->
+  <path class="ln dash" marker-end="url(#fa)" d="M1108 610 C 1108 690 600 700 360 690 C 160 682 142 520 142 440"/>
+  <text x="560" y="684" class="s g" text-anchor="middle">what the team knows reaches every session · cosm◎s · recalled 3: …</text>
+
+  <!-- safety strip -->
+  <text x="560" y="548" class="eb">guarded</text>
+  <text x="560" y="570" class="s">notes that steer an agent are withheld · hidden Unicode and</text>
+  <text x="560" y="588" class="s">credentials stop the Gate · a dependency change needs its audit</text>
+
+  <!-- bottom: keeps itself current -->
+  <rect x="44" y="730" width="1162" height="96" rx="16" class="box"/>
+  <text x="68" y="760" class="eb">keeps itself current</text>
+  <g font-size="13" fill="#ECEAE4">
+    <text x="68" y="796">PyPI release</text>
+    <text x="232" y="796">daily check at a session start</text>
+    <text x="482" y="796">sha256 + import test</text>
+    <text x="682" y="796">.cosmos/vendor, committed</text>
+    <text x="912" y="796">repairs, once per version</text>
+  </g>
+  <g class="s"><text x="68" y="814">nobody pushes into a project</text><text x="482" y="814">a bad release is refused</text><text x="912" y="814">hooks · commands · listings</text></g>
+  <path class="ln" marker-end="url(#fa)" d="M166 791 H 222"/>
+  <path class="ln" marker-end="url(#fa)" d="M430 791 H 472"/>
+  <path class="ln" marker-end="url(#fa)" d="M630 791 H 672"/>
+  <path class="ln" marker-end="url(#fa)" d="M860 791 H 902"/>
+  <text x="1182" y="796" class="s g" text-anchor="end">git pull →</text>
+<rect class="hot" data-k="claude" x="44" y="166" width="214" height="58" rx="12" tabindex="0" role="button" aria-label="claude: show how it works inside"/><rect class="hot" data-k="codex" x="44" y="236" width="214" height="58" rx="12" tabindex="0" role="button" aria-label="codex: show how it works inside"/><rect class="hot" data-k="others" x="44" y="306" width="214" height="58" rx="12" tabindex="0" role="button" aria-label="others: show how it works inside"/><rect class="hot" data-k="routines" x="44" y="376" width="214" height="58" rx="12" tabindex="0" role="button" aria-label="routines: show how it works inside"/><rect class="hot" data-k="hooks" x="292" y="166" width="214" height="82" rx="12" tabindex="0" role="button" aria-label="hooks: show how it works inside"/><rect class="hot" data-k="watcher" x="292" y="260" width="214" height="70" rx="12" tabindex="0" role="button" aria-label="watcher: show how it works inside"/><rect class="hot" data-k="mcp" x="292" y="342" width="214" height="92" rx="12" tabindex="0" role="button" aria-label="mcp: show how it works inside"/><rect class="hot" data-k="capture" x="560" y="166" width="226" height="96" rx="12" tabindex="0" role="button" aria-label="capture: show how it works inside"/><rect class="hot" data-k="dream" x="836" y="166" width="226" height="148" rx="12" tabindex="0" role="button" aria-label="dream: show how it works inside"/><rect class="hot" data-k="ledger" x="660" y="372" width="300" height="130" rx="12" tabindex="0" role="button" aria-label="ledger: show how it works inside"/><rect class="hot" data-k="briefing" x="1000" y="372" width="212" height="64" rx="12" tabindex="0" role="button" aria-label="briefing: show how it works inside"/><rect class="hot" data-k="recall" x="1000" y="446" width="212" height="64" rx="12" tabindex="0" role="button" aria-label="recall: show how it works inside"/><rect class="hot" data-k="gate" x="1000" y="520" width="212" height="80" rx="12" tabindex="0" role="button" aria-label="gate: show how it works inside"/><rect class="hot" data-k="guarded" x="552" y="532" width="388" height="70" rx="12" tabindex="0" role="button" aria-label="guarded: show how it works inside"/><rect class="hot" data-k="updates" x="44" y="730" width="1162" height="96" rx="12" tabindex="0" role="button" aria-label="updates: show how it works inside"/><text x="1206" y="56" text-anchor="end" class="eb" fill="#E8CFA0">click any part to open it</text></svg>
+</div>
+    <aside class="flowpanel" id="flowpanel" aria-live="polite"><div class="eyebrow">inside</div><h3>Click a part of the diagram</h3><p class="dim">Each box opens its internal flow.</p></aside>
+  </div>
 </div></section>
+<script>
+(()=>{const D={"claude": {"t": "Claude Code and Cowork", "s": "hooks, MCP and the plugin", "steps": ["cosmos init writes the hooks into .claude/settings.json and your user settings, so every checkout and worktree is covered", "a session opened in a folder above several repositories reaches each one: one pointer line, its facts when a prompt names it", "the project's .mcp.json serves the cosmos tools; Cowork, which runs no hooks, gets them from the cosmos plugin", "Claude Code shows a one-line notice each time cosmos hands the agent something"], "nums": [["285–398 ms", "per hook, fresh process"], ["10,000", "characters Claude Code shows of a hook"]], "files": ["cosmos/hooks.py", "cosmos/wrapper.py", "plugin/bin/cosmos-mcp"]}, "codex": {"t": "Codex", "s": "app, CLI and IDE, through the cosmos plugin", "steps": ["the repository lists the plugin itself (.agents/plugins/marketplace.json): Plugins → Install, no terminal", "plugin hooks at thread start and on each prompt hand the event to the repository's own cosmos: the briefing becomes the model's context and the watcher starts", "one MCP server for every repository: it answers the handshake and sends each call to the repository the thread is in", "the command catalogue and every playbook are Codex project skills in .agents/skills/", "on Windows, where Python is python, the hook points the MCP server at it"], "nums": [], "files": ["plugin/.codex-plugin/plugin.json", "plugin/bin/cosmos-codex-hook", "plugin/bin/cosmos-codex-mcp"]}, "others": {"t": "Cursor, Gemini CLI, Copilot, Windsurf, Firebase Studio", "s": "the same rules and tools, each in its own format", "steps": ["one managed block in CLAUDE.md, AGENTS.md and GEMINI.md: the Charter, how to reach the ledger, the slash commands and every playbook", "one catalogue of slash commands written for each agent's folder; files the team wrote itself are never overwritten", "MCP configs for Cursor, Gemini and Copilot", "Firebase Studio: .idx/mcp.json, and the block in its .idx/airules.md"], "nums": [], "files": ["cosmos/commands.py", "cosmos/connect.py", "cosmos/render.py"]}, "routines": {"t": "Claude Routines", "s": "cosmos without anyone's laptop", "steps": ["set up once in Claude → Routines with one line: Run `python3 .cosmos/cosmosw routine <name>` and follow what it prints", "pr-review · pulse · dream · scan · merge-memory · flare-triage · digest", "the steps live in cosmos, so a better routine arrives with the next upgrade", "every run works on a branch and ends in a pull request or a comment"], "nums": [["7", "routines"]], "files": ["cosmos/routines.py", "docs/routines.md"]}, "hooks": {"t": "Hooks", "s": "one entry point, four moments", "steps": ["the wrapper picks the cosmos to run: the newer of the repository's copy and a pip install; on a tie the repository's copy, unless it is an editable checkout", "session start: the briefing (Charter, rules one line each, top facts, the branch's handoff, Atlas drift), a warning if a Desktop MCP entry serves another repository, the daily release check, the watcher", "each prompt: the facts that match it, ranked BM25 × confidence × importance × recency", "before an edit: open flares and rules on that file, then the facts that match the code being changed, each once per session", "end of turn: the Gate, then capture and the handoff, and a dream when enough is waiting", "every hook exits 0 on any error; the Gate's deliberate hold is the only other code"], "nums": [["≤ 9,000", "characters of briefing"], ["220", "characters per rule line"]], "files": ["cosmos/hooks.py", "cosmos/wrapper.py", "cosmos/retrieve.py"]}, "watcher": {"t": "Watcher", "s": "capture without hooks", "steps": ["every 30 seconds, the session files of Claude Code, Cowork, Codex and Gemini for this repository, every worktree and subagent", "sessions opened in a parent folder are kept to the turns that touched this repository", "starts a dream when the pacing says so (an attempt counts, so a dream that changed nothing does not repeat every tick)", "restarts itself when cosmos is updated; exits after two idle hours"], "nums": [], "files": ["cosmos/watch.py", "cosmos/adapters.py"]}, "mcp": {"t": "MCP tools", "s": "remember · flare · recall · why · handoff · charter · horizon · atlas · lanes", "steps": ["after the handshake the server asks the client which folders the session works in (MCP roots)", "a session in another project gets “not this project” from every tool and nothing is read or recorded", "every write says which repository it went to", "a flare that names only files the repository lacks gets a warning to withdraw it", "a Claude Desktop entry pinned to one repository is renamed cosmos-<repo> by the repairs"], "nums": [["0", "facts written into the wrong repository since"]], "files": ["cosmos/mcp.py"]}, "capture": {"t": "Capture", "s": "what sessions did, kept", "steps": ["one journal line per turn: the ask, files edited, commits made in this repository, tests, pushes", "observations from what the agent and the person said; secrets and private words redacted before anything is written", "byte ranges of each session registered for the model to read at the next dream", "the last message of an editing turn becomes the branch's handoff"], "nums": [], "files": ["cosmos/hooks.py", "cosmos/journal.py", "cosmos/privacy.py"]}, "dream": {"t": "Dream", "s": "one at a time, per repository", "steps": ["the lock is created atomically and holds the running dream's pid; it is taken over only when that dream is gone", "the model reads the waiting session ranges and keeps what is durable, rewritten as one sentence in a lane", "duplicates merge (evidence +1); contradictions go to Verdicts for a person; supersession only on evidence", "facts naming code that left are flagged stale; recall@5 and the before-edit hit rate are measured", "the day's metrics are saved (cosmos pulse); playbook commands follow the files; .cosmos is committed to the branch"], "nums": [["0.81", "recall@5 on a live repository"], ["0.65", "before an edit"]], "files": ["cosmos/dream.py", "cosmos/eval.py", "cosmos/pulse.py"]}, "ledger": {"t": "Ledger, in git", "s": "one markdown note per fact, with evidence", "steps": ["facts, rules, flares with a lifecycle, lanes, the Atlas, playbooks, handoffs and daily metrics", "committed in the branch like code: git pull is how a teammate gets it", "parsed notes are kept per machine (~/.cache/cosmos) and only a note whose file changed is read again", "a save writes only the notes that changed since they were read"], "nums": [["702 → 74 ms", "reading 2,925 notes"], ["40–48 → 1.4–2.8 s", "saving one fact"]], "files": ["cosmos/store.py", "cosmos/render.py"]}, "briefing": {"t": "Briefing", "s": "what a session starts with", "steps": ["the Charter, explicit rules (one line each, the full rule a call away), the highest-signal facts, the branch's handoff, Atlas drift", "kept under 9,000 characters: above 10,000 Claude Code shows the model a 2,000-character preview", "notes that read like instructions to an agent are withheld until a person allows them"], "nums": [["13,326 → 8,171", "characters on retent, after the rule clip"]], "files": ["cosmos/hooks.py", "cosmos/charter.py"]}, "recall": {"t": "Recall", "s": "the right fact at the right moment", "steps": ["each prompt: facts ranked against it", "before each edit: open flares and rules on that file, then facts matching the code being changed", "one line the person sees: cosm◎s · recalled 3: …", "Codex gets the same through its plugin hooks; other agents call cosmos_recall"], "nums": [["329", "tokens per prompt, median"], ["35 of 43", "prompts got facts"]], "files": ["cosmos/retrieve.py", "cosmos/hooks.py"]}, "gate": {"t": "Gate", "s": "the review checklist, applied by the machine", "steps": ["tests for the files edited; a file:line for each change; open flares on those files addressed or deferred", "every file touched is read for credentials, hidden Unicode and text that steers an agent in instruction files", "a changed dependency manifest needs its audit (pip-audit, npm audit, govulncheck, cargo audit)", "large changes (5+ files or 4,000+ characters): vulture or knip, and bandit or semgrep", "it holds the turn once (exit 2) with the exact list, never twice"], "nums": [], "files": ["cosmos/gate.py", "cosmos/security.py", "cosmos/charter.py"]}, "guarded": {"t": "Guarded", "s": "what cosmos refuses to spread", "steps": ["notes that steer an agent are withheld from briefings and recall; cosmos scan --allow shows a deliberate one", "hidden bidi and tag characters and credentials stop the Gate; placeholders and local URLs do not", "another project's session reads and writes nothing", "the private words you list are redacted from every capture"], "nums": [], "files": ["cosmos/security.py", "cosmos/privacy.py", "cosmos/mcp.py"]}, "updates": {"t": "Keeps itself current", "s": "nobody pushes into a project", "steps": ["a session start checks PyPI at most once a day per machine", "a newer wheel is checked against PyPI's sha256 and imported in a separate process before it replaces .cosmos/vendor", "it is committed, so teammates run it after git pull, with or without a pip install; the pip install is upgraded when pip allows", "then repairs, once per version per machine: hook commands, slash commands, the Codex listing, a pinned Desktop entry", "update.auto: false turns it off; cosmos upgrade --check says where a repository stands"], "nums": [], "files": ["cosmos/upgrade.py", "cosmos/wrapper.py"]}},G="https://github.com/BiswajitBiswa/cosmos/blob/main/";const panel=document.getElementById('flowpanel');
+const esc=s=>String(s).replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'})[c]);
+const code=s=>esc(s).replace(/`([^`]+)`/g,'<code>$1</code>');
+function show(k){const d=D[k];if(!d)return;document.querySelectorAll('#flowsvg .hot').forEach(h=>h.classList.toggle('on',h.dataset.k===k));
+ panel.innerHTML=`<div class="eyebrow">inside</div><h3>${esc(d.t)}</h3><p class="dim">${esc(d.s)}</p><ol class="fsteps">${d.steps.map(x=>`<li>${code(x)}</li>`).join('')}</ol>`
+  +(d.nums.length?`<div class="fnums">${d.nums.map(n=>`<div><b>${esc(n[0])}</b><span>${esc(n[1])}</span></div>`).join('')}</div>`:'')
+  +`<p class="ffiles">${d.files.map(f=>`<a href="${G}${f}" target="_blank" rel="noopener"><code>${esc(f)}</code></a>`).join(' ')}</p>`;
+ if(window.innerWidth<900)panel.scrollIntoView({behavior:'smooth',block:'start'});}
+document.querySelectorAll('#flowsvg .hot').forEach(h=>{h.addEventListener('click',()=>show(h.dataset.k));h.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();show(h.dataset.k)}})});
+show('hooks');})();
+</script>
 
 <section id="measured"><div class="wrap">
   <div class="head"><div class="eyebrow">measured, not estimated · cosmos pulse</div><h2>One live product repository, seven days.</h2><p>Two people working with Claude Code, Codex and Cowork. Every number below is read from that repository's own <code>.cosmos/</code> records or from running its hooks, by <code>cosmos pulse --bench</code> on 2026-10-01.</p></div>
