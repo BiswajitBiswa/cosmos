@@ -308,6 +308,7 @@ def cmd_dream(a) -> int:
         from .store import now_iso
         lock = cfg.paths.state / "dream.lock"
         try:
+            lock.write_text(str(os.getpid()))           # the lock now names this dream, so a live one is never taken over
             rep = dream(cfg, verbose=False)
             render_all(cfg, Ledger(cfg.paths).load())
             print(f"{now_iso()} auto-dream: {rep.summary()}", flush=True)
@@ -771,6 +772,43 @@ def cmd_pulse(a) -> int:
         rep["saved_to"] = str(save(cfg, rep).relative_to(cfg.paths.root))
     print(json.dumps(rep, indent=1, ensure_ascii=False) if a.json else text(rep))
     return 0 if all(h["ok"] == "yes" for h in rep["health"]) else 1
+
+
+def _allowed_note(mems, rel: str) -> bool:
+    import re
+    m = re.match(r".*/(mem_[0-9a-f]+)-", rel)
+    return bool(m and mems.get(m.group(1)) and mems[m.group(1)].meta.get("security_allowed"))
+
+
+def cmd_scan(a) -> int:
+    """Credentials, hidden Unicode and agent-steering text in the repository; ledger notes withheld; installed scanners."""
+    from .config import git_author
+    from .security import describe, scan_repository, withheld
+    cfg = load_config(); _require(cfg)
+    ledger = Ledger(cfg.paths)
+    mems = ledger.load()
+    for mid in a.allow or []:
+        m = mems.get(mid)
+        if not m:
+            print(col("✗", "r"), f"no note {mid}"); return 1
+        m.meta["security_allowed"] = f"{git_author(cfg.paths.root) or 'someone'} on {today()}"
+        ledger.save(m)
+        print(col("✓", "g"), f"{mid} allowed: agents are shown it again")
+    rep = scan_repository(cfg.paths.root, with_tools=a.tools)
+    rep["findings"] = [f for f in rep["findings"] if not _allowed_note(mems, f["file"])]
+    held = [m for m in mems.values() if m.status == "active" and withheld(m.text, m.meta)]
+    if a.json:
+        print(json.dumps({**rep, "withheld_notes": [{"id": m.id, "why": withheld(m.text)} for m in held]}, indent=1)); return 0
+    print(col(f"cosm◎s scan · {rep['files']} tracked files", "B"))
+    for f in rep["findings"][:60]:
+        print(col("  ✗", "r"), describe(f))
+    for m in held:
+        print(col("  ⚠", "y"), f"note {m.id} withheld from agents ({withheld(m.text)}): {m.text[:90]}")
+    for t_ in rep.get("tools", []):
+        print(col("  ·", "d"), f"{t_['tool']}: {t_['result']}")
+    if not rep["findings"] and not held:
+        print(col("✓", "g"), "no credentials, hidden characters or agent-steering text found" + ("" if a.tools else " · `--tools` also runs bandit, pip-audit, npm audit, semgrep, gitleaks when installed"))
+    return 1 if rep["findings"] else 0
 
 
 # ---------------------------------------------------------------- lanes · atlas · charter · horizon · gate
@@ -1249,6 +1287,7 @@ def build_parser() -> argparse.ArgumentParser:
     s = sp.add_parser("uninstall", help="remove hooks from .claude/settings.json"); s.set_defaults(fn=cmd_uninstall)
     s = sp.add_parser("update", help="refresh the vendored copy in .cosmos/vendor from the installed cosmos"); s.set_defaults(fn=cmd_update)
     s = sp.add_parser("upgrade", help="bring the latest release into this repository (checksum-verified) and run its repairs; runs by itself daily"); s.add_argument("--check", action="store_true", help="only say whether a newer release exists"); s.add_argument("--auto", action="store_true", help=argparse.SUPPRESS); s.set_defaults(fn=cmd_upgrade)
+    s = sp.add_parser("scan", help="security: credentials, hidden Unicode and agent-steering text in the repository; withheld notes; --tools runs the installed scanners"); s.add_argument("--tools", action="store_true"); s.add_argument("--json", action="store_true"); s.add_argument("--allow", action="append", metavar="ID", help="show a withheld note to agents again (a quoted injection test, on purpose)"); s.set_defaults(fn=cmd_scan)
     s = sp.add_parser("pulse", help="how cosmos is doing here: health checks and measured metrics (usage, memory, flares, recall, context, dreams)"); s.add_argument("--bench", action="store_true", help="also time each hook (fresh process, median of 5)"); s.add_argument("--save", action="store_true", help="write .cosmos/ledger/metrics/<date>.json"); s.add_argument("--json", action="store_true"); s.set_defaults(fn=cmd_pulse)
     s = sp.add_parser("repair", help="rewrite what older versions wrote wrongly: hooks, slash commands, the Codex plugin listing, a pinned Desktop MCP entry"); s.set_defaults(fn=cmd_repair)
 

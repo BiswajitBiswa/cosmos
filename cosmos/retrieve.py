@@ -148,6 +148,8 @@ def brief(text: str, n: int = 140) -> str:
 def format_for_agent(mems: List[Memory], header: str, compact: bool = True) -> str:
     """Progressive disclosure: ~30 tokens per fact (category · lane · one line · first file · id). An agent that
     needs the reasoning, the evidence and the history asks cosmos_why / `cosmos why <id>` for that one fact."""
+    from .security import withheld
+    mems = [m for m in mems if not withheld(m.text, m.meta)]      # a note that tries to steer an agent waits for a person (cosmos scan)
     if not mems:
         return ""
     lines = [header]
