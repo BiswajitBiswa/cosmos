@@ -811,6 +811,26 @@ def cmd_scan(a) -> int:
     return 1 if rep["findings"] else 0
 
 
+def cmd_routines(a) -> int:
+    """cosmos's work as Claude Routines: what to set up, once, in Claude's Routines screen."""
+    from .routines import ROUTINES, setup_line
+    print(col("cosm◎s routines", "B") + col(" · Claude → Routines → New routine: pick this repository, the schedule or trigger, and paste the instruction", "d"))
+    for r in ROUTINES:
+        print(f"\n  {col(r['name'], 'B')}  {r['title']}\n    {col(r['when'], 'd')}\n    {setup_line(r['name'])}")
+    print(col("\n  The steps live in cosmos (`cosmos routine <name>` prints them): a better routine arrives with the next upgrade.", "d"))
+    return 0
+
+
+def cmd_routine(a) -> int:
+    """What one routine run does, printed for the agent running it."""
+    from .routines import ROUTINES, instructions
+    try:
+        print(instructions(a.name))
+    except KeyError:
+        print(col("✗", "r"), f"no routine {a.name}: " + ", ".join(r["name"] for r in ROUTINES)); return 1
+    return 0
+
+
 # ---------------------------------------------------------------- lanes · atlas · charter · horizon · gate
 def cmd_lanes(a) -> int:
     from .lanes import assign_lanes, lane_report, propose
@@ -1287,6 +1307,8 @@ def build_parser() -> argparse.ArgumentParser:
     s = sp.add_parser("uninstall", help="remove hooks from .claude/settings.json"); s.set_defaults(fn=cmd_uninstall)
     s = sp.add_parser("update", help="refresh the vendored copy in .cosmos/vendor from the installed cosmos"); s.set_defaults(fn=cmd_update)
     s = sp.add_parser("upgrade", help="bring the latest release into this repository (checksum-verified) and run its repairs; runs by itself daily"); s.add_argument("--check", action="store_true", help="only say whether a newer release exists"); s.add_argument("--auto", action="store_true", help=argparse.SUPPRESS); s.set_defaults(fn=cmd_upgrade)
+    s = sp.add_parser("routines", help="cosmos's work as Claude Routines (cloud runs on a schedule or trigger): what to set up, once"); s.set_defaults(fn=cmd_routines)
+    s = sp.add_parser("routine", help="print the steps of one routine run (what the Claude Routine follows)"); s.add_argument("name"); s.set_defaults(fn=cmd_routine)
     s = sp.add_parser("scan", help="security: credentials, hidden Unicode and agent-steering text in the repository; withheld notes; --tools runs the installed scanners"); s.add_argument("--tools", action="store_true"); s.add_argument("--json", action="store_true"); s.add_argument("--allow", action="append", metavar="ID", help="show a withheld note to agents again (a quoted injection test, on purpose)"); s.set_defaults(fn=cmd_scan)
     s = sp.add_parser("pulse", help="how cosmos is doing here: health checks and measured metrics (usage, memory, flares, recall, context, dreams)"); s.add_argument("--bench", action="store_true", help="also time each hook (fresh process, median of 5)"); s.add_argument("--save", action="store_true", help="write .cosmos/ledger/metrics/<date>.json"); s.add_argument("--json", action="store_true"); s.set_defaults(fn=cmd_pulse)
     s = sp.add_parser("repair", help="rewrite what older versions wrote wrongly: hooks, slash commands, the Codex plugin listing, a pinned Desktop MCP entry"); s.set_defaults(fn=cmd_repair)

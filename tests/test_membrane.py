@@ -783,6 +783,26 @@ class TestDreamLock(unittest.TestCase):
             self.assertTrue(take_dream_lock(lock), "its dream is gone: taken over")
 
 
+class TestRoutines(unittest.TestCase):
+    def test_each_routine_prints_its_steps_and_uses_only_real_commands(self):
+        import contextlib, io, re
+        from cosmos.cli import build_parser, main
+        from cosmos.routines import ROUTINES, instructions, setup_line
+        parser = build_parser()
+        names = set(parser._subparsers._group_actions[0].choices)   # every top-level command
+        for r in ROUTINES:
+            text = instructions(r["name"])
+            self.assertIn("never commit to the default branch", text)
+            self.assertIn(f"cosmosw routine {r['name']}", setup_line(r["name"]))
+            for used in set(re.findall(r"cosmosw ([a-z-]+)", text)):
+                self.assertIn(used, names, f"routine {r['name']} uses `cosmos {used}`, which does not exist")
+        buf = io.StringIO()
+        with contextlib.redirect_stdout(buf):
+            self.assertEqual(main(["routine", "pulse"]), 0)
+            self.assertEqual(main(["routine", "nope"]), 1)
+        self.assertIn("pulse --bench --save", buf.getvalue())
+
+
 class TestDreamPacing(unittest.TestCase):
     def test_a_dream_that_changed_nothing_still_waits_its_turn(self):
         """Dreams that change nothing write no record; with model ranges waiting the watcher dreamt every 30 seconds."""
