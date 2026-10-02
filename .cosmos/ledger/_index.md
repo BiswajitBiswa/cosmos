@@ -7,7 +7,7 @@ tags: ["cosmos", "moc"]
 
 # Ledger index
 
-50 memories · 48 active · 0 contradicted · 1 stale candidates · 4 lanes
+51 memories · 49 active · 0 contradicted · 1 stale candidates · 4 lanes
 
 Charter: [[charter]] · Atlas: [[inventory]] · [[containers]] · [[deployment]] · [[api]]
 
@@ -46,6 +46,7 @@ Charter: [[charter]] · Atlas: [[inventory]] · [[containers]] · [[deployment]]
 - [[mem_93255725-cosmosremember-and-cosmosflare-took-40-48-s-on-r|cosmos_remember and cosmos_flare took 40-48 s on retent (2,975 notes), so agents' saves timed out]]
 - [[mem_9391c461-atlas-reported-0-endpoints-for-apps-without-an-o|Atlas reported 0 endpoints for apps without an OpenAPI spec (routes in code were never read)]]
 - [[mem_9aa3899c-python-orgs-macos-python-has-no-ca-bundle-until|python.org's macOS Python has no CA bundle until 'Install Certificates' is run, so every urllib HTTPS call from cosmos failed CERTIFICATE_VERIFY_FAILED]]
+- [[mem_a0fa1f2d-several-auto-dreams-ran-at-once-in-one-repositor|Several auto-dreams ran at once in one repository (five in retent) and processed the same batch twice, pushing the machine's load average to 578]]
 - [[mem_a199a451-the-daily-metrics-check-used-the-local-date-and|The daily metrics check used the local date and the file the UTC date, so near midnight every dream rewrote the day's report]]
 - [[mem_ac19fa4c-a-whole-ledger-save-from-a-process-that-loaded-e|A whole-ledger save from a process that loaded earlier (a dream, the console, an MCP call) wrote every note back and reverted flare lifecycle changes made meanwhile]]
 - [[mem_b058375a-a-pip-install-of-the-same-version-string-shadowe|A pip install of the same version string shadowed the repository's newer copy and silently turned off capture and briefings for every retent session for about 8 hours]]

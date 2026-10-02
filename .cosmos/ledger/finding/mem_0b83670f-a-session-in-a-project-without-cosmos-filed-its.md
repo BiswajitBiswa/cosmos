@@ -6,7 +6,7 @@ status: "stable"
 generated: {"by": "human:Biswajit Tripathy", "at": "2026-10-01T00:00:00Z"}
 sources: [{"resource": "cosmos/mcp.py", "title": "mcp.py"}]
 stale_after: "2027-03-30T00:00:00Z"
-links: ["/lanes/cosmos.md", "/constraint/mem_44c1eef6-the-cosmos-mcp-server-asks-the-client-for-mcp-ro.md", "/finding/mem_93255725-cosmosremember-and-cosmosflare-took-40-48-s-on-r.md"]
+links: ["/lanes/cosmos.md", "/constraint/mem_44c1eef6-the-cosmos-mcp-server-asks-the-client-for-mcp-ro.md", "/finding/mem_93255725-cosmosremember-and-cosmosflare-took-40-48-s-on-r.md", "/finding/mem_a0fa1f2d-several-auto-dreams-ran-at-once-in-one-repositor.md"]
 id: "mem_0b83670f"
 aliases: ["mem_0b83670f"]
 category: "finding"
@@ -53,10 +53,12 @@ meta_status_note: "cosmos/mcp.py foreign_session (local, not pushed); live machi
 ## Related
 - [[mem_44c1eef6]]
 - [[mem_93255725]]
+- [[mem_a0fa1f2d]]
 
 ## Links
 - lane: [cosmos](/lanes/cosmos.md)
 - related: [mem_44c1eef6](/constraint/mem_44c1eef6-the-cosmos-mcp-server-asks-the-client-for-mcp-ro.md)
 - related: [mem_93255725](/finding/mem_93255725-cosmosremember-and-cosmosflare-took-40-48-s-on-r.md)
+- related: [mem_a0fa1f2d](/finding/mem_a0fa1f2d-several-auto-dreams-ran-at-once-in-one-repositor.md)
 
 #finding #critical

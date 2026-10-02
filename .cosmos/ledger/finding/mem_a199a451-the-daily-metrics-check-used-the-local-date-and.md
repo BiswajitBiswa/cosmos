@@ -24,12 +24,16 @@ tags: ["finding", "medium"]
 authors: ["Biswajit Tripathy"]
 valid_from: "2026-10-02"
 meta_audit_id: "PROD-b88419"
-meta_finding_status: "open"
+meta_finding_status: "fixed"
+meta_fixed_commit: "42c8748"
+meta_fixed_on: "2026-10-02"
 meta_found_commit: "c01474c"
 meta_locations: "cosmos/pulse.py"
 meta_raw_id: "b88419"
 meta_severity: "medium"
 meta_source_doc: "manual"
+meta_status_at: "2026-10-02"
+meta_status_note: "local commit 42c8748"
 ---
 
 # The daily metrics check used the local date and the file the UTC date, so near midnight every dream rewrote the day's report
@@ -42,7 +46,7 @@ meta_source_doc: "manual"
 ## Why we believe this
 - Observed 1× (first 2026-10-02, last 2026-10-02); source: explicit
 - Evidence file: `cosmos/pulse.py`
-- Imported from manual on 2026-10-02
+- Marked fixed on 2026-10-02: local commit 42c8748
 
 ## Related
 - [[mem_8e60778d]]
