@@ -59,6 +59,8 @@ def _match(rel: str, globs: Iterable[str]) -> bool:
 
 
 def is_instruction_file(rel: str) -> bool:
+    if rel.startswith(".cosmos/vendor/"):
+        return False                                   # cosmos's own source, which describes these patterns
     return _match(rel, INSTRUCTION_FILES) or "/skills/" in rel and rel.endswith("SKILL.md") or rel.startswith(".cosmos/playbooks/")
 
 
