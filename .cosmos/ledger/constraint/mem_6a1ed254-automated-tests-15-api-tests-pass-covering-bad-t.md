@@ -1,0 +1,33 @@
+---
+type: "Constraint"
+title: "Automated tests: 15 API tests pass, covering bad tokens, `https`-only addresses, a token never being returned, re-import"
+description: "Automated tests: 15 API tests pass, covering bad tokens, `https`-only addresses, a token never being returned, re-import without duplicates, existing files kept, a GitLab merge request, and isolation between organisations."
+status: "stable"
+generated: {"by": "cosmos/observed", "at": "2026-10-07T00:00:00Z"}
+stale_after: "2027-04-05T00:00:00Z"
+id: "mem_6a1ed254"
+aliases: ["mem_6a1ed254"]
+category: "constraint"
+lane: "general"
+cosmos_status: "active"
+confidence: 0.72
+importance: 0.55
+source: "observed"
+created: "2026-10-07"
+updated: "2026-10-07"
+last_verified: "2026-10-07"
+evidence_count: 2
+tags: ["constraint"]
+authors: ["Biswajit Tripathy"]
+sessions: ["a7fa7fd7"]
+valid_from: "2026-10-07"
+---
+
+# Automated tests: 15 API tests pass, covering bad tokens, `https`-only addresses, a token never being returned, re-import without duplicates, existing files kept, a GitLab merge request, and isolation between organisations.
+
+**Category:** constraint · **Status:** active · **Confidence:** 72%
+
+## Why we believe this
+- Observed 2× (first 2026-10-07, last 2026-10-07); source: observed
+
+#constraint

@@ -6,7 +6,7 @@ status: "stable"
 generated: {"by": "human:Biswajit Tripathy", "at": "2026-10-02T00:00:00Z"}
 sources: [{"resource": "cosmos/security.py", "title": "security.py"}]
 stale_after: "2027-03-31T00:00:00Z"
-links: ["/lanes/cosmos.md"]
+links: ["/lanes/cosmos.md", "/constraint/mem_4db48cc5-from-now-on-cosmos-changes-reach-a-project-like.md", "/constraint/mem_58afadef-weekly-showcase-refresh-re-run-pulse-bench-and-o.md", "/dependency/mem_f8c19d55-which-cosmos-it-uses-reten-runs-in-the-desktop-a.md"]
 id: "mem_f044be42"
 aliases: ["mem_f044be42"]
 category: "decision"
@@ -32,5 +32,13 @@ valid_from: "2026-10-02"
 - Observed 1× (first 2026-10-02, last 2026-10-02); source: explicit
 - Evidence file: `cosmos/security.py`
 
+## Related
+- [[mem_4db48cc5]]
+- [[mem_58afadef]]
+- [[mem_f8c19d55]]
+
 ## Links
 - lane: [cosmos](/lanes/cosmos.md)
+- related: [mem_4db48cc5](/constraint/mem_4db48cc5-from-now-on-cosmos-changes-reach-a-project-like.md)
+- related: [mem_58afadef](/constraint/mem_58afadef-weekly-showcase-refresh-re-run-pulse-bench-and-o.md)
+- related: [mem_f8c19d55](/dependency/mem_f8c19d55-which-cosmos-it-uses-reten-runs-in-the-desktop-a.md)

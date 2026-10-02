@@ -6,7 +6,7 @@ status: "stable"
 generated: {"by": "human:Biswajit Tripathy", "at": "2026-10-02T00:00:00Z"}
 sources: [{"resource": "cosmos/pulse.py", "title": "pulse.py"}]
 stale_after: "2027-03-31T00:00:00Z"
-links: ["/lanes/cosmos.md", "/decision/mem_8e60778d-cosmos-pulse-measures-a-repository-from-its-own.md", "/finding/mem_0448e271-the-watcher-started-a-dream-every-30-seconds-whi.md", "/finding/mem_1db8264f-a-claude-desktop-mcp-entry-named-cosmos-pinned-t.md", "/finding/mem_498078e0-atlas-page-4-of-8-deep-pass-diagrams-failed-unde.md", "/finding/mem_5790a327-cosmos-connect-with-no-agent-argument-failed-arg.md"]
+links: ["/lanes/cosmos.md", "/constraint/mem_f5cb1c55-parsed-notes-are-kept-per-machine-in-cache-cosmo.md", "/decision/mem_8e60778d-cosmos-pulse-measures-a-repository-from-its-own.md", "/finding/mem_0448e271-the-watcher-started-a-dream-every-30-seconds-whi.md", "/finding/mem_1db8264f-a-claude-desktop-mcp-entry-named-cosmos-pinned-t.md", "/finding/mem_498078e0-atlas-page-4-of-8-deep-pass-diagrams-failed-unde.md"]
 id: "mem_a199a451"
 aliases: ["mem_a199a451"]
 category: "finding"
@@ -49,18 +49,18 @@ meta_status_note: "local commit 42c8748"
 - Marked fixed on 2026-10-02: local commit 42c8748
 
 ## Related
+- [[mem_f5cb1c55]]
 - [[mem_8e60778d]]
 - [[mem_0448e271]]
 - [[mem_1db8264f]]
 - [[mem_498078e0]]
-- [[mem_5790a327]]
 
 ## Links
 - lane: [cosmos](/lanes/cosmos.md)
+- related: [mem_f5cb1c55](/constraint/mem_f5cb1c55-parsed-notes-are-kept-per-machine-in-cache-cosmo.md)
 - related: [mem_8e60778d](/decision/mem_8e60778d-cosmos-pulse-measures-a-repository-from-its-own.md)
 - related: [mem_0448e271](/finding/mem_0448e271-the-watcher-started-a-dream-every-30-seconds-whi.md)
 - related: [mem_1db8264f](/finding/mem_1db8264f-a-claude-desktop-mcp-entry-named-cosmos-pinned-t.md)
 - related: [mem_498078e0](/finding/mem_498078e0-atlas-page-4-of-8-deep-pass-diagrams-failed-unde.md)
-- related: [mem_5790a327](/finding/mem_5790a327-cosmos-connect-with-no-agent-argument-failed-arg.md)
 
 #finding #medium

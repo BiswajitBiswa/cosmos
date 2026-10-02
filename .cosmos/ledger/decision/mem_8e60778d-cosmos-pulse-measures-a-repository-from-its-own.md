@@ -6,7 +6,7 @@ status: "stable"
 generated: {"by": "human:Biswajit Tripathy", "at": "2026-10-01T00:00:00Z"}
 sources: [{"resource": "cosmos/pulse.py", "title": "pulse.py"}]
 stale_after: "2027-03-30T00:00:00Z"
-links: ["/lanes/cosmos.md", "/finding/mem_a199a451-the-daily-metrics-check-used-the-local-date-and.md"]
+links: ["/lanes/cosmos.md", "/constraint/mem_f5cb1c55-parsed-notes-are-kept-per-machine-in-cache-cosmo.md", "/finding/mem_a199a451-the-daily-metrics-check-used-the-local-date-and.md"]
 id: "mem_8e60778d"
 aliases: ["mem_8e60778d"]
 category: "decision"
@@ -33,8 +33,10 @@ valid_from: "2026-10-01"
 - Evidence file: `cosmos/pulse.py`
 
 ## Related
+- [[mem_f5cb1c55]]
 - [[mem_a199a451]]
 
 ## Links
 - lane: [cosmos](/lanes/cosmos.md)
+- related: [mem_f5cb1c55](/constraint/mem_f5cb1c55-parsed-notes-are-kept-per-machine-in-cache-cosmo.md)
 - related: [mem_a199a451](/finding/mem_a199a451-the-daily-metrics-check-used-the-local-date-and.md)

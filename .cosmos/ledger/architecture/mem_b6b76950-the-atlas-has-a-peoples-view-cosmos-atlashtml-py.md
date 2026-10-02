@@ -6,7 +6,7 @@ status: "stable"
 generated: {"by": "human:Biswajit Tripathy", "at": "2026-09-30T00:00:00Z"}
 sources: [{"resource": "cosmos/atlas_html.py", "title": "atlas_html.py"}, {"resource": "cosmos/atlas.py", "title": "atlas.py"}]
 stale_after: "2027-03-29T00:00:00Z"
-links: ["/lanes/cosmos.md", "/finding/mem_498078e0-atlas-page-4-of-8-deep-pass-diagrams-failed-unde.md", "/finding/mem_9391c461-atlas-reported-0-endpoints-for-apps-without-an-o.md"]
+links: ["/lanes/cosmos.md", "/constraint/mem_a34514eb-what-changed-in-retent-only-its-cosmos-ledger-at.md", "/finding/mem_498078e0-atlas-page-4-of-8-deep-pass-diagrams-failed-unde.md", "/finding/mem_9391c461-atlas-reported-0-endpoints-for-apps-without-an-o.md"]
 id: "mem_b6b76950"
 aliases: ["mem_b6b76950"]
 category: "architecture"
@@ -34,10 +34,12 @@ valid_from: "2026-09-30"
 - Evidence file: `cosmos/atlas.py`
 
 ## Related
+- [[mem_a34514eb]]
 - [[mem_498078e0]]
 - [[mem_9391c461]]
 
 ## Links
 - lane: [cosmos](/lanes/cosmos.md)
+- related: [mem_a34514eb](/constraint/mem_a34514eb-what-changed-in-retent-only-its-cosmos-ledger-at.md)
 - related: [mem_498078e0](/finding/mem_498078e0-atlas-page-4-of-8-deep-pass-diagrams-failed-unde.md)
 - related: [mem_9391c461](/finding/mem_9391c461-atlas-reported-0-endpoints-for-apps-without-an-o.md)

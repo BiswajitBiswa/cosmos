@@ -1,5 +1,57 @@
 # Log
 
+## 2026-10-07
+
+**Update**: 20 observations → 10 new, 10 merged, 0 contradictions, 0 superseded, 0 stale · 5 journal entries written · recall@5 0.97 · before-edit 0.80 · heuristics only — no LLM available (cosmos doctor)
+
+## 2026-10-07
+
+**Update**: 0 observations → 0 new, 0 merged, 0 contradictions, 0 superseded, 0 stale · 2 journal entries written · recall@5 0.97 · before-edit 0.80 · heuristics only — no LLM available (cosmos doctor)
+
+## 2026-10-07
+
+**Update**: 2 observations → 2 new, 0 merged, 0 contradictions, 0 superseded, 0 stale · 1 journal entries written · recall@5 0.97 · before-edit 0.80 · heuristics only — no LLM available (cosmos doctor)
+
+## 2026-10-07
+
+**Update**: 0 observations → 0 new, 0 merged, 0 contradictions, 0 superseded, 0 stale · 1 journal entries written · recall@5 0.96 · before-edit 0.80 · heuristics only — no LLM available (cosmos doctor)
+
+## 2026-10-06
+
+**Update**: 40 observations → 39 new, 1 merged, 0 contradictions, 0 superseded, 2 stale · 1 ranges read heuristically (no model for days) · recall@5 0.96 · before-edit 0.80 · heuristics only — no LLM available (cosmos doctor)
+
+## 2026-10-06
+
+**Update**: 0 observations → 0 new, 0 merged, 0 contradictions, 0 superseded, 0 stale · 5 journal entries written · 1 session ranges still waiting for a model · recall@5 0.95 · heuristics only — no LLM available (cosmos doctor)
+
+## 2026-10-06
+
+**Update**: 0 observations → 0 new, 0 merged, 0 contradictions, 0 superseded, 0 stale · 10 journal entries written · 1 session ranges still waiting for a model · recall@5 0.95 · heuristics only — no LLM available (cosmos doctor)
+
+## 2026-10-06
+
+**Update**: 0 observations → 0 new, 0 merged, 0 contradictions, 0 superseded, 0 stale · 1 journal entries written · 1 session ranges still waiting for a model · recall@5 0.95 · heuristics only — no LLM available (cosmos doctor)
+
+## 2026-10-06
+
+**Update**: 0 observations → 0 new, 0 merged, 0 contradictions, 0 superseded, 0 stale · 1 journal entries written · 1 session ranges still waiting for a model · recall@5 0.95 · heuristics only — no LLM available (cosmos doctor)
+
+## 2026-10-04
+
+**Update**: 2 observations → 2 new, 0 merged, 0 contradictions, 0 superseded, 0 stale · 2 session ranges still waiting for a model · 1 ranges read heuristically (no model for days) · recall@5 0.95 · heuristics only — no LLM available (cosmos doctor)
+
+## 2026-10-03
+
+**Update**: 0 observations → 0 new, 0 merged, 0 contradictions, 0 superseded, 0 stale · 1 journal entries written · 3 session ranges still waiting for a model · recall@5 0.95 · heuristics only — no LLM available (cosmos doctor)
+
+## 2026-10-03
+
+**Update**: 0 observations → 0 new, 0 merged, 0 contradictions, 0 superseded, 0 stale · 1 journal entries written · 3 session ranges still waiting for a model · recall@5 0.95 · heuristics only — no LLM available (cosmos doctor)
+
+## 2026-10-02
+
+**Update**: 4 observations → 0 new, 0 merged, 0 contradictions, 0 superseded, 0 stale · 5 journal entries written · 3 session ranges still waiting for a model · recall@5 0.95 · 1 commits from git history · heuristics only — no LLM available (cosmos doctor)
+
 ## 2026-10-02
 
 **Update**: 1 observations → 0 new, 0 merged, 0 contradictions, 0 superseded, 0 stale · 3 journal entries written · 3 session ranges still waiting for a model · recall@5 0.95 · heuristics only — no LLM available (cosmos doctor)

@@ -12,8 +12,10 @@ okf_version: "0.2"
 - [Journal](journal/) — what the team did, one line per agent turn; handoffs per branch
 - [Horizon](horizon/) — features mapped before coding
 
-- [architecture/](architecture/) — 4 active architecture notes
-- [constraint/](constraint/) — 7 active constraint notes
-- [decision/](decision/) — 9 active decision notes
-- [finding/](finding/) — 28 active finding notes
-- [workflow/](workflow/) — 2 active workflow notes
+- [architecture/](architecture/) — 7 active architecture notes
+- [constraint/](constraint/) — 33 active constraint notes
+- [convention/](convention/) — 1 active convention note
+- [decision/](decision/) — 13 active decision notes
+- [dependency/](dependency/) — 20 active dependency notes
+- [finding/](finding/) — 34 active finding notes
+- [workflow/](workflow/) — 4 active workflow notes
