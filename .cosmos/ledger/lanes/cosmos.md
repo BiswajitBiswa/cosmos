@@ -1,17 +1,17 @@
 ---
 type: "Lane"
 title: "cosmos"
-description: "17 active facts, 5 open flares, 2 people active in the last 30 days"
+description: "18 active facts, 5 open flares, 2 people active in the last 30 days"
 status: "stable"
 sources: [{"resource": "/../../.claude", "title": ".claude"}, {"resource": "/../../.claude-plugin", "title": ".claude-plugin"}, {"resource": "/../../cosmos", "title": "cosmos"}, {"resource": "/../../plugin", "title": "plugin"}]
-links: ["/architecture/mem_1f13b61a-slash-commands-for-every-agent-come-from-one-cat.md", "/architecture/mem_79036575-codex-reads-project-skills-from-agents-skills-na.md", "/architecture/mem_b6b76950-the-atlas-has-a-peoples-view-cosmos-atlashtml-py.md", "/architecture/mem_c2833030-excel-export-is-a-stdlib-xlsx-writer-cosmos-xlsx.md", "/constraint/mem_1192ca15-hooks-must-always-exit-0-the-gate-is-the-only-de.md", "/constraint/mem_44c1eef6-the-cosmos-mcp-server-asks-the-client-for-mcp-ro.md", "/constraint/mem_4c8727a1-in-claude-desktop-code-tab-sessions-an-mcp-serve.md", "/constraint/mem_a1b7e320-claude-code-caps-each-hook-text-plain-stdout-add.md", "/decision/mem_043ce3de-playbooks-a-repositorys-own-long-form-agent-prom.md", "/decision/mem_1734bf56-bugs-found-by-hand-become-flares-through-one-pat.md", "/decision/mem_2b049e3f-a-flares-id-prefix-is-the-projects-lifecycle-sta.md", "/decision/mem_4efbf3d7-releases-and-their-repairs-reach-every-project-b.md", "/decision/mem_55db62b9-recall-is-made-visible-with-the-hooks-systemmess.md", "/decision/mem_5cfd6c9b-commit-note-by-biswajit-tripathy-autopilot-from.md", "/decision/mem_8e60778d-cosmos-pulse-measures-a-repository-from-its-own.md", "/decision/mem_f044be42-the-gate-runs-security-checks-every-turn-on-ever.md", "/workflow/mem_9fe4f5ce-horizon-notes-exist-only-when-someone-asks-for-o.md"]
+links: ["/architecture/mem_1f13b61a-slash-commands-for-every-agent-come-from-one-cat.md", "/architecture/mem_79036575-codex-reads-project-skills-from-agents-skills-na.md", "/architecture/mem_b6b76950-the-atlas-has-a-peoples-view-cosmos-atlashtml-py.md", "/architecture/mem_c2833030-excel-export-is-a-stdlib-xlsx-writer-cosmos-xlsx.md", "/constraint/mem_1192ca15-hooks-must-always-exit-0-the-gate-is-the-only-de.md", "/constraint/mem_44c1eef6-the-cosmos-mcp-server-asks-the-client-for-mcp-ro.md", "/constraint/mem_4c8727a1-in-claude-desktop-code-tab-sessions-an-mcp-serve.md", "/constraint/mem_a1b7e320-claude-code-caps-each-hook-text-plain-stdout-add.md", "/decision/mem_043ce3de-playbooks-a-repositorys-own-long-form-agent-prom.md", "/decision/mem_1734bf56-bugs-found-by-hand-become-flares-through-one-pat.md", "/decision/mem_2b049e3f-a-flares-id-prefix-is-the-projects-lifecycle-sta.md", "/decision/mem_4efbf3d7-releases-and-their-repairs-reach-every-project-b.md", "/decision/mem_55db62b9-recall-is-made-visible-with-the-hooks-systemmess.md", "/decision/mem_5cfd6c9b-commit-note-by-biswajit-tripathy-autopilot-from.md", "/decision/mem_8e60778d-cosmos-pulse-measures-a-repository-from-its-own.md", "/decision/mem_f044be42-the-gate-runs-security-checks-every-turn-on-ever.md", "/workflow/mem_764f889d-never-modify-a-projects-cosmos-copy-cosmos-vendo.md", "/workflow/mem_9fe4f5ce-horizon-notes-exist-only-when-someone-asks-for-o.md"]
 tags: ["lane", "cosmos"]
 ---
 
 
 # Lane · cosmos
 
-17 active facts, 5 open flares, 2 people active in the last 30 days.
+18 active facts, 5 open flares, 2 people active in the last 30 days.
 
 **Overlap:** 2 people active here this month: BiswajitBiswa, Biswajit Tripathy.
 
@@ -48,6 +48,7 @@ tags: ["lane", "cosmos"]
 - [Commit note by Biswajit Tripathy: autopilot from parent folders, bugs recorded by hand, recall you can see, a briefing under the hook cap, u](/decision/mem_5cfd6c9b-commit-note-by-biswajit-tripathy-autopilot-from.md)
 
 ### Workflow
+- [Never modify a project's cosmos copy (.cosmos/vendor, cosmosw) directly from the cosmos repository; changes reach projects only through a re](/workflow/mem_764f889d-never-modify-a-projects-cosmos-copy-cosmos-vendo.md)
 - [Horizon notes exist only when someone asks for one (/horizon, cosmos horizon, cosmos_horizon, the console's Horizon page); nothing creates t](/workflow/mem_9fe4f5ce-horizon-notes-exist-only-when-someone-asks-for-o.md)
 
 ## People

@@ -3,8 +3,8 @@ type: Handoff
 kind: handoff
 branch: "main"
 by: "Biswajit Tripathy"
-at: "2026-10-02T14:42:52Z"
+at: "2026-10-02T15:59:32Z"
 how: auto
 ---
 
-**Auto-upgrade commands.** The auto-upgrade is in 0.1.6, which is still unreleased, so every machine needs one manual step after release; after that it's automatic. In order: 1. **Me:** push to both repos and build the files, once you say go. 2. **You, once:** upload to PyPI. ```bash python3 -m twine upload dist-0.1.6/* ``` 3. **Each machine with a pip install, once** (or let the repo copy carry it, below): ```bash python3 -m pip install -U cosmos-dev ``` 4. **From then on, nothing to run.** Every session start checks PyPI at most once a day and pulls in newer releases. To force or inspect it in a repo: ```bash python3 .cosmos/cosmosw upgrade ``` ```bash python3 .cosmos/cosmosw upgrade --che …
+The Gate's checks are done: 1. **Dead-code scan:** vulture finds nothing in the files I touched. This repo's Gate only showed the dead-code scan because its bundled copy predated the security checks; it's refreshed now, and the next large change will also ask for bandit. 2. **Where the changes are:** - `cosmos/routines.py:27`: the seven routines. - `cosmos/routines.py:79` `instructions` and `:84` `setup_line`: what a run follows and the one line to paste into Claude. - `cosmos/cli.py:814` `cmd_routines` and `:824` `cmd_routine`: the two commands. - Earlier this session: `cosmos/hooks.py:298` `take_dream_lock` (one dream at a time) and `cosmos/gate.py:119` `_security_reasons` (the Gate's secu …
