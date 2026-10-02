@@ -7,7 +7,7 @@ tags: ["cosmos", "moc"]
 
 # Ledger index
 
-51 memories · 49 active · 0 contradicted · 1 stale candidates · 4 lanes
+52 memories · 50 active · 0 contradicted · 1 stale candidates · 4 lanes
 
 Charter: [[charter]] · Atlas: [[inventory]] · [[containers]] · [[deployment]] · [[api]]
 
@@ -61,6 +61,7 @@ Charter: [[charter]] · Atlas: [[inventory]] · [[containers]] · [[deployment]]
 - [[mem_fcae919e-a-dream-that-started-before-cosmos-was-updated-r|A dream that started before cosmos was updated rewrites slash command files with its stale in-memory catalogue at the end (commands.refresh)]]
 - [[mem_fcf6d908-new-slash-commands-reintroduced-names-retired-in|New slash commands reintroduced names retired in 5b289ba: /intake and cosmos_finding / cosmos_intake in command bodies]]
 ### Workflow
+- [[mem_764f889d-never-modify-a-projects-cosmos-copy-cosmos-vendo|Never modify a project's cosmos copy (.cosmos/vendor, cosmosw) directly from the cosmos repository; changes reach projects only through a release and the auto-upgrade (cosmos upgrade, daily from a session start). Reason: the owner wants every project to get fixes the same way, without anyone pushing into each repository.]]
 - [[mem_9fe4f5ce-horizon-notes-exist-only-when-someone-asks-for-o|Horizon notes exist only when someone asks for one (/horizon, cosmos horizon, cosmos_horizon, the console's Horizon page); nothing creates them by itself, so a repo that never ran one (retent on 2026-09-30) shows 0.]]
 
 ## Lane · docs

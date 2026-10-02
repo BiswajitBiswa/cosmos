@@ -1,0 +1,103 @@
+{
+ "repo": "cosmos",
+ "at": "2026-10-02T16:06:49Z",
+ "cosmos": "0.1.6",
+ "health": [
+  {
+   "check": "briefing under the hook cap",
+   "ok": "yes",
+   "detail": "7,786 of 10,000 characters"
+  },
+  {
+   "check": "this repository's cosmos runs",
+   "ok": "yes",
+   "detail": "0.1.6 from the repository copy (repository copy 0.1.6)"
+  },
+  {
+   "check": "hooks answer active sessions",
+   "ok": "yes",
+   "detail": "last hand-off 2026-10-02 15:56Z · a session was active 16:06Z"
+  },
+  {
+   "check": "dreams keep their pace",
+   "ok": "yes",
+   "detail": "0 dream(s) in the last hour"
+  },
+  {
+   "check": "instruction files and notes are clean",
+   "ok": "yes",
+   "detail": "0 hidden or instruction-like line(s) in files agents read, 0 note(s) withheld"
+  },
+  {
+   "check": "open flares point at this repository",
+   "ok": "yes",
+   "detail": "0 name only files it lacks"
+  }
+ ],
+ "usage": {
+  "turns_recorded": 126,
+  "people": 1,
+  "commits_recorded": 35,
+  "tests_ran_turns": 21,
+  "days": 7
+ },
+ "memory": {
+  "active_facts": 22,
+  "rules": 20,
+  "by_source": {
+   "explicit": 20,
+   "git": 2
+  },
+  "new_last_7_days": 21,
+  "waiting_on_a_human": 0,
+  "retired": 1
+ },
+ "flares": {
+  "total": 29,
+  "open": 5,
+  "closed": 24,
+  "notes": 0,
+  "fixed": 24,
+  "regressions_caught": 0,
+  "median_days_to_fix": 0.0
+ },
+ "recall": {
+  "recall_at_5": 0.955,
+  "before_edit_hit": null,
+  "measured_at": "20261002T160649Z",
+  "first_recall_at_5": 1.0,
+  "first_before_edit_hit": null,
+  "evals": 19
+ },
+ "context": {
+  "session_start_tokens_median": 46.0,
+  "prompt_tokens_median": 317.5,
+  "prompt_tokens_p90": 333,
+  "before_edit_tokens_median": null,
+  "prompts_with_facts": 109,
+  "prompts": 112,
+  "handoffs": 158
+ },
+ "dreams": {
+  "runs": 19,
+  "model_curated": 0,
+  "observations_processed": 122,
+  "turns_read": 0,
+  "duration_s_median": 0.6
+ },
+ "hook_ms": {
+  "SessionStart": {
+   "median_ms": 97.4,
+   "max_ms": 105.4
+  },
+  "UserPromptSubmit": {
+   "median_ms": 93.0,
+   "max_ms": 98.4
+  },
+  "PreToolUse": {
+   "median_ms": 117.0,
+   "max_ms": 121.9
+  },
+  "runs": 5
+ }
+}

@@ -6,7 +6,7 @@ status: "stable"
 generated: {"by": "human:Biswajit Tripathy", "at": "2026-10-01T00:00:00Z"}
 sources: [{"resource": "cosmos/upgrade.py", "title": "upgrade.py"}]
 stale_after: "2027-03-30T00:00:00Z"
-links: ["/lanes/cosmos.md", "/finding/mem_6fa48630-a-repository-whose-committed-hook-command-is-old.md", "/finding/mem_9aa3899c-python-orgs-macos-python-has-no-ca-bundle-until.md"]
+links: ["/lanes/cosmos.md", "/finding/mem_6fa48630-a-repository-whose-committed-hook-command-is-old.md", "/finding/mem_9aa3899c-python-orgs-macos-python-has-no-ca-bundle-until.md", "/workflow/mem_764f889d-never-modify-a-projects-cosmos-copy-cosmos-vendo.md"]
 id: "mem_4efbf3d7"
 aliases: ["mem_4efbf3d7"]
 category: "decision"
@@ -35,8 +35,10 @@ valid_from: "2026-10-01"
 ## Related
 - [[mem_6fa48630]]
 - [[mem_9aa3899c]]
+- [[mem_764f889d]]
 
 ## Links
 - lane: [cosmos](/lanes/cosmos.md)
 - related: [mem_6fa48630](/finding/mem_6fa48630-a-repository-whose-committed-hook-command-is-old.md)
 - related: [mem_9aa3899c](/finding/mem_9aa3899c-python-orgs-macos-python-has-no-ca-bundle-until.md)
+- related: [mem_764f889d](/workflow/mem_764f889d-never-modify-a-projects-cosmos-copy-cosmos-vendo.md)
