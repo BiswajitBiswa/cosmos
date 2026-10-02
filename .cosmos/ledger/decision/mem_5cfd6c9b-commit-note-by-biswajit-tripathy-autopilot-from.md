@@ -6,7 +6,7 @@ status: "stable"
 generated: {"by": "cosmos/git", "at": "2026-10-01T00:00:00Z"}
 sources: [{"resource": ".claude-plugin/marketplace.json", "title": "marketplace.json"}, {"resource": "README.md", "title": "README.md"}, {"resource": "cosmos/adapters.py", "title": "adapters.py"}, {"resource": "cosmos/audit.py", "title": "audit.py"}, {"resource": "cosmos/charter.py", "title": "charter.py"}, {"resource": "cosmos/cli.py", "title": "cli.py"}, {"resource": ".claude/settings.json", "title": "settings.json"}]
 stale_after: "2027-03-30T00:00:00Z"
-links: ["/lanes/cosmos.md", "/constraint/mem_2518367d-cosmos-is-on-pypi-as-cosmos-dev-0-1-0-published.md", "/constraint/mem_62468362-cosmos-dev-is-not-published-on-pypi-404-on-2026.md", "/constraint/mem_97f2aa55-installed-plugins-update-only-when-the-version-c.md", "/decision/mem_1734bf56-bugs-found-by-hand-become-flares-through-one-pat.md", "/decision/mem_1ac630fe-commit-note-by-biswajit-tripathy-plugin-0-2-1-co.md"]
+links: ["/lanes/cosmos.md", "/constraint/mem_0f220612-githubs-secret-scanning-spotted-it-and-blocked-t.md", "/constraint/mem_15da1401-for-clients-that-dont-report-their-folders-every.md", "/constraint/mem_1c0f1357-becomes-a-command-each-playbook-becomes-a-slash.md", "/constraint/mem_2518367d-cosmos-is-on-pypi-as-cosmos-dev-0-1-0-published.md", "/constraint/mem_4a242b58-your-rule-is-recorded-and-followed-mem764f889d-c.md"]
 id: "mem_5cfd6c9b"
 aliases: ["mem_5cfd6c9b"]
 category: "decision"
@@ -40,18 +40,18 @@ valid_from: "2026-10-01"
 - Evidence file: `.claude/settings.json`
 
 ## Related
+- [[mem_0f220612]]
+- [[mem_15da1401]]
+- [[mem_1c0f1357]]
 - [[mem_2518367d]]
-- [[mem_62468362]]
-- [[mem_97f2aa55]]
-- [[mem_1734bf56]]
-- [[mem_1ac630fe]]
+- [[mem_4a242b58]]
 
 ## Links
 - lane: [cosmos](/lanes/cosmos.md)
+- related: [mem_0f220612](/constraint/mem_0f220612-githubs-secret-scanning-spotted-it-and-blocked-t.md)
+- related: [mem_15da1401](/constraint/mem_15da1401-for-clients-that-dont-report-their-folders-every.md)
+- related: [mem_1c0f1357](/constraint/mem_1c0f1357-becomes-a-command-each-playbook-becomes-a-slash.md)
 - related: [mem_2518367d](/constraint/mem_2518367d-cosmos-is-on-pypi-as-cosmos-dev-0-1-0-published.md)
-- related: [mem_62468362](/constraint/mem_62468362-cosmos-dev-is-not-published-on-pypi-404-on-2026.md)
-- related: [mem_97f2aa55](/constraint/mem_97f2aa55-installed-plugins-update-only-when-the-version-c.md)
-- related: [mem_1734bf56](/decision/mem_1734bf56-bugs-found-by-hand-become-flares-through-one-pat.md)
-- related: [mem_1ac630fe](/decision/mem_1ac630fe-commit-note-by-biswajit-tripathy-plugin-0-2-1-co.md)
+- related: [mem_4a242b58](/constraint/mem_4a242b58-your-rule-is-recorded-and-followed-mem764f889d-c.md)
 
 #claude-plugin #cosmos #decision

@@ -3,8 +3,8 @@ type: Handoff
 kind: handoff
 branch: "main"
 by: "Biswajit Tripathy"
-at: "2026-10-02T16:23:44Z"
+at: "2026-10-07T16:52:13Z"
 how: auto
 ---
 
-Everything from this session is pushed to both repos, with no mention of [REDACTED:private] or [REDACTED:private] anywhere. The release is built for you to upload. **One catch: the release is 0.1.7, not 0.1.6.** Retent's bundled copy, which I wrote directly before your rule, is also labelled 0.1.6 but is older code. The auto-upgrade only installs a newer version number, so a 0.1.6 release would never reach retent. As 0.1.7, it upgrades retent like every other project. **Pushed** - **Personal repo:** `main` is at `968f7f2`. The site redeploys from it. - **Company repo:** `main` is at `acdbec0`, with company conventions: `ideatorlabs` URLs and the company repo as the Codex plugin's homepage. - **Tests:**  …
+The restart didn't fix the Desktop side. Claude Desktop keeps its config file in memory and wrote it back when it restarted, so my rename of the `cosmos` entry was lost. Desktop sessions, HORIZON included, still send their cosmos notes to retent. It only sticks if the file is changed while Desktop is fully closed, so this one needs you: 1. Quit Claude Desktop completely with **⌘Q**. Closing the window isn't enough. 2. In the macOS Terminal app, run: ```bash python3 -c "import json,shutil,os;p=os.path.expanduser('~/Library/Application Support/Claude/claude_desktop_config.json');shutil.copy(p,p+'.bak-before-rename');d=json.load(open(p));s=d.get('mcpServers',{});s.update({'cosmos-retent':s.pop( …

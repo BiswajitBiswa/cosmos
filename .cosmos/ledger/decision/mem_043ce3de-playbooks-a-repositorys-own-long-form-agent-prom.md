@@ -6,7 +6,7 @@ status: "stable"
 generated: {"by": "human:Biswajit Tripathy", "at": "2026-09-29T00:00:00Z"}
 sources: [{"resource": "cosmos/playbooks.py", "title": "playbooks.py"}, {"resource": "cosmos/commands.py", "title": "commands.py"}]
 stale_after: "2027-03-28T00:00:00Z"
-links: ["/lanes/cosmos.md", "/architecture/mem_1f13b61a-slash-commands-for-every-agent-come-from-one-cat.md", "/architecture/mem_79036575-codex-reads-project-skills-from-agents-skills-na.md", "/finding/mem_fcf6d908-new-slash-commands-reintroduced-names-retired-in.md"]
+links: ["/lanes/cosmos.md", "/architecture/mem_1f13b61a-slash-commands-for-every-agent-come-from-one-cat.md", "/architecture/mem_79036575-codex-reads-project-skills-from-agents-skills-na.md", "/constraint/mem_1c0f1357-becomes-a-command-each-playbook-becomes-a-slash.md", "/constraint/mem_58733dee-the-ledger-is-written-from-main-so-lifecycle-pre.md", "/constraint/mem_c3748e04-revoke-that-token-on-pypi-afterwards-since-its-i.md"]
 id: "mem_043ce3de"
 aliases: ["mem_043ce3de"]
 category: "decision"
@@ -36,10 +36,14 @@ valid_from: "2026-09-29"
 ## Related
 - [[mem_1f13b61a]]
 - [[mem_79036575]]
-- [[mem_fcf6d908]]
+- [[mem_1c0f1357]]
+- [[mem_58733dee]]
+- [[mem_c3748e04]]
 
 ## Links
 - lane: [cosmos](/lanes/cosmos.md)
 - related: [mem_1f13b61a](/architecture/mem_1f13b61a-slash-commands-for-every-agent-come-from-one-cat.md)
 - related: [mem_79036575](/architecture/mem_79036575-codex-reads-project-skills-from-agents-skills-na.md)
-- related: [mem_fcf6d908](/finding/mem_fcf6d908-new-slash-commands-reintroduced-names-retired-in.md)
+- related: [mem_1c0f1357](/constraint/mem_1c0f1357-becomes-a-command-each-playbook-becomes-a-slash.md)
+- related: [mem_58733dee](/constraint/mem_58733dee-the-ledger-is-written-from-main-so-lifecycle-pre.md)
+- related: [mem_c3748e04](/constraint/mem_c3748e04-revoke-that-token-on-pypi-afterwards-since-its-i.md)

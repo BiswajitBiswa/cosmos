@@ -6,7 +6,7 @@ status: "stable"
 generated: {"by": "human:Biswajit Tripathy", "at": "2026-10-01T00:00:00Z"}
 sources: [{"resource": "cosmos/upgrade.py", "title": "upgrade.py"}]
 stale_after: "2027-03-30T00:00:00Z"
-links: ["/lanes/cosmos.md", "/finding/mem_6fa48630-a-repository-whose-committed-hook-command-is-old.md", "/finding/mem_9aa3899c-python-orgs-macos-python-has-no-ca-bundle-until.md", "/workflow/mem_764f889d-never-modify-a-projects-cosmos-copy-cosmos-vendo.md"]
+links: ["/lanes/cosmos.md", "/constraint/mem_15da1401-for-clients-that-dont-report-their-folders-every.md", "/constraint/mem_cf1dd94b-tests-already-set-cosmosnobackground-so-they-can.md", "/dependency/mem_06dacbf0-self-upgrade-at-most-once-a-day-per-machine-a-se.md", "/dependency/mem_0c3037f2-cosmos-upgrade-py-210-maybebackground-the-daily.md", "/dependency/mem_10ab0e02-cosmos-upgrade-py-282-stepcodexlisting-writes-th.md"]
 id: "mem_4efbf3d7"
 aliases: ["mem_4efbf3d7"]
 category: "decision"
@@ -33,12 +33,16 @@ valid_from: "2026-10-01"
 - Evidence file: `cosmos/upgrade.py`
 
 ## Related
-- [[mem_6fa48630]]
-- [[mem_9aa3899c]]
-- [[mem_764f889d]]
+- [[mem_15da1401]]
+- [[mem_cf1dd94b]]
+- [[mem_06dacbf0]]
+- [[mem_0c3037f2]]
+- [[mem_10ab0e02]]
 
 ## Links
 - lane: [cosmos](/lanes/cosmos.md)
-- related: [mem_6fa48630](/finding/mem_6fa48630-a-repository-whose-committed-hook-command-is-old.md)
-- related: [mem_9aa3899c](/finding/mem_9aa3899c-python-orgs-macos-python-has-no-ca-bundle-until.md)
-- related: [mem_764f889d](/workflow/mem_764f889d-never-modify-a-projects-cosmos-copy-cosmos-vendo.md)
+- related: [mem_15da1401](/constraint/mem_15da1401-for-clients-that-dont-report-their-folders-every.md)
+- related: [mem_cf1dd94b](/constraint/mem_cf1dd94b-tests-already-set-cosmosnobackground-so-they-can.md)
+- related: [mem_06dacbf0](/dependency/mem_06dacbf0-self-upgrade-at-most-once-a-day-per-machine-a-se.md)
+- related: [mem_0c3037f2](/dependency/mem_0c3037f2-cosmos-upgrade-py-210-maybebackground-the-daily.md)
+- related: [mem_10ab0e02](/dependency/mem_10ab0e02-cosmos-upgrade-py-282-stepcodexlisting-writes-th.md)

@@ -6,7 +6,7 @@ status: "stable"
 generated: {"by": "human:Biswajit Tripathy", "at": "2026-10-02T00:00:00Z"}
 sources: [{"resource": "cosmos/store.py", "title": "store.py"}]
 stale_after: "2027-03-31T00:00:00Z"
-links: ["/lanes/cosmos.md", "/finding/mem_0b83670f-a-session-in-a-project-without-cosmos-filed-its.md", "/finding/mem_488b620a-every-hook-took-700-790-ms-on-retent-2-925-notes.md", "/finding/mem_a0fa1f2d-several-auto-dreams-ran-at-once-in-one-repositor.md", "/finding/mem_ac19fa4c-a-whole-ledger-save-from-a-process-that-loaded-e.md"]
+links: ["/lanes/cosmos.md", "/finding/mem_0b83670f-a-session-in-a-project-without-cosmos-filed-its.md", "/finding/mem_2229c98c-cosmoss-model-use-has-no-budget-in-7-days-its-dr.md", "/finding/mem_488b620a-every-hook-took-700-790-ms-on-retent-2-925-notes.md", "/finding/mem_a0fa1f2d-several-auto-dreams-ran-at-once-in-one-repositor.md", "/finding/mem_ac19fa4c-a-whole-ledger-save-from-a-process-that-loaded-e.md"]
 id: "mem_93255725"
 aliases: ["mem_93255725"]
 category: "finding"
@@ -52,6 +52,7 @@ meta_status_note: "local commit 42c8748"
 
 ## Related
 - [[mem_0b83670f]]
+- [[mem_2229c98c]]
 - [[mem_488b620a]]
 - [[mem_a0fa1f2d]]
 - [[mem_ac19fa4c]]
@@ -59,6 +60,7 @@ meta_status_note: "local commit 42c8748"
 ## Links
 - lane: [cosmos](/lanes/cosmos.md)
 - related: [mem_0b83670f](/finding/mem_0b83670f-a-session-in-a-project-without-cosmos-filed-its.md)
+- related: [mem_2229c98c](/finding/mem_2229c98c-cosmoss-model-use-has-no-budget-in-7-days-its-dr.md)
 - related: [mem_488b620a](/finding/mem_488b620a-every-hook-took-700-790-ms-on-retent-2-925-notes.md)
 - related: [mem_a0fa1f2d](/finding/mem_a0fa1f2d-several-auto-dreams-ran-at-once-in-one-repositor.md)
 - related: [mem_ac19fa4c](/finding/mem_ac19fa4c-a-whole-ledger-save-from-a-process-that-loaded-e.md)

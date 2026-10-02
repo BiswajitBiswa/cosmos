@@ -6,7 +6,7 @@ status: "stable"
 generated: {"by": "human:Biswajit Tripathy", "at": "2026-10-01T00:00:00Z"}
 sources: [{"resource": "cosmos/audit.py", "title": "audit.py"}]
 stale_after: "2027-03-30T00:00:00Z"
-links: ["/lanes/cosmos.md", "/decision/mem_2b049e3f-a-flares-id-prefix-is-the-projects-lifecycle-sta.md", "/decision/mem_5cfd6c9b-commit-note-by-biswajit-tripathy-autopilot-from.md", "/finding/mem_d4c37ea1-slack-cards-and-the-slack-report-told-people-to.md"]
+links: ["/lanes/cosmos.md", "/constraint/mem_b230553a-cosmos-remember-c-finding-files-an-open-flare-au.md", "/decision/mem_2b049e3f-a-flares-id-prefix-is-the-projects-lifecycle-sta.md", "/decision/mem_5cfd6c9b-commit-note-by-biswajit-tripathy-autopilot-from.md", "/finding/mem_d4c37ea1-slack-cards-and-the-slack-report-told-people-to.md"]
 id: "mem_1734bf56"
 aliases: ["mem_1734bf56"]
 category: "decision"
@@ -33,12 +33,14 @@ valid_from: "2026-10-01"
 - Evidence file: `cosmos/audit.py`
 
 ## Related
+- [[mem_b230553a]]
 - [[mem_2b049e3f]]
 - [[mem_5cfd6c9b]]
 - [[mem_d4c37ea1]]
 
 ## Links
 - lane: [cosmos](/lanes/cosmos.md)
+- related: [mem_b230553a](/constraint/mem_b230553a-cosmos-remember-c-finding-files-an-open-flare-au.md)
 - related: [mem_2b049e3f](/decision/mem_2b049e3f-a-flares-id-prefix-is-the-projects-lifecycle-sta.md)
 - related: [mem_5cfd6c9b](/decision/mem_5cfd6c9b-commit-note-by-biswajit-tripathy-autopilot-from.md)
 - related: [mem_d4c37ea1](/finding/mem_d4c37ea1-slack-cards-and-the-slack-report-told-people-to.md)

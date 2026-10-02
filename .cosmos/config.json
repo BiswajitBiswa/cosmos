@@ -36,7 +36,8 @@
       "workflow": 120,
       "architecture": 240,
       "default": 180
-    }
+    },
+    "auto": false
   },
   "llm": {
     "provider": "anthropic",
