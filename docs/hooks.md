@@ -105,6 +105,11 @@ changed is read again: a warm load takes 74 ms. `cosmos pulse --bench` times the
 (median of five): on retent 2026-10-01, SessionStart 325 ms, UserPromptSubmit 398 ms, PreToolUse 285 ms (`.cosmos/ledger/metrics/2026-10-01.json`), from
 700-790 ms before.
 
+Saving is as cheap: a save writes only the notes that changed since they were read, so `cosmos_remember` on retent's
+2,975 notes takes 1.4-2.8 s (it rewrote every note before, 40-48 s, past tool timeouts). Dreams run one at a time per
+repository: the lock is created atomically and holds the running dream's pid, so a slow dream never lets a second
+start (retent once ran five at once).
+
 `cosmos pulse` also checks the failures that are otherwise silent: a briefing over the cap, the wrong copy of cosmos
 running, hooks quiet while a session is active, dreams in a loop, flares naming files the repository lacks.
 

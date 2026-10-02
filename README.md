@@ -69,6 +69,8 @@ git clone <repo> && claude
 
 ## How it works
 
+<p align="center"><img src="https://raw.githubusercontent.com/BiswajitBiswa/cosmos/main/docs/assets/flow.svg" alt="How cosmos works: agents feed hooks, the watcher and MCP tools; capture and the dream write the ledger in git; the briefing, recall and the Gate bring it back; releases keep it current" width="100%"></p>
+
 **Five steps. The developer does only the first.** The gold step is where the model curates; a person decides only what evidence cannot settle.
 
 <p class="md-wide"><img src="https://raw.githubusercontent.com/BiswajitBiswa/cosmos/main/docs/assets/pipeline.svg" alt="Work → Capture → Model curates → Ledger → Recall" width="100%"></p>
@@ -166,7 +168,7 @@ git clone <repo> && claude
 | | |
 |---|---|
 | **what** | The model reads every new observation and decides what is worth keeping, rewrites it crisply, names its category and its feature lane. Then duplicates merge, contradictions are flagged, old facts are marked for review, the Atlas is drift-checked. Anything evidence cannot settle waits for a person on the Verdicts page. |
-| **you do** | Run a dream now and then (or nightly in CI), glance at Verdicts, commit. |
+| **you do** | Nothing: dreams run by themselves, one at a time per repository (or nightly as the `dream` routine). Glance at Verdicts now and then. |
 | **you get** | A ledger that stays small and right. Every human decision (keep, both valid, still true, forget) is recorded with who and when. |
 | **command** | `cosmos dream` · `cosmos review` · the Verdicts page |
 
@@ -261,7 +263,7 @@ git clone <repo> && cd <repo>
 
 **4 · Look, now and then.** `cosmos ui` shows the live sessions, the ledger, the lanes, the flares and what waits for a human on Verdicts. Dreams run by themselves; commit `.cosmos` with your normal work and everyone gets it on the next `git pull`. Map a feature before coding with `cosmos horizon "<feature in one sentence>"` or on the Horizon page.
 
-**Routines: cosmos without anyone's laptop.** Claude Routines run Claude Code in the cloud on a schedule or a GitHub trigger. cosmos ships seven: `pr-review` (each pull request against the Charter, rules and open flares), `pulse` (daily health and metrics), `dream` (nightly curation and reconcile), `scan` (weekly security), `merge-memory` (what a merged PR decided), `flare-triage` and `digest`. Set one up once in Claude → Routines with the instruction ``Run `python3 .cosmos/cosmosw routine <name>` and follow what it prints``; the steps live in cosmos, so they improve with each upgrade ([guide](https://github.com/BiswajitBiswa/cosmos/blob/main/docs/routines.md)).
+**Routines: cosmos without anyone's laptop.** Claude Routines run Claude Code in the cloud on a schedule or a GitHub trigger. cosmos ships seven: `pr-review` (each pull request against the Charter, rules and open flares), `pulse` (daily health and metrics), `dream` (nightly curation and reconcile), `scan` (weekly security), `merge-memory` (what a merged PR decided), `flare-triage` and `digest`. `cosmos routines` lists them; set one up once in Claude → Routines with the instruction ``Run `python3 .cosmos/cosmosw routine <name>` and follow what it prints``; the steps live in cosmos, so they improve with each upgrade ([guide](https://github.com/BiswajitBiswa/cosmos/blob/main/docs/routines.md)).
 
 **It updates itself.** Once a day a session start checks PyPI in the background. A newer release is downloaded, checked against PyPI's sha256, tested to import, and swapped into the repository's committed copy (`.cosmos/vendor`); cosmos commits it, so every teammate runs it after their next `git pull`, with or without a pip install. A pip install on the machine is upgraded too when pip allows it. Each new version then repairs, once per machine, what older versions wrote: hook commands, slash commands, the Codex plugin listing (`.agents/plugins/marketplace.json`, so Codex users install cosmos from the Plugins screen with one click) and a Claude Desktop MCP entry that sent every session's facts to one repository. `cosmos upgrade --check` says where a repository stands, `cosmos repair` runs the repairs now; `"update": {"auto": false}` in `.cosmos/config.json` turns it off.
 
