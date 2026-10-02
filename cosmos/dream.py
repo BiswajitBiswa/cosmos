@@ -585,7 +585,8 @@ def dream(cfg: Config, use_llm: Optional[bool] = None, verbose: bool = False, re
     try:
         from .pulse import due, run as pulse_run, save as pulse_save
         if due(cfg):
-            pulse_save(cfg, pulse_run(cfg, with_bench=True))   # the day's measured metrics, committed with this dream
+            bench = (cfg.paths.cosmos / "cosmosw").exists()      # it times the wrapper the hooks run; none, nothing to time
+            pulse_save(cfg, pulse_run(cfg, with_bench=bench))   # the day's measured metrics, committed with this dream
     except Exception as e:
         with (cfg.paths.state / "dream.log").open("a") as log:
             log.write(f"pulse not saved: {e}\n")

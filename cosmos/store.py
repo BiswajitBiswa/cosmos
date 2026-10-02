@@ -218,6 +218,12 @@ class Memory:
         return mem
 
 
+def _unchanged(mem: "Memory", path: Path) -> bool:
+    """Loaded by this process, not modified since, and its file is where it belongs: nothing to write."""
+    base = getattr(mem, "_base", None)
+    return base is not None and asdict(mem) == base and path.exists()
+
+
 def _ledger_cache(ledger_dir: Path) -> Optional[Path]:
     """Machine-local, never in the repository: ~/.cache/cosmos/<repository>-<hash>.ledger. COSMOS_LEDGER_CACHE=0 turns it off."""
     import os
@@ -333,7 +339,14 @@ class Ledger:
             out[p.name.split("-", 1)[0]] = "/" + str(p.relative_to(self.dir))
         return out
 
-    def save(self, mem: Memory, paths: Optional[Dict[str, str]] = None) -> Path:
+    def _files_by_id(self) -> Dict[str, List[Path]]:
+        """Every note file by id, from one walk of the ledger (save_all hands it to each save)."""
+        out: Dict[str, List[Path]] = {}
+        for f in self.dir.rglob("mem_*.md") if self.dir.exists() else []:
+            out.setdefault(f.name.split("-", 1)[0], []).append(f)
+        return out
+
+    def save(self, mem: Memory, paths: Optional[Dict[str, str]] = None, files: Optional[Dict[str, List[Path]]] = None) -> Path:
         # validity window follows the lifecycle: closed when a fact stops being true, reopened if it comes back
         if mem.status in ("superseded", "forgotten") and not mem.valid_to:
             mem.valid_to = today()
@@ -343,7 +356,8 @@ class Ledger:
             mem.valid_from = mem.created
         base = getattr(mem, "_base", None)
         if base is not None:                         # loaded earlier by this process: someone may have saved it since
-            on_disk = next(iter(sorted(self.dir.rglob(f"{mem.id}-*.md"))), None)
+            mine_files = files.get(mem.id, []) if files is not None else list(self.dir.rglob(f"{mem.id}-*.md"))
+            on_disk = next(iter(sorted(mine_files)), None)
             disk_text = on_disk.read_text() if on_disk else None
             if disk_text is not None and disk_text != getattr(mem, "_base_text", None):
                 disk = Memory.from_markdown(disk_text)
@@ -353,8 +367,8 @@ class Ledger:
                         return on_disk               # nothing changed here, and the file is newer: it stays
                     _merge_into(mem, base, mine, asdict(disk))
         # remove old file if slug/category changed
-        for old in self.dir.rglob(f"{mem.id}-*.md"):
-            if old != self._path_for(mem):
+        for old in (files.get(mem.id, []) if files is not None else self.dir.rglob(f"{mem.id}-*.md")):
+            if old != self._path_for(mem) and old.exists():
                 old.unlink()
         p = self._path_for(mem)
         p.parent.mkdir(parents=True, exist_ok=True)
@@ -364,10 +378,16 @@ class Ledger:
         return p
 
     def save_all(self, mems: Iterable[Memory]) -> None:
+        """Write what changed. A note identical to what this process loaded is left alone: one remember in a ledger of
+        2,975 notes rewrote every one, with two folder walks each, and took 40-48 s (2026-10-02), past tool timeouts."""
         mems = list(mems)
-        paths = self.paths_by_id(mems)
-        for m in mems:
-            self.save(m, paths)
+        paths = {**self.paths_by_id(), **self.paths_by_id(mems)}       # links reach notes saved in this same batch
+        todo = [m for m in mems if not _unchanged(m, self._path_for(m))]
+        if not todo:
+            return
+        files = self._files_by_id()
+        for m in todo:
+            self.save(m, paths, files)
 
     def delete(self, mem_id: str) -> bool:
         ok = False

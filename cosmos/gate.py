@@ -49,24 +49,31 @@ def evaluate(cfg: Config, event: Dict[str, Any]) -> Dict[str, Any]:
     if not turn:
         return result
     root = cfg.paths.root
-    edited = []
+    edited, touched = [], []
     for t in turn:
         for f in t.files:
             rel = relativize(f, root)
             if rel.startswith(("/", "../", "external/")):
                 continue                               # another repository edited in the same session: not this Gate's
+            if rel not in touched:
+                touched.append(rel)                    # every file, docs and config too: the security checks read them all
             if _matches(rel, gc.get("skip_globs", [])) or not _matches(rel, gc.get("code_globs", ["**/*"])):
                 continue
             if rel not in edited:
                 edited.append(rel)
     result["edited"] = edited
+    commands = [c for t in turn for c in t.commands]
+    if gc.get("security", True):
+        result["reasons"] += _security_reasons(root, touched, commands)
     if not edited:
+        if result["reasons"]:
+            result["block"] = True
+            result["reasons"].append("Then re-read your diff against .cosmos/charter.md (self-review) and stop.")
         return result
     size = sum(t.edit_chars for t in turn)
     small = len(edited) <= int(gc.get("small_change_files", 1)) and size < int(gc.get("small_change_chars", 400))
     result["small"] = small
     result["reflect"] = bool(gc.get("reflect", True)) and not small
-    commands = [c for t in turn for c in t.commands]
     tests_ran = any(any(p in c for p in gc.get("test_patterns", [])) for c in commands)
     last_text = next((t.text for t in reversed(turn) if t.role == "assistant" and t.text.strip()), "")
     has_refs = bool(REF.search(last_text))
@@ -83,9 +90,9 @@ def evaluate(cfg: Config, event: Dict[str, Any]) -> Dict[str, Any]:
                 continue
             result["reasons"].append(
                 f"This was a large change ({len(edited)} files, {size:,} characters edited). Run the {chk.get('name', 'scan')}"
-                + (f": `{chk['command']}`" if chk.get("command") else "") + ". Remove the unused and redundant code it finds in what you touched, "
+                + (f": `{chk['command']}`" if chk.get("command") else "") + ". " + chk.get("ask", "Remove the unused and redundant code it finds in what you touched, "
                 "and compact duplicated logic you introduced. Name any result that is a false positive (framework entry points, "
-                "routes, fixtures) instead of deleting it.")
+                "routes, fixtures) instead of deleting it."))
     if gc.get("require_refs", True) and not has_refs:
         result["reasons"].append("Point precisely: your summary has no `path/to/file.ext:line` references. Cite the exact location of each change you made.")
     # open findings on the edited files must not be silently ignored
@@ -107,6 +114,21 @@ def evaluate(cfg: Config, event: Dict[str, Any]) -> Dict[str, Any]:
         result["block"] = True
         result["reasons"].append("Then re-read your diff against .cosmos/charter.md (self-review) and stop.")
     return result
+
+
+def _security_reasons(root: Path, touched: List[str], commands: List[str]) -> List[str]:
+    """What the files this turn touched carry (a credential, hidden characters, text that steers an agent in an
+    instruction file), and the dependency audits a changed manifest needs."""
+    from .security import audits_needed, describe, scan_file
+    found = [f for rel in touched for f in scan_file(root, rel)]
+    out = []
+    if found:
+        out.append("Security: the files you touched carry " + "; ".join(describe(f) for f in found[:6])
+                   + (f" (+{len(found) - 6} more: `cosmos scan`)" if len(found) > 6 else "") + ".")
+    audits = audits_needed(touched, commands)
+    if audits:
+        out.append("A dependency manifest changed: run the vulnerability audit and fix or name what it reports. " + " · ".join(audits))
+    return out
 
 
 def message(res: Dict[str, Any]) -> str:

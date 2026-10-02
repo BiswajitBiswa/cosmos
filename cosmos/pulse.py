@@ -197,6 +197,12 @@ def health(cfg: Config, mems: Dict[str, Memory]) -> List[Dict[str, str]]:
     check("dreams keep their pace", len(recent) <= 3, f"{len(recent)} dream(s) in the last hour")
     foreign = [m.meta.get("audit_id", m.id) for m in mems.values() if m.category == "finding" and m.meta.get("finding_status", "open") in OPEN_LIKE
                and m.files and not any((cfg.paths.root / f).exists() for f in m.files)]
+    from .security import is_instruction_file, scan_file, tracked, withheld
+    bad = [f for rel in tracked(cfg.paths.root) if is_instruction_file(rel) and not rel.startswith(".cosmos/ledger/")
+           for f in scan_file(cfg.paths.root, rel) if f["kind"] != "secret"]
+    held = sum(1 for m in mems.values() if m.status == "active" and withheld(m.text, m.meta))
+    check("instruction files and notes are clean", not bad and not held,
+          f"{len(bad)} hidden or instruction-like line(s) in files agents read, {held} note(s) withheld" + (f": {bad[0]['file']}:{bad[0]['line']}" if bad else ""))
     check("open flares point at this repository", not foreign, f"{len(foreign)} name only files it lacks" + (f": {', '.join(foreign[:3])}" if foreign else ""))
     return checks
 
@@ -244,7 +250,7 @@ def save(cfg: Config, rep: Dict[str, Any]) -> Path:
 
 def due(cfg: Config) -> bool:
     d = cfg.paths.ledger / "metrics"
-    return not (d / f"{date.today().isoformat()}.json").exists()
+    return not (d / f"{datetime.now(timezone.utc).date().isoformat()}.json").exists()   # the date save() names the file by
 
 
 def text(rep: Dict[str, Any]) -> str:

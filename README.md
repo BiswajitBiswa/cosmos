@@ -150,6 +150,8 @@ git clone <repo> && claude
 | **you get** | Flares show up when someone touches the affected file. Slack cards post once, with reactions to claim or close. A report can be regenerated any time. |
 | **command** | `cosmos flares add\|import\|list\|fix\|withdraw\|slack\|report` |
 
+**Security for code written by agents.** Every turn the Gate reads the files it touched for credentials, hidden Unicode (Trojan Source, invisible prompt text) and text that steers an agent inside the files agents read as instructions, and holds the turn until a changed dependency manifest has been audited; large changes also run bandit or semgrep. A ledger note that reads like instructions to an agent is withheld from every agent until a person looks. `cosmos scan [--tools]` checks the whole repository ([guide](https://github.com/BiswajitBiswa/cosmos/blob/main/docs/charter-and-gate.md#security-on-every-turn)).
+
 ### <img src="https://raw.githubusercontent.com/BiswajitBiswa/cosmos/main/docs/assets/icon-charter.svg" width="28" alt=""> Playbooks · the team's own prompts, in every agent
 
 | | |

@@ -14,7 +14,7 @@ from .config import Config
 from .store import Memory
 
 TEMPLATE = """---
-gate: {"enabled": true, "require_tests": true, "require_refs": true, "reflect": true, "small_change_chars": 400, "small_change_files": 1, "large_change_chars": 4000, "large_change_files": 5, "large_change_checks": [{"name": "dead-code scan (vulture)", "patterns": ["vulture"], "when": ["**/*.py"], "command": "python3 -m vulture . --min-confidence 80 --exclude '.venv,venv,node_modules,.cosmos,migrations,build,dist' (install once: python3 -m pip install vulture)"}, {"name": "unused files, exports and dependencies scan (knip)", "patterns": ["knip"], "when": ["**/*.js", "**/*.jsx", "**/*.ts", "**/*.tsx"], "command": "npx knip (in the folder with the package.json you changed)"}], "test_patterns": ["pytest", "npm test", "npm run test", "pnpm test", "yarn test", "go test", "gradle test", "gradlew test", "mvn test", "cargo test", "jest", "vitest", "make test", "./manage.py test"], "code_globs": ["**/*.py", "**/*.ts", "**/*.tsx", "**/*.js", "**/*.jsx", "**/*.kt", "**/*.java", "**/*.go", "**/*.rs", "**/*.rb"], "skip_globs": ["**/*.md", "**/*.json", "**/*.yml", "**/*.yaml", "docs/**", ".cosmos/**"]}
+gate: {"enabled": true, "require_tests": true, "require_refs": true, "reflect": true, "small_change_chars": 400, "small_change_files": 1, "large_change_chars": 4000, "large_change_files": 5, "large_change_checks": [{"name": "dead-code scan (vulture)", "patterns": ["vulture"], "when": ["**/*.py"], "command": "python3 -m vulture . --min-confidence 80 --exclude '.venv,venv,node_modules,.cosmos,migrations,build,dist' (install once: python3 -m pip install vulture)"}, {"name": "unused files, exports and dependencies scan (knip)", "patterns": ["knip"], "when": ["**/*.js", "**/*.jsx", "**/*.ts", "**/*.tsx"], "command": "npx knip (in the folder with the package.json you changed)"}, {"name": "security scan (bandit)", "patterns": ["bandit", "semgrep"], "when": ["**/*.py"], "command": "python3 -m bandit -q -ll -r <the folders you changed> (install once: python3 -m pip install bandit)", "ask": "Fix what it reports in the code you touched (injection, unsafe deserialisation, shell=True, weak crypto, secrets), or name each finding that is a false positive and why."}, {"name": "security scan (semgrep)", "patterns": ["semgrep"], "when": ["**/*.js", "**/*.jsx", "**/*.ts", "**/*.tsx", "**/*.go", "**/*.java", "**/*.kt", "**/*.rb"], "command": "semgrep scan --config p/default --error <the folders you changed> (install once: python3 -m pip install semgrep)", "ask": "Fix what it reports in the code you touched (injection, unsafe deserialisation, shell=True, weak crypto, secrets), or name each finding that is a false positive and why."}], "test_patterns": ["pytest", "npm test", "npm run test", "pnpm test", "yarn test", "go test", "gradle test", "gradlew test", "mvn test", "cargo test", "jest", "vitest", "make test", "./manage.py test"], "code_globs": ["**/*.py", "**/*.ts", "**/*.tsx", "**/*.js", "**/*.jsx", "**/*.kt", "**/*.java", "**/*.go", "**/*.rs", "**/*.rb"], "skip_globs": ["**/*.md", "**/*.json", "**/*.yml", "**/*.yaml", "docs/**", ".cosmos/**"]}
 ---
 
 # Charter
@@ -127,7 +127,8 @@ def summary(cfg: Config, mems: Dict[str, Memory], max_lines: int = 28) -> str:
     if rs:
         lines.append("## Explicit team rules")
         from .retrieve import brief
-        lines += [f"- [{m.category}] {brief(m.text, 220)} · {m.id}" for m in rs[:12]]   # the full rule: cosmos_why <id>
+        from .security import withheld
+        lines += [f"- [{m.category}] {brief(m.text, 220)} · {m.id}" for m in rs if not withheld(m.text, m.meta)][:12]   # the full rule: cosmos_why <id>
     return "\n".join(lines)
 
 

@@ -200,10 +200,9 @@ def auto_dream(cfg: Config) -> bool:
         return False
     lock = cfg.paths.state / "dream.lock"
     try:
-        if lock.exists() and time.time() - lock.stat().st_mtime < 1800:
-            return False
         cfg.paths.state.mkdir(parents=True, exist_ok=True)
-        lock.write_text(str(os.getpid()))
+        if not take_dream_lock(lock):
+            return False
         (cfg.paths.state / "dream.started").write_text(str(time.time()))
         wrapper = cfg.paths.cosmos / "cosmosw"
         cmd = [sys.executable, str(wrapper), "dream", "--auto"] if wrapper.exists() else [sys.executable, "-m", "cosmos", "dream", "--auto"]
@@ -294,6 +293,33 @@ def prompt_context(cfg: Config, event: Dict[str, Any]) -> str:
     mems = Ledger(cfg.paths).load()
     hits = retrieve(mems, prompt, k=int(cfg.get("retrieval.prompt_max", 6)))
     return format_for_agent(hits, "cosm◎s · what the team knows about this request:")
+
+
+def take_dream_lock(lock: Path) -> bool:
+    """One dream at a time, per repository. The lock is created atomically and holds the dream's pid (the dream
+    writes its own on start); it is stale only when that process is gone, or after 6 hours. A lock that expired by age
+    alone let a dream slowed past 30 minutes start a second, which slowed both: retent ran five at once on
+    2026-10-02 and processed the same batch twice."""
+    import os, time
+    for _ in range(2):
+        try:
+            fd = os.open(str(lock), os.O_CREAT | os.O_EXCL | os.O_WRONLY)
+            os.write(fd, str(os.getpid()).encode())
+            os.close(fd)
+            return True
+        except FileExistsError:
+            try:
+                pid = int((lock.read_text().split() or ["0"])[0])
+                age = time.time() - lock.stat().st_mtime
+            except (OSError, ValueError):
+                pid, age = 0, 0.0
+            if (pid and _pid_alive(pid) and age < 6 * 3600) or (not pid and age < 60):
+                return False                           # a dream is running (or its lock is being written right now)
+            try:
+                lock.unlink()
+            except OSError:
+                return False
+    return False
 
 
 def _pid_alive(pid: int) -> bool:
