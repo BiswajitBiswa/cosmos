@@ -1,0 +1,127 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1240 860" font-family="'DM Sans','Helvetica Neue',Arial,sans-serif" role="img" aria-labelledby="t d">
+  <title id="t">How cosmos works</title>
+  <desc id="d">Agents feed cosmos through hooks, the watcher and MCP tools; capture writes the journal and observations; one dream at a time curates them into the ledger committed in git; the ledger comes back to every agent as the briefing, recall, the before-edit note and the Gate; releases and Claude Routines keep it running.</desc>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#0d0d11"/><stop offset="1" stop-color="#07070a"/></linearGradient>
+    <radialGradient id="glow" cx="0.5" cy="0.45" r="0.5"><stop offset="0" stop-color="#E8CFA0" stop-opacity=".16"/><stop offset="1" stop-color="#E8CFA0" stop-opacity="0"/></radialGradient>
+    <marker id="a" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 z" fill="#E8CFA0"/></marker>
+    <marker id="s" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 z" fill="#8FA9C9"/></marker>
+    <style>
+      .h{font-family:'Cormorant Garamond',Georgia,serif;fill:#ECEAE4}
+      .eb{font-size:11px;letter-spacing:.24em;fill:#9a978f;text-transform:uppercase}
+      .t{font-size:15px;fill:#ECEAE4;font-weight:600}
+      .s{font-size:12px;fill:#a9a59c}
+      .g{fill:#E8CFA0}
+      .box{fill:#14141a;stroke:rgba(236,234,228,.14);stroke-width:1}
+      .agent{fill:#121620;stroke:rgba(143,169,201,.35)}
+      .core{fill:#17140f;stroke:rgba(232,207,160,.45)}
+      .ln{fill:none;stroke:#E8CFA0;stroke-width:1.6;opacity:.85}
+      .lns{fill:none;stroke:#8FA9C9;stroke-width:1.6;opacity:.85}
+      .dash{stroke-dasharray:4 5}
+    </style>
+  </defs>
+  <rect width="1240" height="860" rx="22" fill="url(#bg)"/>
+  <ellipse cx="760" cy="380" rx="330" ry="300" fill="url(#glow)"/>
+
+  <text x="44" y="56" class="eb">how it works</text>
+  <text x="44" y="96" class="h" font-size="36">Every session feeds one memory; every session reads it back.</text>
+
+  <!-- column 1: agents -->
+  <text x="44" y="150" class="eb">agents</text>
+  <g>
+    <rect x="44" y="166" width="214" height="58" rx="12" class="box agent"/><text x="62" y="191" class="t">Claude Code · Cowork</text><text x="62" y="211" class="s">hooks + MCP + plugin</text>
+    <rect x="44" y="236" width="214" height="58" rx="12" class="box agent"/><text x="62" y="261" class="t">Codex</text><text x="62" y="281" class="s">plugin hooks · skills · MCP</text>
+    <rect x="44" y="306" width="214" height="58" rx="12" class="box agent"/><text x="62" y="331" class="t">Cursor · Gemini · Copilot</text><text x="62" y="351" class="s">AGENTS.md · commands · MCP</text>
+    <rect x="44" y="376" width="214" height="58" rx="12" class="box agent"/><text x="62" y="401" class="t">Claude Routines</text><text x="62" y="421" class="s">cloud: pr-review · dream · pulse</text>
+  </g>
+
+  <!-- column 2: into cosmos -->
+  <text x="292" y="150" class="eb">into cosmos</text>
+  <g>
+    <rect x="292" y="166" width="214" height="82" rx="12" class="box"/>
+    <text x="310" y="191" class="t">Hooks</text>
+    <text x="310" y="211" class="s">session start · each prompt</text>
+    <text x="310" y="229" class="s">before an edit · end of turn</text>
+    <rect x="292" y="260" width="214" height="70" rx="12" class="box"/>
+    <text x="310" y="285" class="t">Watcher</text>
+    <text x="310" y="305" class="s">every agent's session files,</text>
+    <text x="310" y="321" class="s">parent folders, worktrees</text>
+    <rect x="292" y="342" width="214" height="92" rx="12" class="box"/>
+    <text x="310" y="367" class="t">MCP tools</text>
+    <text x="310" y="387" class="s">remember · flare · recall · why</text>
+    <text x="310" y="405" class="s">asks the client its folders:</text>
+    <text x="310" y="421" class="s g">another project → refused</text>
+  </g>
+  <path class="lns" marker-end="url(#s)" d="M258 300 H 286"/>
+
+  <!-- center loop -->
+  <text x="560" y="150" class="eb">the loop</text>
+  <rect x="560" y="166" width="226" height="96" rx="14" class="box core"/>
+  <text x="580" y="193" class="t">Capture</text>
+  <text x="580" y="213" class="s">journal: one line per turn</text>
+  <text x="580" y="231" class="s">observations · secrets redacted</text>
+  <text x="580" y="249" class="s">ranges for the model to read</text>
+
+  <rect x="836" y="166" width="226" height="148" rx="14" class="box core"/>
+  <text x="856" y="193" class="t">Dream <tspan class="s" font-weight="400">· one at a time</tspan></text>
+  <text x="856" y="215" class="s">the model curates what sessions said</text>
+  <text x="856" y="233" class="s">duplicates merged · contradictions</text>
+  <text x="856" y="251" class="s">to Verdicts · stale facts flagged</text>
+  <text x="856" y="269" class="s">recall@5 measured · metrics saved</text>
+  <text x="856" y="291" class="s g">commits .cosmos to the branch</text>
+
+  <rect x="660" y="372" width="300" height="130" rx="16" class="box core" stroke-width="1.4"/>
+  <text x="684" y="402" class="h" font-size="24">Ledger, in git</text>
+  <text x="684" y="426" class="s">facts · rules · flares · lanes · Atlas</text>
+  <text x="684" y="444" class="s">playbooks · handoffs · metrics</text>
+  <text x="684" y="466" class="s">one markdown note each, with evidence</text>
+  <text x="684" y="486" class="s g">git pull = the team has it</text>
+
+  <path class="ln" marker-end="url(#a)" d="M506 207 C 530 207 540 214 554 214"/>
+  <path class="ln" marker-end="url(#a)" d="M506 295 C 535 295 540 240 554 236"/>
+  <path class="ln" marker-end="url(#a)" d="M506 388 C 600 388 620 450 654 450"/>
+  <path class="ln" marker-end="url(#a)" d="M786 214 H 830"/>
+  <path class="ln" marker-end="url(#a)" d="M949 314 C 949 345 925 352 905 366"/>
+
+  <!-- column 4: back to agents -->
+  <text x="1000" y="150" class="eb">back to agents</text>
+  <rect x="1000" y="372" width="212" height="64" rx="12" class="box"/>
+  <text x="1018" y="397" class="t">Briefing</text>
+  <text x="1018" y="417" class="s">Charter + top facts, ≤ 9,000 chars</text>
+  <rect x="1000" y="446" width="212" height="64" rx="12" class="box"/>
+  <text x="1018" y="471" class="t">Recall</text>
+  <text x="1018" y="491" class="s">each prompt · before each edit</text>
+  <rect x="1000" y="520" width="212" height="80" rx="12" class="box"/>
+  <text x="1018" y="545" class="t">Gate <tspan class="s" font-weight="400">· end of turn</tspan></text>
+  <text x="1018" y="565" class="s">tests · file:line · open flares</text>
+  <text x="1018" y="583" class="s">security · large-change scans</text>
+  <path class="ln" marker-end="url(#a)" d="M960 420 H 994"/>
+  <path class="ln" marker-end="url(#a)" d="M960 460 C 985 460 990 478 994 478"/>
+  <path class="ln" marker-end="url(#a)" d="M960 490 C 985 500 990 550 994 556"/>
+
+  <!-- the return to agents -->
+  <path class="ln dash" marker-end="url(#a)" d="M1108 610 C 1108 690 600 700 360 690 C 160 682 142 520 142 440"/>
+  <text x="560" y="684" class="s g" text-anchor="middle">what the team knows reaches every session · cosm◎s · recalled 3: …</text>
+
+  <!-- safety strip -->
+  <text x="560" y="548" class="eb">guarded</text>
+  <text x="560" y="570" class="s">notes that steer an agent are withheld · hidden Unicode and</text>
+  <text x="560" y="588" class="s">credentials stop the Gate · a dependency change needs its audit</text>
+
+  <!-- bottom: keeps itself current -->
+  <rect x="44" y="730" width="1162" height="96" rx="16" class="box"/>
+  <text x="68" y="760" class="eb">keeps itself current</text>
+  <g font-size="13" fill="#ECEAE4">
+    <text x="68" y="796">PyPI release</text>
+    <text x="232" y="796">daily check at a session start</text>
+    <text x="482" y="796">sha256 + import test</text>
+    <text x="682" y="796">.cosmos/vendor, committed</text>
+    <text x="912" y="796">repairs, once per version</text>
+  </g>
+  <g class="s"><text x="68" y="814">nobody pushes into a project</text><text x="482" y="814">a bad release is refused</text><text x="912" y="814">hooks · commands · listings</text></g>
+  <path class="ln" marker-end="url(#a)" d="M166 791 H 222"/>
+  <path class="ln" marker-end="url(#a)" d="M430 791 H 472"/>
+  <path class="ln" marker-end="url(#a)" d="M630 791 H 672"/>
+  <path class="ln" marker-end="url(#a)" d="M860 791 H 902"/>
+  <text x="1182" y="796" class="s g" text-anchor="end">git pull →</text>
+</svg>
