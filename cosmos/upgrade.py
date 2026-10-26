@@ -258,8 +258,8 @@ def _step_repo_hooks(cfg: Config) -> str:
 
 
 def _step_user_hooks(cfg: Config) -> str:
-    from .hooks import install_hooks
-    s = Path(os.environ.get("COSMOS_USER_SETTINGS") or (Path.home() / ".claude" / "settings.json"))
+    from .hooks import install_hooks, user_settings_path
+    s = user_settings_path()
     return "user hooks rewritten" if s.exists() and "cosmosw" in s.read_text() and install_hooks(s) else ""
 
 
@@ -310,6 +310,9 @@ def _step_desktop_pin(cfg: Config) -> str:
     target = next((a for a in entry.get("args", []) if str(a).endswith(".cosmos/cosmosw")), "")
     if not target:
         return ""
+    from .connect import desktop_running
+    if desktop_running():
+        return ""                                      # Desktop keeps this file in memory and writes it back: an edit now is lost
     name = "cosmos-" + Path(target).parent.parent.name
     if name in servers:
         return ""

@@ -95,7 +95,7 @@ git clone <repo> && claude
 |---|---|
 | **what** | One markdown note per fact the team has learned (architecture, decisions and their reasons, conventions, constraints, bug root causes, dependency limits, workflows, domain rules), each with the files that prove it, the dates it was seen, how many times, and by whom. |
 | **you do** | Nothing. Work in your AI tool; facts are captured when a turn ends. Type `remember: …` when something must be kept for sure. |
-| **you get** | Your next session, and every teammate's, starts knowing what the last one learned, one line per fact with its id; the full note with evidence and history is one call away (`cosmos_why`). Every fact carries when it became true and when it stopped. |
+| **you get** | Your next session, and every teammate's, starts knowing what the last one learned, one line per fact with its id; the full note with evidence and history is one call away (`cosmos_why`). Every fact carries when it became true and when it stopped. Each fact reads plainly: a short title, one sentence, and its date, step, label and author as chips, worked out from what the agent wrote (the text as recorded is kept). |
 | **command** | `cosmos capture` · `cosmos why` · `cosmos search` · `cosmos remember` |
 
 ### <img src="https://raw.githubusercontent.com/BiswajitBiswa/cosmos/main/docs/assets/icon-charter.svg" width="28" alt=""> Charter · one style for every AI
@@ -211,7 +211,7 @@ git clone <repo> && claude
 
 **You see what it recalled.** Each time cosmos puts something in front of the agent, Claude Code shows one line: `cosm◎s · loaded the Charter, 10 facts and rules` at the start, `cosm◎s · recalled 3: …` for a prompt, `cosm◎s · 1 open flare and 2 notes on <file>` before an edit. The briefing stays under Claude Code's 10,000-character hook limit, so the model reads all of it rather than a preview.
 
-**Sessions opened in a folder above the repository** (a workspace folder holding several projects) work too. The user-level hook hands each event to every repository one level down. Each one adds a single line saying where its team memory is, and the facts when a prompt names it. Its watcher captures only the turns that touched it. A repository's worktrees answer once, and the Gate ignores files that belong to a sibling repository.
+**Sessions opened in a folder above the repository** (a workspace folder holding several projects) work too. The user-level hook hands each event to every repository one level down. Each one adds a single line saying where its team memory is, and the facts when a prompt names it. Its watcher captures only the turns that touched it. A repository's worktrees answer once, and the Gate ignores files that belong to a sibling repository. The hook command carries its generation: an older cosmos never rewrites newer hooks, and a session start puts back hooks an older copy replaced.
 
 **Firebase Studio** (formerly Project IDX; no new workspaces since 2026-06-22, shut down 2027-03-22) reads `GEMINI.md` and `AGENTS.md`, which cosmos writes. In a workspace with `.idx/`, cosmos adds its MCP server to `.idx/mcp.json` and its block to the team's `.idx/airules.md`, which Gemini there reads first. **Icons:** Codex shows the cosmos mark on the plugin; Claude Code has no icon field for plugins, commands or skills.
 

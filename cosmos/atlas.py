@@ -490,6 +490,8 @@ def deep_due(cfg: Config) -> bool:
     import os
     if not cfg.get("atlas.deep", True) or os.environ.get("COSMOS_NO_BACKGROUND"):
         return False
+    if os.environ.get("COSMOS_LLM_PROVIDER") == "none" or cfg.get("llm.provider") == "none":
+        return False                                       # the model is switched off: the deep pass uses it too
     st = deep_status(cfg)
     if st.get("pid") and _alive(int(st["pid"])):
         return False

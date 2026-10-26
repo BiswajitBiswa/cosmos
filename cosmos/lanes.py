@@ -112,7 +112,7 @@ def resolve_evidence(root, fragment: str) -> str:
     """Best effort from a cited path to evidence that exists: repo-relative as given, a unique tree match for a
     partial path, a sibling repository (`../name/...`, also when cited as `name/...`), or "" when nothing matches."""
     from pathlib import Path
-    frag = str(fragment).strip().lstrip("./")
+    frag = re.sub(r"^(?:\./)+", "", str(fragment).strip()).lstrip("/")   # `./x` → `x`; a leading dot is part of the name (.claude, .cosmos)
     if not frag:
         return ""
     if (Path(root) / frag).exists():

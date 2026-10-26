@@ -41,11 +41,14 @@ MEMORY_SCHEMA: Dict[str, Any] = {
     "additionalProperties": False,
 }
 
+from .plain import STYLE as PLAIN_STYLE  # noqa: E402  (one style for every prompt)
+
 CURATE_SCHEMA: Dict[str, Any] = {
     "type": "object",
     "properties": {"items": {"type": "array", "items": {"type": "object", "properties": {
         "id": {"type": "string"}, "keep": {"type": "boolean"},
-        "text": {"type": "string", "description": "the fact rewritten crisply in third person, absolute dates, no narration"},
+        "text": {"type": "string", "description": "the fact in one plain sentence under 25 words, third person, no narration; a date only when the date is the fact"},
+        "title": {"type": "string", "description": "a plain headline of at most 8 words"},
         "category": {"type": "string", "enum": ["architecture", "decision", "convention", "constraint", "bug", "dependency", "workflow", "domain", "rejected"]},
         "lane": {"type": "string", "description": "feature / module a product manager would recognise, kebab-case; reuse an existing lane when one fits"},
         "importance": {"type": "number"}, "why_dropped": {"type": "string"},
@@ -58,7 +61,7 @@ CURATE_SYSTEM = (
     "Keep only durable, specific knowledge a new developer would need to know six months from now: architecture, decisions with "
     "reasons, conventions, constraints, bug root causes, dependency limits, workflows, domain rules. DROP narration about the "
     "session, one-off task status, speculation, questions, generic advice, anything about the AI tool itself, and anything that "
-    "reads like pasted documentation or prompt text; also DROP what the agent was told to do or not do in one particular task, what the agent did or declined to do, and open questions - those are session history, not team knowledge. For kept items: rewrite crisply (third person, absolute dates - today is {today}), "
+    "reads like pasted documentation or prompt text; also DROP what the agent was told to do or not do in one particular task, what the agent did or declined to do, and open questions - those are session history, not team knowledge. For kept items: rewrite plainly (today is {today}; {style}), "
     "assign the category, and assign a LANE = the feature or module a product manager would recognise (e.g. billing, auth, "
     "universe-import, payments). Prefer the existing lanes given; propose a new one only when nothing fits. For each kept item also write `question`: the one question a new developer would ask that this fact answers, in their words. Never invent facts. Candidates starting with 'Review comment on PR' are code-review remarks: keep one only when it states a durable expectation (a rule, a constraint, a recurring mistake) and rewrite it as that rule, category convention or constraint; drop praise, nits and one-off requests. Candidates starting with 'Commit note by' are commit messages: keep one only when it records a decision with its reason or a constraint. Candidates starting with 'Work done:' are journal lines (what was asked, files edited, commit messages): keep one only when a commit message or the ask states a durable decision or constraint, rewritten as that fact; otherwise drop it."
 )
@@ -83,8 +86,7 @@ READ_SYSTEM = (
     "user made to the agent about the codebase ('no, we use X', 'never do Y') - mark those kind=correction. DO NOT record: what the "
     "agent was told to do or not do in this particular task, what the agent did or declined to do, progress or status, open "
     "questions, speculation, generic engineering advice, anything about the AI tool or the session itself, or anything already "
-    "present in team_rules_already_known or already_known. One fact per item, crisp third person, absolute dates (today is "
-    "{today}), specific names; cite files only when they appear in the excerpt. Assign a LANE (feature or module a product manager "
+    "present in team_rules_already_known or already_known. One fact per item, third person (today is {today}; {style}), specific names; cite files only when they appear in the excerpt. Assign a LANE (feature or module a product manager "
     "would recognise), preferring existing_lanes. importance is 0-1: 0.9+ only for corrections and hard constraints. Most excerpts "
     "yield zero to three items; an empty list is the normal answer for routine work. Never invent facts."
 )
@@ -109,7 +111,7 @@ SYSTEM = (
     "You consolidate engineering memory for a software team. Input: candidate observations (id, text, category, files) "
     "and existing memories. Output only durable, specific, non-obvious facts a new developer would need: architecture, "
     "decisions with reasons, conventions, constraints, bug root causes, dependency limits, workflows, domain rules. "
-    "Merge duplicates (list their ids in merge_of), rewrite in crisp third person with absolute dates (today is {today}), "
+    "Merge duplicates (list their ids in merge_of), rewrite plainly in third person (today is {today}; {style}), "
     "drop narration, speculation, one-off tasks and anything secret-like. For pairs that conflict, emit a contradiction "
     "with a verdict grounded in the evidence given."
 )
@@ -150,7 +152,7 @@ class Provider:
         raise NotImplementedError
 
     def consolidate(self, payload: Dict[str, Any], today: str) -> Optional[Dict[str, Any]]:
-        return self.complete(SYSTEM.format(today=today), json.dumps(payload, ensure_ascii=False), MEMORY_SCHEMA)
+        return self.complete(SYSTEM.format(today=today, style=PLAIN_STYLE), json.dumps(payload, ensure_ascii=False), MEMORY_SCHEMA)
 
 
 class ClaudeCodeProvider(Provider):

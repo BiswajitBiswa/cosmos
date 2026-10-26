@@ -13,6 +13,7 @@ from datetime import date
 from typing import Dict, List, Optional, Set, Tuple
 
 from .config import Config
+from .plain import STYLE as PLAIN_STYLE
 from .providers import get_provider
 from .retrieve import tokens
 from .store import Ledger, Memory, Observations, State, make_id, today
@@ -426,6 +427,8 @@ def dream(cfg: Config, use_llm: Optional[bool] = None, verbose: bool = False, re
             mem.meta["lane_by"] = "model"
         if o.get("curated"):
             mem.meta["curated"] = f"llm:{t}"
+        if o.get("title"):
+            mem.meta["title"] = o["title"]
             mem.source = "llm"
         mems[mem.id] = mem
         index.append((otoks, mem))
@@ -739,7 +742,7 @@ def _llm_curate(prov, cfg: Config, pending: List[Dict], mems: Dict[str, Memory],
         payload = {"existing_lanes": existing_lanes[:40], "repo_apps": atlas_apps[:20],
                    "candidates": [{"id": o["id"], "text": o.get("text", ""), "category_guess": o.get("category"), "files": o.get("files", [])[:4]} for o in chunk]}
         import json as _j
-        res = prov.complete(CURATE_SYSTEM.format(today=today()), _j.dumps(payload, ensure_ascii=False), CURATE_SCHEMA)
+        res = prov.complete(CURATE_SYSTEM.format(today=today(), style=PLAIN_STYLE), _j.dumps(payload, ensure_ascii=False), CURATE_SCHEMA)
         answers = {it.get("id"): it for it in (res or {}).get("items", []) if isinstance(it, dict)}
         for o in chunk:
             a = answers.get(o["id"])
@@ -760,6 +763,8 @@ def _llm_curate(prov, cfg: Config, pending: List[Dict], mems: Dict[str, Memory],
                 o["score"] = max(float(o.get("score", 0.5)), min(1.0, float(a["importance"])))
             if isinstance(a.get("question"), str) and 8 <= len(a["question"]) <= 200:
                 o["eval_q"] = " ".join(a["question"].split())
+            if isinstance(a.get("title"), str) and 3 <= len(a["title"].strip()) <= 80:
+                o["title"] = " ".join(a["title"].split())
             o["curated"] = True
             kept.append(o)
         if verbose:
@@ -837,7 +842,7 @@ def _llm_recurate(prov, cfg: Config, facts: List[Memory], mems: Dict[str, Memory
         chunk = facts[i:i + batch]
         payload = {"existing_lanes": existing_lanes[:40],
                    "candidates": [{"id": m.id, "text": m.text, "category_guess": m.category, "files": m.files[:4]} for m in chunk]}
-        res = prov.complete(CURATE_SYSTEM.format(today=t), _j.dumps(payload, ensure_ascii=False), CURATE_SCHEMA)
+        res = prov.complete(CURATE_SYSTEM.format(today=t, style=PLAIN_STYLE), _j.dumps(payload, ensure_ascii=False), CURATE_SCHEMA)
         answers = {it.get("id"): it for it in (res or {}).get("items", []) if isinstance(it, dict)}
         for m in chunk:
             a = answers.get(m.id)
