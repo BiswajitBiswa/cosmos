@@ -22,7 +22,8 @@ entry is what makes every worktree and every repository covered, including sessi
 
 ## One entrypoint, dispatched on `hook_event_name`
 
-- **SessionStart** → the briefing: the Charter summary, the top facts, the branch's last handoff, the Atlas status and
+- **SessionStart** → the briefing: the Charter summary with the 12 most recently set team rules (and how many older ones
+  `cosmos charter` lists), the top facts, the branch's last handoff, the Atlas status and
   any warning (in the opt-in separate-branch mode, that the `cosmos` branch was merged into this one). Also refreshes the vendored copy and starts the
   watcher if none runs.
 - **UserPromptSubmit** → facts ranked against the prompt (BM25 × confidence × importance × recency). A session that
@@ -66,11 +67,20 @@ with `COSMOS_PARENT_SESSION=1`:
 - a linked worktree stays quiet, because the main checkout answers for the repository and all its worktrees;
 - the Gate ignores files of a sibling repository; an exit 2 from any child holds the turn.
 
+The hook command carries its generation (`: cosmos-hooks 3; …`). An older cosmos never rewrites hooks a newer one wrote,
+and every session start puts back user or repository hooks an older copy replaced, saying so once in the briefing. On
+2026-10-07 a stale pip install (0.1.5) ran `cosmos init` in a new repository and rewrote the user hooks without the
+parent-folder dispatch; every session opened above a repository ran without cosmos for about ten hours. `cosmos doctor`
+flags user hooks from an older generation.
+
 ## Claude Desktop
 
 In the desktop app's Code tab, an MCP server named `cosmos` in `claude_desktop_config.json` takes the name of each
 project's own server. When it runs another repository's cosmos, the briefing starts with a warning and the commands to
-use instead, and `cosmos repair` renames that entry `cosmos-<repo>` (a backup of the file is kept).
+use instead. `cosmos repair` renames that entry `cosmos-<repo>` (a backup of the file is kept), but only while Claude
+Desktop is closed: Desktop keeps the file, which also holds its preferences, in memory and writes it back, so an edit
+made while it runs is lost (seen on 2026-10-07). The warning gives the steps: quit with Cmd+Q, run
+`python3 <repo>/.cosmos/cosmosw repair` in Terminal, reopen Desktop.
 
 Such an entry is offered to every Desktop session, including sessions in projects with no cosmos at all. The cosmos
 MCP server therefore asks the client which folders the session works in (MCP roots; Claude Code answers with the

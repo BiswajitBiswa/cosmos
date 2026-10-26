@@ -19,6 +19,7 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
 from .config import Config, git_author
+from .plain import STYLE as PLAIN_STYLE
 from .privacy import redact
 from .store import Observations, State, now_iso
 from .transcript import Turn, relativize
@@ -201,7 +202,7 @@ def read_windows(cfg: Config, prov, mems: Dict, state: State, store: Observation
                 break
             payload = dict(ctx, excerpt=text)
             try:
-                res = prov.complete(READ_SYSTEM.format(today=today()), json.dumps(payload, ensure_ascii=False), READ_SCHEMA)
+                res = prov.complete(READ_SYSTEM.format(today=today(), style=PLAIN_STYLE), json.dumps(payload, ensure_ascii=False), READ_SCHEMA)
             except Exception as e:
                 if verbose:
                     print(f"  read failed on a chunk: {str(e)[:120]}")

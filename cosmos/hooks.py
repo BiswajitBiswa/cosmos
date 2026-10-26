@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import os
 import re
 import sys
 import traceback
@@ -13,7 +14,7 @@ from .config import Config, git_author, git_head, load_config
 from .extract import extract
 from .privacy import path_ignored, redact
 from .retrieve import format_for_agent, retrieve, top
-from .store import Ledger, Observations, State, now_iso
+from .store import Ledger, Observations, State, now_iso, today
 from .transcript import relativize
 from . import journal as _journal
 from . import reader as _reader
@@ -244,6 +245,10 @@ def session_start(cfg: Config) -> str:
     except Exception:
         pass
     import os
+    healed = heal_hooks(cfg)
+    if healed:
+        parts.append("cosm◎s · " + "; ".join(healed) + ": an older cosmos had replaced them, so sessions opened above a repository got no cosmos. "
+                     "Tell the user once; `python3 -m pip install --upgrade cosmos-dev` stops it happening again.")
     if os.environ.get("CLAUDE_CODE_ENTRYPOINT") == "claude-desktop":
         from .connect import desktop_pins
         for msg in desktop_pins(cfg.paths.root):
@@ -627,6 +632,9 @@ def install_hooks(settings_path: Path, command: str = HOOK_COMMAND) -> bool:
         except Exception:
             raise SystemExit(f"{settings_path} is not valid JSON; fix it or remove it and re-run.")
     hooks = settings.setdefault("hooks", {})
+    theirs = [h.get("command", "") for es in hooks.values() for e in es for h in e.get("hooks", []) if "cosmos" in h.get("command", "")]
+    if any(hook_generation(c) > hook_generation(command) for c in theirs):
+        return False                                   # a newer cosmos wrote these: an older one never touches them
     changed = False
     for ev, entries in hook_entries(command).items():
         existing = hooks.setdefault(ev, [])
@@ -634,16 +642,56 @@ def install_hooks(settings_path: Path, command: str = HOOK_COMMAND) -> bool:
         if not ours:
             existing.extend(entries)
             changed = True
-        else:   # migrate an older cosmos command in place (e.g. the relative-path one)
+        else:   # migrate an older cosmos command in place (e.g. the relative-path one); never downgrade a newer one
             for e in ours:
                 for h in e.get("hooks", []):
-                    if "cosmos" in h.get("command", "") and h["command"] != command:
+                    if "cosmos" in h.get("command", "") and h["command"] != command and hook_generation(h["command"]) <= hook_generation(command):
                         h["command"] = command
                         changed = True
     if changed:
         settings_path.parent.mkdir(parents=True, exist_ok=True)
         settings_path.write_text(json.dumps(settings, indent=2) + "\n")
     return changed
+
+
+def hook_generation(command: str) -> int:
+    """The generation a cosmos hook command was written with; 0 for commands from before generations existed."""
+    m = re.search(r"cosmos-hooks (\d+)", command or "")
+    return int(m.group(1)) if m else 0
+
+
+def user_settings_path() -> Path:
+    return Path(os.environ.get("COSMOS_USER_SETTINGS") or (Path.home() / ".claude" / "settings.json"))
+
+
+def stale_hooks(settings_path: Path) -> bool:
+    """Cosmos hooks in this settings file that an older cosmos wrote (older generation than this one)."""
+    try:
+        hooks = json.loads(settings_path.read_text() or "{}").get("hooks", {})
+    except (OSError, ValueError):
+        return False
+    cmds = [h.get("command", "") for entries in hooks.values() for e in entries for h in e.get("hooks", [])
+            if "cosmos" in h.get("command", "") and "hook" in h.get("command", "")]
+    return bool(cmds) and min(hook_generation(c) for c in cmds) < hook_generation(HOOK_COMMAND)
+
+
+def heal_hooks(cfg: Config) -> List[str]:
+    """Put back hook commands an older cosmos wrote over newer ones (user level and this repository). Cheap: two small
+    JSON reads; writes only when something is stale."""
+    out = []
+    for label, p in (("user", user_settings_path()), ("repository", cfg.paths.claude_settings)):
+        try:
+            if p.exists() and stale_hooks(p) and install_hooks(p):
+                out.append(f"{label} hooks restored to generation {hook_generation(HOOK_COMMAND)} ({p})")
+        except (OSError, SystemExit):
+            continue
+    if out:
+        try:
+            with (cfg.paths.state / "hook.log").open("a") as f:
+                f.write("".join(f"{today()} heal: {o}\n" for o in out))
+        except OSError:
+            pass
+    return out
 
 
 def uninstall_hooks(settings_path: Path, command: str = HOOK_COMMAND) -> bool:

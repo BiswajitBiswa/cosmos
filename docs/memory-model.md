@@ -5,6 +5,26 @@ An **observation** is one sentence-level candidate extracted from a session, wit
 
 A **memory** is a consolidated fact in `.cosmos/ledger/<category>/<id>-<slug>.md`. The id is `mem_` + sha1(text)[:8].
 
+## How a fact reads
+
+Agents often pack a label, a date and a step into the sentence: `Connections (step 2a, 2026-10-07): a Connection is …`,
+`OWNER RULE 2026-09-29 (top priority): …`, `Lifecycle · Discover · done · …`. Shown as is, the label becomes the headline.
+`cosmos/plain.py` works out, with no model, how each fact reads to a person:
+
+| part | from `Connections (step 2a, 2026-10-07): a Connection is an org's account on GitHub …` |
+|---|---|
+| title | `Connections` (the writer's topic; otherwise the first clause of the fact, at most 12 words) |
+| sentence | `A Connection is an org's account on GitHub …` |
+| chips | `step 2a` · `7 Oct 2026`; labels like `owner rule` or `safety`, the commit author, a lifecycle phase and status |
+
+The stored text never changes, so ids, links and evidence stay as they are; the console shows the title, the sentence and
+the chips, with the text as recorded in the detail, and a note file's `title:` is the plain title. A writer can give the
+headline and the reason directly: `cosmos_remember` takes `title` and `why`, the command line `--title` and `--why`. Both
+answer with at most three tips when the fact would read plainer (a date at the start, capitals for emphasis, a first
+sentence over 30 words, stacked brackets, words like *robust*). Capture also leaves out a sentence whose subject is in the
+sentence before it ("It must also …", "`all` is null only if …"), and a dream's model, when one is on, writes each fact to
+the same style with a title of its own.
+
 ## Statuses
 | status | meaning | who changes it |
 |---|---|---|

@@ -116,6 +116,16 @@ def rules(mems: Dict[str, Memory]) -> List[Memory]:
     return out
 
 
+RULES_IN_BRIEFING = 12
+
+
+def newest_rules(rs: List[Memory], n: int) -> List[Memory]:
+    """The n rules a session start shows: the most recently set first (an owner's latest rules matter most), kept in
+    category order so the list reads grouped."""
+    pick = sorted(rs, key=lambda m: (m.updated or m.created, m.created), reverse=True)[:n]
+    return sorted(pick, key=lambda m: (m.category, m.created))
+
+
 def summary(cfg: Config, mems: Dict[str, Memory], max_lines: int = 28) -> str:
     """Compact charter for injection: headings + bullets, then explicit rules."""
     lines = []
@@ -128,7 +138,10 @@ def summary(cfg: Config, mems: Dict[str, Memory], max_lines: int = 28) -> str:
         lines.append("## Explicit team rules")
         from .retrieve import brief
         from .security import withheld
-        lines += [f"- [{m.category}] {brief(m.text, 220)} · {m.id}" for m in rs if not withheld(m.text, m.meta)][:12]   # the full rule: cosmos_why <id>
+        shown = newest_rules([m for m in rs if not withheld(m.text, m.meta)], RULES_IN_BRIEFING)
+        lines += [f"- [{m.category}] {brief(m.text, 220)} · {m.id}" for m in shown]   # the full rule: cosmos_why <id>
+        if len(rs) > len(shown):
+            lines.append(f"- … and {len(rs) - len(shown)} older team rules: `cosmos charter` or cosmos_charter lists them all; recall brings the ones a task touches")
     return "\n".join(lines)
 
 
@@ -142,9 +155,19 @@ def check(cfg: Config) -> List[str]:
         if "path/to" in t or "file.ext" in t or "…" in t or "<" in t or t.startswith("*"):
             continue                                        # a placeholder, not a path
         looks_like_path = ("/" in t or re.search(r"\.(py|ts|tsx|js|md|json|ya?ml|toml|sql|sh|kt|java|go|rs)$", t)) and " " not in t and not t.startswith(("http", "<", "cosmos", "-"))
-        if looks_like_path and t.rstrip("/") not in (".cosmos", ".cosmos/charter.md") and not resolve_evidence(cfg.paths.root, t):
+        if looks_like_path and t.rstrip("/") not in (".cosmos", ".cosmos/charter.md") and not _named_path_exists(cfg.paths.root, t):
             bad.append(t)
     return bad
+
+
+def _named_path_exists(root: Path, t: str) -> bool:
+    """A path or a glob (`agents/*.md`) the Charter names: true when at least one file matches here or in a worktree."""
+    from .lanes import resolve_evidence
+    if not any(c in t for c in "*?["):
+        return bool(resolve_evidence(root, t))
+    from .transcript import worktrees
+    pattern = re.sub(r"^(?:\./)+", "", t)
+    return any(next(iter(base.glob(pattern)), None) is not None for base in [Path(root), *worktrees(Path(root))])
 
 
 def add_section_rule(cfg: Config, text: str, section: str = "Architecture rules") -> Path:

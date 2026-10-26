@@ -26,7 +26,7 @@ TOOLS: List[Dict[str, Any]] = [
     {"name": "cosmos_recall", "description": "Team facts, rules and open findings relevant to a task. Call before changing code you did not write. Pass the files you are about to touch.",
      "inputSchema": {"type": "object", "properties": {"query": {"type": "string", "description": "what you are about to do"}, "files": {"type": "array", "items": {"type": "string"}}, "k": {"type": "integer", "default": 8}}, "required": ["query"]}},
     {"name": "cosmos_remember", "description": "Record durable team knowledge. kind=fact (default): something the agent learned about the codebase this turn - architecture, a decision with its reason, a constraint, a correction the user made. kind=rule: something the user stated as a team rule (outranks facts). Not for task progress.",
-     "inputSchema": {"type": "object", "properties": {"text": {"type": "string"}, "kind": {"type": "string", "enum": ["fact", "rule"], "default": "fact"}, "category": {"type": "string", "enum": ["architecture", "decision", "convention", "constraint", "bug", "dependency", "workflow", "domain", "rejected"], "default": "convention"}, "lane": {"type": "string", "description": "feature or module, kebab-case"}, "files": {"type": "array", "items": {"type": "string"}}, "importance": {"type": "number"}}, "required": ["text"]}},
+     "inputSchema": {"type": "object", "properties": {"text": {"type": "string", "description": "the fact in one plain sentence under 25 words: what is true and where. No date, step or label prefix (those are fields)"}, "title": {"type": "string", "description": "a plain headline of at most 8 words"}, "why": {"type": "string", "description": "the reason, one sentence"}, "kind": {"type": "string", "enum": ["fact", "rule"], "default": "fact"}, "category": {"type": "string", "enum": ["architecture", "decision", "convention", "constraint", "bug", "dependency", "workflow", "domain", "rejected"], "default": "convention"}, "lane": {"type": "string", "description": "feature or module, kebab-case"}, "files": {"type": "array", "items": {"type": "string"}}, "importance": {"type": "number"}}, "required": ["text"]}},
     {"name": "cosmos_flare", "description": "File a QA / security finding with a lifecycle (open → claimed → fixed …). Its id prefix is the project's lifecycle stage, read from git (DEV, QA, UAT, RC, PROD, HOTFIX): never pass one.",
      "inputSchema": {"type": "object", "properties": {"title": {"type": "string"}, "severity": {"type": "string", "enum": ["critical", "high", "medium", "low"], "default": "medium"}, "locations": {"type": "string", "description": "file:line list"}, "what": {"type": "string"}, "impact": {"type": "string"}, "fix": {"type": "string"}}, "required": ["title"]}},
     {"name": "cosmos_handoff", "description": "Leave a handoff for whoever continues this branch (any machine): what was learned, what is open, what to do next. Use it when stopping mid-work; a finished turn needs none (its final message is kept automatically).",
@@ -38,6 +38,20 @@ TOOLS: List[Dict[str, Any]] = [
     {"name": "cosmos_lanes", "description": "Feature lanes: facts, open findings and people active per lane; overlap warnings.", "inputSchema": {"type": "object", "properties": {"days": {"type": "integer", "default": 30}}}},
 ]
 
+
+
+def _plain_fields(m, title, why) -> None:
+    """A writer's own headline and reason, kept beside the fact (shown as the card title and a Why section)."""
+    if isinstance(title, str) and title.strip():
+        m.meta["title"] = " ".join(title.split())[:80]
+    if isinstance(why, str) and why.strip() and not any(lbl == "Why" for lbl, _ in m.details):
+        m.details.append(["Why", " ".join(why.split())])
+
+
+def _plainer(text: str) -> str:
+    from .plain import lint
+    tips = lint(text)
+    return ("\nPlainer next time: " + "; ".join(tips) + ".") if tips else ""
 
 def _txt(s: str) -> Dict[str, Any]:
     return {"content": [{"type": "text", "text": s}]}
@@ -80,9 +94,10 @@ def call_tool(cfg: Config, name: str, args: Dict[str, Any]) -> Dict[str, Any]:
         if args.get("lane"):
             m.lane = re.sub(r"[^a-z0-9/._\-]+", "-", str(args["lane"]).lower()).strip("-")[:40]
         m.status, m.updated, m.last_verified = "active", today(), today()
+        _plain_fields(m, args.get("title"), args.get("why"))
         mems[mid] = m
         Ledger(cfg.paths).save_all(mems.values()); render_all(cfg, mems)
-        return _txt(f"cosm◎s · remembered {mid} ({'rule' if rule else 'fact'}) in {cfg.paths.root.name}'s ledger: {text}")
+        return _txt(f"cosm◎s · remembered {mid} ({'rule' if rule else 'fact'}) in {cfg.paths.root.name}'s ledger: {text}" + _plainer(text))
     if name in ("cosmos_flare", "cosmos_finding"):
         from .audit import import_items
         title = next((str(args[k]).strip() for k in ("title", "text", "summary", "finding") if isinstance(args.get(k), str) and args[k].strip()), "")

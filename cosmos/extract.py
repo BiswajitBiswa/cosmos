@@ -105,6 +105,10 @@ def classify(sentence: str) -> Tuple[float, Optional[str], List[str]]:
     return min(score, 1.0), cat, names
 
 
+# a sentence that leans on the one before it: a pronoun or a bare code span as its subject
+ANAPHOR = re.compile(r"^(?:(?:It|It's|Its|They|They're|Their|This|That|These|Those|Both|Same|Still|Also|Here|There|Which|So|Then|Otherwise|Instead)\b|`[^`]{1,40}`\s+(?:is|are|was|must|stays?|never|only)\b)")
+
+
 def extract_from_turn(turn: Turn, prev_files: Optional[List[str]] = None, min_score: float = 0.5, imperatives: bool = True) -> List[Observation]:
     obs: List[Observation] = []
     files = list(dict.fromkeys((turn.files or []) + (prev_files or [])))[:6]
@@ -146,6 +150,8 @@ def extract_from_turn(turn: Turn, prev_files: Optional[List[str]] = None, min_sc
             durability *= 0.6
         if SESSION_PAST.search(s):
             durability *= 0.7
+        if ANAPHOR.match(s):
+            durability *= 0.35         # its subject is in the sentence before ("It must also…", "`all` is null…"): no sense on its own
         score = base * specific * durability
         if score >= min_score:
             obs.append(Observation(s, cat, score, "observed", files, sig, turn.uuid))

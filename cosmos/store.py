@@ -86,7 +86,8 @@ class Memory:
             stale_after = (datetime.fromisoformat(self.last_verified) + timedelta(days=stale_days)).strftime("%Y-%m-%dT00:00:00Z")
         except Exception:
             stale_after = ""
-        fm = {"type": self.category.replace("-", " ").title(), "title": self.text[:120], "description": self.text,
+        from .plain import view
+        fm = {"type": self.category.replace("-", " ").title(), "title": view(self.text, self.meta)["title"][:120], "description": self.text,
               "status": self.OKF_STATUS.get(self.status, "stable"),
               "generated": {"by": by, "at": self.created + "T00:00:00Z"},
               "sources": [{"resource": f, "title": f.rsplit("/", 1)[-1]} for f in self.files[:8]]}

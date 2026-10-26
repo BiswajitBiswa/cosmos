@@ -382,9 +382,14 @@ def cmd_remember(a) -> int:
     m = mems.get(mid) or Memory(id=mid, text=text, category=a.category, source="explicit", confidence=0.95, importance=0.95,
                                 authors=[git_author(cfg.paths.root)], files=list(a.file or []))
     m.status, m.updated, m.last_verified = "active", today(), today()
+    from .mcp import _plain_fields
+    from .plain import lint
+    _plain_fields(m, getattr(a, "title", None), getattr(a, "why", None))
     mems[mid] = m
     _finish(cfg, mems)
     print(col("✓", "g"), f"remembered {mid} [{m.category}] {text}")
+    for tip in lint(text):
+        print(col("  plainer next time:", "y"), tip)
     return 0
 
 
@@ -590,6 +595,11 @@ def cmd_doctor(a) -> int:
     line(cfg.paths.config.exists(), f"config {cfg.paths.config}")
     s = cfg.paths.claude_settings
     line(s.exists() and "cosmos" in s.read_text(), f"hooks in {s}")
+    from .hooks import hook_generation, stale_hooks, user_settings_path, HOOK_COMMAND
+    us = user_settings_path()
+    if us.exists() and "cosmos" in us.read_text():
+        line(not stale_hooks(us), f"user hooks in {us}" + (f": written by an older cosmos (generation < {hook_generation(HOOK_COMMAND)}), so sessions opened above a "
+                                                         "repository get no cosmos; the next session start here restores them, or run `cosmos repair`" if stale_hooks(us) else ""))
     line(shutil.which("claude") is not None, "claude CLI on PATH")
     for path, good, msg in entrypoints():
         line(good, msg)
@@ -1295,7 +1305,7 @@ def build_parser() -> argparse.ArgumentParser:
     for name in ("ui", "ledger"):
         s = sp.add_parser(name, help="open the control room (overview · ledger · flares · dreams · verdicts · activity)"); s.add_argument("--port", type=int, default=7331, help="first port to try (default 7331; the next free one is used if busy)"); s.add_argument("--strict-port", action="store_true", help="fail instead of moving to the next free port"); s.add_argument("--static", action="store_true", help="write a read-only snapshot HTML instead of serving"); s.add_argument("--obsidian", action="store_true"); s.add_argument("--no-open", action="store_true"); s.set_defaults(fn=cmd_ledger)
     s = sp.add_parser("obsidian", help="prepare/open the ledger as an Obsidian vault"); s.add_argument("--open", action="store_true"); s.add_argument("--vault", help="link ledger into an existing vault"); s.set_defaults(fn=cmd_obsidian)
-    s = sp.add_parser("remember", help="add an explicit memory"); s.add_argument("text", nargs="+"); s.add_argument("-c", "--category", default="convention", choices=["architecture", "decision", "convention", "constraint", "bug", "dependency", "workflow", "domain", "rejected", "finding"]); s.add_argument("-f", "--file", action="append"); s.set_defaults(fn=cmd_remember)
+    s = sp.add_parser("remember", help="add an explicit memory"); s.add_argument("text", nargs="+"); s.add_argument("-c", "--category", default="convention", choices=["architecture", "decision", "convention", "constraint", "bug", "dependency", "workflow", "domain", "rejected", "finding"]); s.add_argument("-f", "--file", action="append"); s.add_argument("--title", help="a plain headline of at most 8 words"); s.add_argument("--why", help="the reason, one sentence"); s.set_defaults(fn=cmd_remember)
     s = sp.add_parser("forget", help="retire a memory"); s.add_argument("id"); s.add_argument("--hard", action="store_true", help="delete the note instead of marking forgotten"); s.set_defaults(fn=cmd_forget)
     s = sp.add_parser("verify", help="mark a memory verified today"); s.add_argument("id"); s.add_argument("--resolve", action="store_true", help="also supersede whatever it contradicts"); s.set_defaults(fn=cmd_verify)
     s = sp.add_parser("why", help="explain a memory: evidence, timeline, contradictions"); s.add_argument("query", nargs="+"); s.set_defaults(fn=cmd_why)

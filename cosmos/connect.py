@@ -9,6 +9,9 @@ agent that reads project commands (cosmos/commands.py). Capture side - Claude Co
 from __future__ import annotations
 
 import json
+import os
+import subprocess
+import sys
 from pathlib import Path
 from typing import Dict, List
 
@@ -32,8 +35,23 @@ def desktop_pins(root: Path, config: Path = None) -> List[str]:
     target = next((a for a in entry.get("args", []) if a.endswith("cosmosw")), "")
     if not target or Path(target).resolve().parent.parent == root.resolve():
         return []
-    return [f"Claude Desktop's MCP entry `cosmos` serves {Path(target).parent.parent}: in Desktop sessions here, cosmos tools write there. "
-            f"Rename it in {p} (e.g. cosmos-{Path(target).parent.parent.name})"]
+    repo = Path(target).parent.parent
+    return [f"Claude Desktop's MCP entry `cosmos` serves {repo}: in Desktop sessions here, cosmos tools write there. "
+            f"Claude Desktop keeps {p.name} in memory and writes it back, so the rename sticks only while Desktop is closed: "
+            f"quit it with Cmd+Q, run `python3 {repo}/.cosmos/cosmosw repair` in Terminal (it renames the entry to cosmos-{repo.name}), reopen Desktop"]
+
+
+def desktop_running() -> bool:
+    """Claude Desktop is open (macOS). Its config file is rewritten from memory, so cosmos edits it only when Desktop is closed."""
+    if os.environ.get("COSMOS_DESKTOP_RUNNING") in ("0", "1"):
+        return os.environ["COSMOS_DESKTOP_RUNNING"] == "1"     # tests, and a way to say so where pgrep can't see it
+    if sys.platform != "darwin":
+        return False
+    try:
+        r = subprocess.run(["pgrep", "-f", "Claude.app/Contents/MacOS/Claude$"], capture_output=True, timeout=5)
+        return r.returncode == 0
+    except (OSError, subprocess.SubprocessError):
+        return False
 
 
 def mcp_server_entry(root: Path, absolute: bool = False) -> Dict:
