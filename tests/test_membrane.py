@@ -255,7 +255,8 @@ class TestCLI(unittest.TestCase):
         import time
         with Repo() as r:
             t = time.time()
-            out = subprocess.run([sys.executable, "-m", "cosmos", "status", "--json"], cwd=r.root, capture_output=True, text=True)
+            out = subprocess.run([sys.executable, "-m", "cosmos", "status", "--json"], cwd=r.root, capture_output=True, text=True,
+                                 env={**os.environ, "PYTHONPATH": str(ROOT)})   # this checkout, not whatever cosmos is installed
             self.assertLess(time.time() - t, 1.5)
             self.assertEqual(json.loads(out.stdout)["memories"], 0)
 
@@ -671,7 +672,7 @@ class TestFirebaseStudio(unittest.TestCase):
 class TestWrapperChoice(unittest.TestCase):
     def test_the_repositorys_copy_wins_a_tie_and_a_newer_install_wins(self):
         """A pip install of the same version string can be older code: on 2026-10-01 it hid the parent-folder support
-        from every retent session for eight hours."""
+        from every session of one project for eight hours."""
         from cosmos.wrapper import write_wrapper
         with tempfile.TemporaryDirectory() as d:
             root = Path(d)
@@ -803,6 +804,19 @@ class TestRoutines(unittest.TestCase):
         self.assertIn("pulse --bench --save", buf.getvalue())
 
 
+class TestModelSwitch(unittest.TestCase):
+    def test_the_off_switch_also_stops_the_atlas_deep_pass(self):
+        from cosmos.atlas import deep_due
+        with Repo() as r:
+            saved = {k: os.environ.pop(k, None) for k in ("COSMOS_NO_BACKGROUND", "COSMOS_LLM_PROVIDER")}
+            try:
+                os.environ["COSMOS_LLM_PROVIDER"] = "none"
+                self.assertFalse(deep_due(r.cfg), "COSMOS_LLM_PROVIDER=none means no model call of any kind")
+            finally:
+                for k, v in saved.items():
+                    os.environ.pop(k, None) if v is None else os.environ.__setitem__(k, v)
+
+
 class TestDreamPacing(unittest.TestCase):
     def test_a_dream_that_changed_nothing_still_waits_its_turn(self):
         """Dreams that change nothing write no record; with model ranges waiting the watcher dreamt every 30 seconds."""
@@ -871,7 +885,7 @@ class TestSelfUpgrade(unittest.TestCase):
             user = Path(d) / "settings.json"
             user.write_text(json.dumps({"hooks": {"SessionStart": [{"hooks": [{"type": "command", "command": "python3 .cosmos/cosmosw hook"}]}]}}))
             desk = Path(d) / "claude_desktop_config.json"
-            desk.write_text(json.dumps({"mcpServers": {"cosmos": {"command": "python3", "args": ["/x/retent/.cosmos/cosmosw", "mcp"]}, "other": {"command": "node"}}}))
+            desk.write_text(json.dumps({"mcpServers": {"cosmos": {"command": "python3", "args": ["/x/shop/.cosmos/cosmosw", "mcp"]}, "other": {"command": "node"}}}))
             saved = {k: os.environ.get(k) for k in ("COSMOS_USER_SETTINGS", "COSMOS_DESKTOP_CONFIG")}
             os.environ.update(COSMOS_USER_SETTINGS=str(user), COSMOS_DESKTOP_CONFIG=str(desk))
             try:
@@ -887,7 +901,7 @@ class TestSelfUpgrade(unittest.TestCase):
             self.assertEqual(plugins[1]["source"]["source"], "git-subdir")
             self.assertEqual(json.loads(user.read_text())["hooks"]["SessionStart"][0]["hooks"][0]["command"], HOOK_COMMAND, "an old hook command is rewritten")
             servers = json.loads(desk.read_text())["mcpServers"]
-            self.assertEqual(sorted(servers), ["cosmos-retent", "other"])
+            self.assertEqual(sorted(servers), ["cosmos-shop", "other"])
             self.assertEqual(len(list(Path(d).glob("claude_desktop_config.json.bak-cosmos-*"))), 1)
             self.assertTrue(any("Codex plugin listing" in m for m in done))
 
@@ -1057,7 +1071,7 @@ class TestPlaybooks(unittest.TestCase):
         from cosmos.playbooks import add, detect, qa_playbook
         with Repo() as r, tempfile.TemporaryDirectory() as other:
             src = Path(other) / "MASTER_QA_PROTOCOL.md"
-            src.write_text("# RETEN — Master QA Operating Instruction\nFor an agent.\n")
+            src.write_text("# SHOP — Master QA Operating Instruction\nFor an agent.\n")
             dst = add(r.cfg, str(src))
             self.assertEqual(dst.relative_to(r.root).as_posix(), ".cosmos/playbooks/master-qa-protocol.md")
             self.assertIn(f"playbook from {src.resolve()}", dst.read_text())
@@ -1117,7 +1131,7 @@ class TestConsoleScripts(unittest.TestCase):
 const cases = [
   ["flowchart LR\\n  storage -.->|S3 API (demo)| minio", 'storage -.->|"S3 API (demo)"| minio'],
   ["flowchart LR\\n  a -->|POST /api/cron/{sync,autopilot}| b", '|"POST /api/cron/{sync,autopilot}"|'],
-  ["flowchart LR\\n  api[reten-api (FastAPI)] --> db[(Postgres)]", 'api["reten-api (FastAPI)"] --> db[(Postgres)]'],
+  ["flowchart LR\\n  api[shop-api (FastAPI)] --> db[(Postgres)]", 'api["shop-api (FastAPI)"] --> db[(Postgres)]'],
   ["flowchart LR\\n  a -->|\\"already quoted\\"| b", '|"already quoted"|'],
   ["sequenceDiagram\\n  API-->>SITE: rows (no emails; relative paths)", "rows (no emails#59; relative paths)"],
 ];
@@ -1191,7 +1205,7 @@ class TestExcel(unittest.TestCase):
 
 class TestConcurrentSaves(unittest.TestCase):
     """A dream (or any long-running process) loads the ledger, another session changes a flare meanwhile, then the
-    first one saves everything: the other session's change must survive (seen in RETEN: ~50 pr_open flares reverted)."""
+    first one saves everything: the other session's change must survive (seen in one project: ~50 pr_open flares reverted)."""
     def test_a_stale_whole_ledger_save_keeps_the_newer_lifecycle(self):
         from cosmos.audit import set_status
         with Repo() as r:
@@ -1267,7 +1281,7 @@ class TestLaneAliasesAndRepoint(unittest.TestCase):
             (r.root / "scripts").mkdir()
             _git(r.root, "mv", "src/deploy.py", "scripts/render_deploy.py")
             _git(r.root, "commit", "-q", "-m", "move")
-            data = json.loads(r.cfg.paths.config.read_text()); data["lane_aliases"] = {"deploy-config": "deployment", "chat-*": "ask-reten"}
+            data = json.loads(r.cfg.paths.config.read_text()); data["lane_aliases"] = {"deploy-config": "deployment", "chat-*": "ask-assistant"}
             r.cfg.paths.config.write_text(json.dumps(data))
             cfg = load_config(r.root)
             mems = {"mem_a": Memory(id="mem_a", text="Deploys go through `render_deploy`", category="workflow", files=["src/deploy.py"], lane="deploy-config",
@@ -1275,8 +1289,8 @@ class TestLaneAliasesAndRepoint(unittest.TestCase):
                     "mem_b": Memory(id="mem_b", text="Chat answers come from the NLQ parser", category="architecture", lane="chat-nlp", meta={"lane_by": "model"}),
                     "mem_c": Memory(id="mem_c", text="Old `vanished_fn` does X", category="workflow", files=["src/gone.py"], status="stale-candidate")}
             assign_lanes(mems, cfg)
-            self.assertEqual((mems["mem_a"].lane, mems["mem_b"].lane), ("deployment", "ask-reten"))
-            self.assertIn("ask-reten", [x["lane"] for x in lane_report(cfg, mems, [])])
+            self.assertEqual((mems["mem_a"].lane, mems["mem_b"].lane), ("deployment", "ask-assistant"))
+            self.assertIn("ask-assistant", [x["lane"] for x in lane_report(cfg, mems, [])])
             Ledger(cfg.paths).save_all(mems.values())
             cwd = os.getcwd(); os.chdir(r.root)
             try:
@@ -1400,17 +1414,17 @@ class TestParentFolderSessions(unittest.TestCase):
             home = Path(h).resolve()
             old = os.environ.get("HOME"); os.environ["HOME"] = str(home)
             try:
-                work = home / "work"; repo = work / "retent"; other = work / "other"
+                work = home / "work"; repo = work / "shop"; other = work / "other"
                 for d in (repo, other):
                     d.mkdir(parents=True); subprocess.run(["git", "init", "-q"], cwd=d, check=True)
                 tdir = home / ".claude" / "projects" / str(work).replace("/", "-"); tdir.mkdir(parents=True)
                 t = tdir / "s1.jsonl"
-                rows = self._exchange("fix the import in retent", repo / "imports.py") + self._exchange("tidy the other app", other / "y.py")
+                rows = self._exchange("fix the import in shop", repo / "imports.py") + self._exchange("tidy the other app", other / "y.py")
                 t.write_text("\n".join(json.dumps(r) for r in rows) + "\n")
                 self.assertIn(t, [p for p, _ in find_claude_sessions(repo)], "the watcher reads the parent folder's sessions")
                 turns, _ = read_session(t, "claude", root=repo)
                 text = " ".join(x.text for x in turns)
-                self.assertIn("fix the import in retent", text)
+                self.assertIn("fix the import in shop", text)
                 self.assertNotIn("tidy the other app", text, "an exchange about another repository stays out")
             finally:
                 os.environ["HOME"] = old
@@ -1446,9 +1460,9 @@ class TestDoctorEntrypoints(unittest.TestCase):
         from cosmos.cli import desktop_pins
         with Repo() as r, tempfile.TemporaryDirectory() as d:
             conf = Path(d) / "claude_desktop_config.json"
-            conf.write_text(json.dumps({"mcpServers": {"cosmos": {"command": "python3", "args": ["/elsewhere/retent/.cosmos/cosmosw", "mcp"]}}}))
-            self.assertIn("/elsewhere/retent", desktop_pins(r.root, conf)[0])
-            conf.write_text(json.dumps({"mcpServers": {"cosmos-retent": {"command": "python3", "args": ["/elsewhere/retent/.cosmos/cosmosw", "mcp"]}}}))
+            conf.write_text(json.dumps({"mcpServers": {"cosmos": {"command": "python3", "args": ["/elsewhere/shop/.cosmos/cosmosw", "mcp"]}}}))
+            self.assertIn("/elsewhere/shop", desktop_pins(r.root, conf)[0])
+            conf.write_text(json.dumps({"mcpServers": {"cosmos-shop": {"command": "python3", "args": ["/elsewhere/shop/.cosmos/cosmosw", "mcp"]}}}))
             self.assertEqual(desktop_pins(r.root, conf), [])
             conf.write_text(json.dumps({"mcpServers": {"cosmos": {"command": "python3", "args": [str(r.root / ".cosmos" / "cosmosw"), "mcp"]}}}))
             self.assertEqual(desktop_pins(r.root, conf), [], "pointing at this repository is fine")
@@ -1458,13 +1472,13 @@ class TestDoctorEntrypoints(unittest.TestCase):
         from cosmos.hooks import session_start
         with Repo() as r, tempfile.TemporaryDirectory() as d:
             conf = Path(d) / "claude_desktop_config.json"
-            conf.write_text(json.dumps({"mcpServers": {"cosmos": {"command": "python3", "args": ["/elsewhere/retent/.cosmos/cosmosw", "mcp"]}}}))
+            conf.write_text(json.dumps({"mcpServers": {"cosmos": {"command": "python3", "args": ["/elsewhere/shop/.cosmos/cosmosw", "mcp"]}}}))
             saved, env = cosmos.connect.DESKTOP_CONFIG, os.environ.get("CLAUDE_CODE_ENTRYPOINT")
             cosmos.connect.DESKTOP_CONFIG = conf
             try:
                 os.environ["CLAUDE_CODE_ENTRYPOINT"] = "claude-desktop"
                 brief = session_start(r.cfg)
-                self.assertTrue(brief.startswith("cosm◎s · ⚠ Claude Desktop's MCP entry `cosmos` serves /elsewhere/retent"), brief[:200])
+                self.assertTrue(brief.startswith("cosm◎s · ⚠ Claude Desktop's MCP entry `cosmos` serves /elsewhere/shop"), brief[:200])
                 self.assertIn("cosmosw flares add", brief)
                 os.environ["CLAUDE_CODE_ENTRYPOINT"] = "cli"
                 self.assertNotIn("Claude Desktop's MCP entry", session_start(r.cfg), "the terminal does not load Desktop's servers")
@@ -2966,6 +2980,171 @@ class TestDisclosureHandoffValidity(unittest.TestCase):
             charter.add_section_rule(r.cfg, "Locks live in `src/redis-lock.ts`; never edit `src/legacy/locks.py` directly.")
             self.assertEqual(charter.check(r.cfg), ["src/legacy/locks.py"])
 
+    def test_dotted_paths_and_globs_the_charter_names_are_found(self):
+        from cosmos import charter
+        with Repo() as r:
+            charter.ensure(r.cfg)
+            (r.root / ".claude" / "agents").mkdir(parents=True)
+            (r.root / ".claude" / "agents" / "horizon-coder.md").write_text("x")
+            (r.root / "agents").mkdir(); (r.root / "agents" / "coder.md").write_text("x")
+            (r.root / ".cosmos" / "cosmosw").write_text("x")      # named below; a test repository has none of its own
+            charter.add_section_rule(r.cfg, "Roles live in `agents/*.md`, mirrored to `.claude/agents/horizon-*.md` and `.claude/agents/`; "
+                                            "the wrapper is `.cosmos/cosmosw`; never `docs/gone/*.md` or `.claude/missing.md`.")
+            self.assertEqual(charter.check(r.cfg), ["docs/gone/*.md", ".claude/missing.md"],
+                             "a leading dot is part of the name and a glob matches files; only real misses are reported")
+
+
+class TestPlainNotes(unittest.TestCase):
+    """How a note reads to a person: title, one sentence and chips, worked out from what an agent wrote."""
+
+    def test_labels_dates_and_steps_become_chips_not_the_headline(self):
+        from cosmos.plain import view
+        v = view("Connections (step 2a, 2026-10-07): a Connection is an org's account on GitHub or GitLab; a project links repos to it.")
+        self.assertEqual((v["title"], v["step"], v["when"]), ("Connections", "2a", "7 Oct 2026"))
+        self.assertTrue(v["sentence"].startswith("A Connection is an org's account"))
+        v = view("OWNER RULE 2026-09-29 (top priority): AI agents and testers never spend on billed keys. That means: no LLM calls.")
+        self.assertEqual(v["title"], "AI agents and testers never spend on billed keys")
+        self.assertIn("owner rule", v["chips"]); self.assertIn("top priority", v["chips"]); self.assertEqual(v["when"], "29 Sep 2026")
+        v = view("SAFETY: never read or print secret values from .env (checking a key name is set is fine); real keys stay out of code.")
+        self.assertEqual((v["title"], v["chips"]), ("Never read or print secret values from .env", ["safety"]))
+        v = view("FEATURE Today / dashboard (#today): purpose · the owner's daily read.")
+        self.assertEqual((v["title"], v["chips"]), ("Today / dashboard", ["feature"]))
+
+    def test_lifecycle_commit_notes_and_quotes(self):
+        from cosmos.plain import view
+        v = view("Lifecycle · Discover · skipped · Go decision (CEO): no CEO review was held; the owner decided to build directly.")
+        self.assertEqual((v["phase"], v["status"]), ("Discover", "skipped"))
+        self.assertEqual(v["title"], "Go decision: no CEO review was held")
+        v = view("Lifecycle · Ideate · done · 2026-10-07: named HORIZON with the tagline 'Think. Build. Ship. Scale.'; 31-point vision.")
+        self.assertEqual(v["title"], "Named HORIZON with the tagline 'Think. Build. Ship. Scale.'", "a quoted full stop never splits")
+        v = view("Commit note by Ana Lee: Counter: the guest's codes on their card with Redeem; no loopholes — - Guest tab lists every code.")
+        self.assertEqual((v["title"], v["author"], v["sentence"]), ("Counter: the guest's codes on their card with Redeem", "Ana Lee", "Guest tab lists every code."))
+        v = view("cosmos is stdlib-only; the anthropic SDK is an optional extra.")
+        self.assertEqual(v["title"], "cosmos is stdlib-only", "a lowercase name keeps its case")
+        v = view("services/db.py:57 uses pool_size 10; the pool recycles hourly.")
+        self.assertTrue(v["title"].startswith("services/db.py"), "a path is never capitalised")
+
+    def test_the_writer_title_wins_and_the_text_never_changes(self):
+        from cosmos.plain import view
+        v = view("Ships on the free Gemini key, about 20 calls a day across all businesses.", {"title": "Ask runs on the free key"})
+        self.assertEqual(v["title"], "Ask runs on the free key")
+        self.assertTrue(v["sentence"].startswith("Ships on the free Gemini key"))
+
+    def test_lint_points_at_what_reads_plainer(self):
+        from cosmos.plain import lint
+        tips = lint("Connections (step 2a, 2026-10-07): it is robust; links repos; uses OAuth (later) (maybe) (soon).")
+        self.assertEqual(len(tips), 3)
+        self.assertTrue(any("dates" in t for t in tips) and any("robust" in t for t in tips))
+        self.assertEqual(lint("Payments retry with an idempotency key, never twice."), [])
+
+    def test_remember_keeps_title_and_why_and_says_how_to_read_plainer(self):
+        from cosmos.mcp import call_tool
+        with Repo() as r:
+            out = call_tool(r.cfg, "cosmos_remember", {"text": "OWNER RULE 2026-10-07: refunds go back to the original card within 7 days.",
+                                                       "title": "Refunds go to the original card", "why": "Chargebacks cost more than refunds.", "kind": "fact"})
+            reply = out["content"][0]["text"]
+            self.assertIn("Plainer next time", reply)
+            m = next(m for m in Ledger(r.cfg.paths).load().values() if "refunds" in m.text)
+            self.assertEqual(m.meta["title"], "Refunds go to the original card")
+            self.assertIn(["Why", "Chargebacks cost more than refunds."], m.details)
+            md = next((r.cfg.paths.ledger).rglob(f"{m.id}*.md")).read_text()
+            self.assertIn('title: "Refunds go to the original card"', md, "the note file's title is the plain one")
+
+    def test_capture_drops_sentences_that_lean_on_the_one_before(self):
+        kept = [o.text for o in extract.extract_from_turn(Turn(role="assistant", text=(
+            "The QR guest lookup in services/qr.py matches the E.164 phone first. "
+            "`all` is null only if the business never set one up. It must also keep the earlier login safety fixes."),
+            files=["services/qr.py"], uuid="x"))]
+        self.assertFalse(any(k.startswith(("`all`", "It must")) for k in kept), kept)
+
+    def test_the_console_sends_the_plain_view(self):
+        from cosmos.ui import _mem
+        m = Memory(id="mem_p1", text="Scopes (2026-10-07): an organisation holds projects.", category="architecture")
+        self.assertEqual(_mem(m)["view"]["title"], "Scopes")
+        f = Memory(id="mem_f1", text="Login fails on Safari", category="finding")
+        self.assertEqual(_mem(f)["view"]["title"], "Login fails on Safari", "a flare's title is shown as filed")
+
+
+
+class TestHookGenerations(unittest.TestCase):
+    """An older cosmos (a stale pip install running `cosmos init`) once rewrote the user hooks to a form without the
+    parent-folder dispatch; every session opened above a repository silently lost cosmos."""
+
+    OLD = 'd="${CLAUDE_PROJECT_DIR:-.}"; [ -f "$d/.cosmos/cosmosw" ] && exec python3 "$d/.cosmos/cosmosw" hook; exit 0'
+
+    def _settings(self, d, command):
+        p = Path(d) / "settings.json"
+        p.write_text(json.dumps({"hooks": {"SessionStart": [{"hooks": [{"type": "command", "command": command}]}]}}))
+        return p
+
+    def test_an_older_command_is_upgraded_and_a_newer_one_is_never_downgraded(self):
+        from cosmos.hooks import HOOK_COMMAND, hook_generation, stale_hooks
+        with tempfile.TemporaryDirectory() as d:
+            p = self._settings(d, self.OLD)
+            self.assertTrue(stale_hooks(p))
+            self.assertTrue(install_hooks(p))
+            self.assertIn("COSMOS_PARENT_SESSION", json.loads(p.read_text())["hooks"]["SessionStart"][0]["hooks"][0]["command"])
+            newer = HOOK_COMMAND.replace(f"cosmos-hooks {hook_generation(HOOK_COMMAND)}", "cosmos-hooks 99")
+            p = self._settings(d, newer)
+            self.assertFalse(install_hooks(p), "an older cosmos leaves a newer generation alone")
+            self.assertEqual(json.loads(p.read_text())["hooks"]["SessionStart"][0]["hooks"][0]["command"], newer)
+
+    def test_a_session_start_puts_back_user_hooks_an_older_cosmos_wrote(self):
+        from cosmos.hooks import session_start, stale_hooks
+        with Repo() as r, tempfile.TemporaryDirectory() as d:
+            p = self._settings(d, self.OLD)
+            os.environ["COSMOS_USER_SETTINGS"] = str(p)
+            try:
+                out = session_start(r.cfg)
+            finally:
+                del os.environ["COSMOS_USER_SETTINGS"]
+            self.assertFalse(stale_hooks(p))
+            self.assertIn("user hooks restored", out)
+
+
+class TestDesktopPin(unittest.TestCase):
+    def test_the_rename_waits_until_claude_desktop_is_closed(self):
+        from cosmos.upgrade import _step_desktop_pin
+        with Repo() as r, tempfile.TemporaryDirectory() as d:
+            cfgf = Path(d) / "claude_desktop_config.json"
+            cfgf.write_text(json.dumps({"mcpServers": {"cosmos": {"command": "python3", "args": ["/x/shop/.cosmos/cosmosw", "mcp"]}}, "preferences": {"a": 1}}))
+            env = {"COSMOS_DESKTOP_CONFIG": str(cfgf)}
+            for k, v in env.items():
+                os.environ[k] = v
+            try:
+                os.environ["COSMOS_DESKTOP_RUNNING"] = "1"
+                self.assertEqual(_step_desktop_pin(r.cfg), "", "Desktop would write its in-memory copy back over the edit")
+                self.assertIn("cosmos", json.loads(cfgf.read_text())["mcpServers"])
+                os.environ["COSMOS_DESKTOP_RUNNING"] = "0"
+                self.assertIn("cosmos-shop", _step_desktop_pin(r.cfg))
+                data = json.loads(cfgf.read_text())
+                self.assertEqual((list(data["mcpServers"]), data["preferences"]), (["cosmos-shop"], {"a": 1}))
+            finally:
+                for k in (*env, "COSMOS_DESKTOP_RUNNING"):
+                    os.environ.pop(k, None)
+
+    def test_the_warning_says_how_to_make_it_stick(self):
+        from cosmos.connect import desktop_pins
+        with Repo() as r, tempfile.TemporaryDirectory() as d:
+            cfgf = Path(d) / "c.json"
+            cfgf.write_text(json.dumps({"mcpServers": {"cosmos": {"args": ["/x/shop/.cosmos/cosmosw", "mcp"]}}}))
+            msg = desktop_pins(r.root, cfgf)[0]
+            self.assertIn("Cmd+Q", msg); self.assertIn("/x/shop/.cosmos/cosmosw repair", msg)
+
+
+class TestBriefingRules(unittest.TestCase):
+    def test_the_newest_rules_reach_the_briefing_and_the_rest_are_counted(self):
+        from cosmos import charter
+        with Repo() as r:
+            charter.ensure(r.cfg)
+            mems = {}
+            for i in range(20):
+                m = Memory(id=f"mem_r{i:02d}", text=f"Rule number {i} applies to src/redis-lock.ts.", category="convention", source="explicit",
+                           created=f"2026-09-{i + 1:02d}", updated=f"2026-09-{i + 1:02d}")
+                mems[m.id] = m
+            out = charter.summary(r.cfg, mems)
+            self.assertIn("Rule number 19", out); self.assertIn("Rule number 8", out); self.assertNotIn("Rule number 7 ", out)
+            self.assertIn("and 8 older team rules", out)
 
 class TestTeamSources(unittest.TestCase):
     def test_git_history_becomes_journal_and_candidates(self):

@@ -22,7 +22,8 @@ entry is what makes every worktree and every repository covered, including sessi
 
 ## One entrypoint, dispatched on `hook_event_name`
 
-- **SessionStart** → the briefing: the Charter summary, the top facts, the branch's last handoff, the Atlas status and
+- **SessionStart** → the briefing: the Charter summary with the 12 most recently set team rules (and how many older ones
+  `cosmos charter` lists), the top facts, the branch's last handoff, the Atlas status and
   any warning (in the opt-in separate-branch mode, that the `cosmos` branch was merged into this one). Also refreshes the vendored copy and starts the
   watcher if none runs.
 - **UserPromptSubmit** → facts ranked against the prompt (BM25 × confidence × importance × recency). A session that
@@ -51,7 +52,7 @@ cosmos also sends Claude Code one line to show (`systemMessage`), and the contex
 text to a file and shows the model only a 2,000-character preview, without asking it to read the rest. Each explicit
 rule in the briefing is therefore one line (220 characters, then its id; `cosmos_why <id>` has the whole rule). The
 whole briefing stays under `retrieval.session_start_chars` (9,000), cut from the end if needed. Measured on
-2026-10-01: retent's briefing was 13,326 characters (its 12 rules alone 8,034) and is now 8,157; this repository's is 7,465.
+2026-10-01: one project's briefing was 13,326 characters (its 12 rules alone 8,034) and is now 8,157; this repository's is 7,465.
 
 ## Sessions opened above the repository
 
@@ -66,11 +67,20 @@ with `COSMOS_PARENT_SESSION=1`:
 - a linked worktree stays quiet, because the main checkout answers for the repository and all its worktrees;
 - the Gate ignores files of a sibling repository; an exit 2 from any child holds the turn.
 
+The hook command carries its generation (`: cosmos-hooks 3; …`). An older cosmos never rewrites hooks a newer one wrote,
+and every session start puts back user or repository hooks an older copy replaced, saying so once in the briefing. On
+2026-10-07 a stale pip install (0.1.5) ran `cosmos init` in a new repository and rewrote the user hooks without the
+parent-folder dispatch; every session opened above a repository ran without cosmos for about ten hours. `cosmos doctor`
+flags user hooks from an older generation.
+
 ## Claude Desktop
 
 In the desktop app's Code tab, an MCP server named `cosmos` in `claude_desktop_config.json` takes the name of each
 project's own server. When it runs another repository's cosmos, the briefing starts with a warning and the commands to
-use instead, and `cosmos repair` renames that entry `cosmos-<repo>` (a backup of the file is kept).
+use instead. `cosmos repair` renames that entry `cosmos-<repo>` (a backup of the file is kept), but only while Claude
+Desktop is closed: Desktop keeps the file, which also holds its preferences, in memory and writes it back, so an edit
+made while it runs is lost (seen on 2026-10-07). The warning gives the steps: quit with Cmd+Q, run
+`python3 <repo>/.cosmos/cosmosw repair` in Terminal, reopen Desktop.
 
 Such an entry is offered to every Desktop session, including sessions in projects with no cosmos at all. The cosmos
 MCP server therefore asks the client which folders the session works in (MCP roots; Claude Code answers with the
@@ -78,7 +88,7 @@ project folder). When none of them is the repository or a folder above it, every
 project" and nothing is read or recorded. Verified on 2026-10-01 with Claude Code 2.1.118 from a folder without cosmos:
 `cosmos_flare` was refused and the ledger kept its 172 flares. A client that does not report its folders is served as
 before; a flare whose files do not exist in the repository then gets a warning in the reply. Every write names the
-repository it went to (`filed RET-… in retent's ledger`).
+repository it went to (`filed RET-… in shop's ledger`).
 
 ## Updates
 
@@ -94,21 +104,21 @@ says where a repository stands.
 
 Which copy runs: `.cosmos/cosmosw` takes the newer of the repository's copy and a pip install. On the same version
 string the repository's copy wins, because a pip install of that version can be older code (on 2026-10-01 one hid the
-parent-folder support from every retent session for eight hours); only an editable checkout of cosmos itself wins a tie.
+parent-folder support from every session of one project for eight hours); only an editable checkout of cosmos itself wins a tie.
 
 ## Speed, and how it is measured
 
 Each hook is a fresh Python process, so its time is what a person waits for on every prompt. Reading the ledger was
-most of it: parsing 2,925 notes took 702 ms of a ~750 ms hook in retent. The parsed notes are now kept per machine
+most of it: parsing 2,925 notes took 702 ms of a ~750 ms hook in one project. The parsed notes are now kept per machine
 (`~/.cache/cosmos/`, never in the repository; `COSMOS_LEDGER_CACHE=0` turns it off) and only a note whose file
 changed is read again: a warm load takes 74 ms. `cosmos pulse --bench` times the real hook command in a fresh process
-(median of five): on retent 2026-10-01, SessionStart 325 ms, UserPromptSubmit 398 ms, PreToolUse 285 ms (`.cosmos/ledger/metrics/2026-10-01.json`), from
+(median of five): on one project, 2026-10-01, SessionStart 325 ms, UserPromptSubmit 398 ms, PreToolUse 285 ms (`.cosmos/ledger/metrics/2026-10-01.json`), from
 700-790 ms before.
 
-Saving is as cheap: a save writes only the notes that changed since they were read, so `cosmos_remember` on retent's
+Saving is as cheap: a save writes only the notes that changed since they were read, so `cosmos_remember` on one project's
 2,975 notes takes 1.4-2.8 s (it rewrote every note before, 40-48 s, past tool timeouts). Dreams run one at a time per
 repository: the lock is created atomically and holds the running dream's pid, so a slow dream never lets a second
-start (retent once ran five at once).
+start (one project once ran five at once).
 
 `cosmos pulse` also checks the failures that are otherwise silent: a briefing over the cap, the wrong copy of cosmos
 running, hooks quiet while a session is active, dreams in a loop, flares naming files the repository lacks.

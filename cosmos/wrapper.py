@@ -9,7 +9,10 @@ from __future__ import annotations
 import shutil
 from pathlib import Path
 
-HOOK_CMD = ('d="${CLAUDE_PROJECT_DIR:-.}"; if [ ! -f "$d/.cosmos/cosmosw" ]; then g="$(git -C "$d" rev-parse --path-format=absolute '
+# The hook command's generation: an older cosmos (a stale pip install running `cosmos init`) must never replace a newer
+# command, and a session start puts back a command an older copy wrote. Bump it whenever HOOK_CMD changes.
+HOOK_GENERATION = 3
+HOOK_CMD = (f': cosmos-hooks {HOOK_GENERATION}; ' 'd="${CLAUDE_PROJECT_DIR:-.}"; if [ ! -f "$d/.cosmos/cosmosw" ]; then g="$(git -C "$d" rev-parse --path-format=absolute '
             '--git-common-dir 2>/dev/null)" && d="$(dirname "$g")"; fi; '   # only a real git root: "." would be whatever folder the hook ran in
             '[ -f "$d/.cosmos/cosmosw" ] && exec python3 "$d/.cosmos/cosmosw" hook; '
             # a session opened in a folder above the repositories (a workspace of several projects): each child repository

@@ -1,6 +1,6 @@
 {
   "name": "cosmos",
-  "version": "0.2.2",
+  "version": "0.2.3",
   "description": "Team memory, rules and architecture for AI coding agents, kept in the repository: the Charter, the Ledger of team facts, open flares, the Atlas and handoffs, for the repository a Codex thread is in.",
   "author": {
     "name": "cosmos"

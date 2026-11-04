@@ -60,5 +60,5 @@ audit. `"security": false` in the `gate:` block turns these checks off.
 A ledger note that reads like instructions to an agent is withheld from briefings, recall and the rules until a person
 looks at it; `cosmos scan --allow <id>` shows a deliberate one (a quoted prompt-injection test case) again.
 `cosmos scan` runs the same checks over every tracked file; `--tools` also runs bandit, pip-audit, npm audit, semgrep
-and gitleaks when they are installed. On retent (4,106 tracked files, 2026-10-02) it reported one withheld note, a
+and gitleaks when they are installed. On one project (4,106 tracked files, 2026-10-02) it reported one withheld note, a
 quoted injection test, and one URL with credentials in a test.

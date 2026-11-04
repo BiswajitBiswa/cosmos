@@ -42,7 +42,7 @@ Lanes named by the model drift into near-duplicates (`deploy`, `deploy-config`, 
 (an alias has no page of its own); every fact is re-filed at the next dream:
 
 ```json
-"lane_aliases": {"deploy": "deployment", "deploy-config": "deployment", "chat-*": "ask-reten", "loyalty": "rewards-loyalty"}
+"lane_aliases": {"deploy": "deployment", "deploy-config": "deployment", "chat-*": "ask-assistant", "loyalty": "rewards-loyalty"}
 ```
 
 `cosmos lanes --propose` lists near-duplicates it can see — one name's words (each cut to six letters, so *deploy* and

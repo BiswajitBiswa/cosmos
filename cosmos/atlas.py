@@ -87,6 +87,8 @@ def parse_yaml_subset(text: str) -> Any:
             if ind < indent:
                 break
             s = raw.strip()
+            if isinstance(items, list) and not s.startswith("- "):
+                break                                   # a sequence ends at the first line that is not an item
             if s.startswith("- "):
                 if items is None:
                     items = []
@@ -109,7 +111,9 @@ def parse_yaml_subset(text: str) -> Any:
             k, _, v = s.partition(":")
             v = v.strip()
             if v == "":
-                sub, j = parse_block(i + 1, ind + 1)
+                nxt = lines[i + 1] if i + 1 < len(lines) else ""
+                same_indent_list = nxt.strip().startswith("- ") and len(nxt) - len(nxt.lstrip(" ")) == ind
+                sub, j = parse_block(i + 1, ind if same_indent_list else ind + 1)   # compose writes "ports:" then "- …" at the key's indent
                 items[k.strip()] = sub if sub is not None else {}
                 i = j
             else:
@@ -458,7 +462,7 @@ Write `.cosmos/ledger/atlas/dependencies.md`: service → service calls, service
 5. `lanes.md` — group modules into feature lanes; propose a `lanes` mapping (lane → path globs) for `.cosmos/config.json`
 
 Rules: every node must exist in the inventory; every edge must have a source file; use the team's own names; keep each diagram under 40 nodes (split if bigger).
-Mermaid that renders (the console uses mermaid 10): `flowchart LR` or `TB`, never `graph`; node ids are plain words (`api_prod`, never `end`, `class`, `style`); every label in double quotes — `api["reten-api · FastAPI"]`, `db[("Postgres")]`, edge labels `-->|"POST /api/cron/{job}"|` — because ( ) { } [ ] | : ; # inside an unquoted label break the parse; no HTML except `<br/>`; one diagram per fenced block. Make it read at a glance: one `subgraph` per runtime or boundary (browser, API, workers, data, third parties), short labels (name · tech), details in the text below the diagram, and the same four classes in every diagram:
+Mermaid that renders (the console uses mermaid 10): `flowchart LR` or `TB`, never `graph`; node ids are plain words (`api_prod`, never `end`, `class`, `style`); every label in double quotes — `api["shop-api · FastAPI"]`, `db[("Postgres")]`, edge labels `-->|"POST /api/cron/{job}"|` — because ( ) { } [ ] | : ; # inside an unquoted label break the parse; no HTML except `<br/>`; one diagram per fenced block. Make it read at a glance: one `subgraph` per runtime or boundary (browser, API, workers, data, third parties), short labels (name · tech), details in the text below the diagram, and the same four classes in every diagram:
 `classDef svc fill:#15151b,stroke:#E8CFA0,color:#ECEAE4` · `classDef store fill:#101820,stroke:#9FB8D0,color:#ECEAE4` · `classDef ext fill:#1b1414,stroke:#D89A9A,color:#ECEAE4,stroke-dasharray:4 3` · `classDef job fill:#141a16,stroke:#9CC9B0,color:#ECEAE4` — then `class a,b svc` etc.
 `system-context.md` is the overall picture: at most 15 nodes, people and outside systems around the product, the one diagram someone new should look at first. Finish with `cosmos atlas --check` and print a 5-line summary of what changed since the previous Atlas.
 """
@@ -490,6 +494,8 @@ def deep_due(cfg: Config) -> bool:
     import os
     if not cfg.get("atlas.deep", True) or os.environ.get("COSMOS_NO_BACKGROUND"):
         return False
+    if os.environ.get("COSMOS_LLM_PROVIDER") == "none" or cfg.get("llm.provider") == "none":
+        return False                                       # the model is switched off: the deep pass uses it too
     st = deep_status(cfg)
     if st.get("pid") and _alive(int(st["pid"])):
         return False

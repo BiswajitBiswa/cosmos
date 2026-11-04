@@ -36,7 +36,7 @@ DOC_DIRS = {"docs", "doc", "references", "reference", "adr", "rfcs", "wiki"}
 
 def canonical_lane(name: str, cfg: Config) -> str:
     """lane_aliases (or lanes_alias) in config.json folds near-duplicate names into one:
-    {"deploy-config": "deployment", "chat-*": "ask-reten"} — exact names first, then globs."""
+    {"deploy-config": "deployment", "chat-*": "ask-assistant"} — exact names first, then globs."""
     import fnmatch
     aliases = cfg.get("lane_aliases") or cfg.get("lanes_alias") or {}
     if not name or not isinstance(aliases, dict):
@@ -112,7 +112,7 @@ def resolve_evidence(root, fragment: str) -> str:
     """Best effort from a cited path to evidence that exists: repo-relative as given, a unique tree match for a
     partial path, a sibling repository (`../name/...`, also when cited as `name/...`), or "" when nothing matches."""
     from pathlib import Path
-    frag = str(fragment).strip().lstrip("./")
+    frag = re.sub(r"^(?:\./)+", "", str(fragment).strip()).lstrip("/")   # `./x` → `x`; a leading dot is part of the name (.claude, .cosmos)
     if not frag:
         return ""
     if (Path(root) / frag).exists():
